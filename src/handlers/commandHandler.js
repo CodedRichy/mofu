@@ -125,13 +125,21 @@ async function registerCommands(client) {
   // Clear stale global commands from previous registration
   await rest.put(Routes.applicationCommands(config.discord.clientId), { body: [] });
 
-  for (const guild of client.guilds.cache.values()) {
-    const data = await rest.put(
-      Routes.applicationGuildCommands(config.discord.clientId, guild.id),
-      { body: slashCommands }
-    );
-    log.info(`Registered ${data.length} slash commands in ${guild.name}`);
-  }
+  // Issue all guild PUTs at once; @discordjs/rest queues them per bucket and
+  // handles 429s, so this is never slower than awaiting one by one. One guild
+  // failing (e.g. missing applications.commands scope) must not
+  // abort the rest or reject the ready handler.
+  await Promise.all(client.guilds.cache.map(async (guild) => {
+    try {
+      const data = await rest.put(
+        Routes.applicationGuildCommands(config.discord.clientId, guild.id),
+        { body: slashCommands }
+      );
+      log.info(`Registered ${data.length} slash commands in ${guild.name}`);
+    } catch (err) {
+      log.warn(`Failed to register slash commands in ${guild.name} (${guild.id}):`, err.message);
+    }
+  }));
 }
 
 module.exports = { loadCommands, registerCommands };
