@@ -2,6 +2,7 @@ const { SlashCommandBuilder } = require('discord.js');
 const { useMainPlayer } = require('discord-player');
 const { colors } = require('../../utils/constants');
 const { response, base } = require('../../utils/embed');
+const log = require('../../utils/logger');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -45,7 +46,9 @@ module.exports = {
         .setThumbnail(track.thumbnail);
 
       await interaction.editReply({ embeds: [embed] });
-    } catch {
+    } catch (err) {
+      // Surface extractor/stream failures in logs; the user message is unchanged.
+      log.warn(`play failed for "${query}":`, err?.message || err);
       await interaction.editReply({ embeds: [response({ client: interaction.client, description: 'No results found or failed to play.', color: colors.error })] });
     }
   },

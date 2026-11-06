@@ -56,12 +56,10 @@ for (const file of eventFiles) {
 loadCommands(client);
 
 // Music player
+// (ytdlOptions was a discord-player v5 option; v7 ignores it, so it is gone.
+// YouTube stream tuning lives in the YoutubeiExtractor options below.)
 const player = new Player(client, {
   skipFFmpeg: false,
-  ytdlOptions: {
-    quality: 'highestaudio',
-    highWaterMark: 1 << 25,
-  },
 });
 player.extractors.loadMulti(DefaultExtractors).catch((err) => log.warn('Music extractors failed:', err.message));
 player.extractors.register(YoutubeiExtractor, {}).catch((err) => log.warn('YouTube extractor failed:', err.message));
