@@ -20,6 +20,15 @@ const XP_COOLDOWN = 60000;
 const SPAM_THRESHOLD = 5;
 const SPAM_WINDOW = 3000;
 
+// Drop spam-tracker entries whose newest timestamp is outside the window,
+// otherwise every user who ever spoke in an antispam guild stays in memory.
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, timestamps] of spamTracker) {
+    if (now - timestamps[timestamps.length - 1] >= SPAM_WINDOW) spamTracker.delete(key);
+  }
+}, 60000).unref();
+
 module.exports = {
   name: 'messageCreate',
   async execute(message) {
@@ -254,14 +263,6 @@ module.exports = {
         return;
       }
 
-      const mentions = message.content.match(/<@!?(\d+)>/g) || [];
-      for (const m of mentions) {
-        const id = m.replace(/[<@!>]/g, '');
-        if (!message.guild.members.cache.has(id)) {
-          await message.guild.members.fetch(id).catch(() => {});
-        }
-      }
-
       const cooldownAmount = (command.cooldown || 3) * 1000;
       if (!cooldowns.has(command.data.name)) cooldowns.set(command.data.name, new Collection());
       const timestamps = cooldowns.get(command.data.name);
@@ -277,6 +278,16 @@ module.exports = {
       }
       timestamps.set(message.author.id, now);
       setTimeout(() => timestamps.delete(message.author.id), cooldownAmount);
+
+      // Warm the member cache for mentioned users so getUser/getMember resolve.
+      // Deduped and fetched in parallel; skipped entirely when on cooldown.
+      const uncached = new Set();
+      for (const m of message.content.matchAll(/<@!?(\d+)>/g)) {
+        if (!message.guild.members.cache.has(m[1])) uncached.add(m[1]);
+      }
+      if (uncached.size) {
+        await Promise.all([...uncached].map((id) => message.guild.members.fetch(id).catch(() => {})));
+      }
 
       const ctx = new PrefixContext(message, args, command);
       if (ctx._missingArgs.length) {
