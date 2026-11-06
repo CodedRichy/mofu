@@ -16,7 +16,9 @@ function track(name, { userId, guildId, type, feedback, error }) {
     error: error || null,
     timestamp: new Date().toISOString(),
   };
-  fs.appendFileSync(LOG_PATH, JSON.stringify(entry) + '\n');
+  // Async append: this runs on every command/feedback click, so keep disk I/O
+  // off the event loop. Telemetry failures must never surface to users.
+  fs.appendFile(LOG_PATH, JSON.stringify(entry) + '\n', () => {});
 }
 
 async function promptFeedback(source, commandName, type) {
