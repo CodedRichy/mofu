@@ -14,8 +14,18 @@ try {
     },
   });
 
-  redis.on('connect', () => log.info('Redis connected'));
-  redis.on('error', (err) => log.warn('Redis unavailable:', err.message));
+  // ioredis emits 'error' on every retry attempt; warn once per outage
+  // instead of once per attempt.
+  let warned = false;
+  redis.on('connect', () => {
+    warned = false;
+    log.info('Redis connected');
+  });
+  redis.on('error', (err) => {
+    if (warned) return;
+    warned = true;
+    log.warn('Redis unavailable — running without cache:', err.message);
+  });
   redis.connect().catch(() => {});
 } catch {
   log.warn('Redis not configured — running without cache');

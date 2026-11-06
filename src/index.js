@@ -103,7 +103,7 @@ process.on('SIGINT', async () => {
   log.info('Shutting down...');
   client.destroy();
   await db.disconnect();
-  redis.disconnect();
+  redis?.disconnect();
   process.exit(0);
 });
 
