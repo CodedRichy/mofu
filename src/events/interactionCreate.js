@@ -24,22 +24,13 @@ module.exports = {
     if (interaction.isStringSelectMenu() && interaction.customId === 'help_category') {
       const category = interaction.values[0];
       const prefix = store.getConfig(interaction.guild?.id, 'prefix') || config.discord.defaultPrefix;
-      const fs = require('fs');
-      const path = require('path');
-      const categoryPath = path.join(__dirname, '..', 'commands', category);
+      // Commands are tagged with their category at load time, so no disk I/O here.
+      const inCategory = interaction.client.commands.filter((cmd) => cmd.category === category);
+      if (!inCategory.size) return;
 
-      if (!fs.existsSync(categoryPath)) return;
-
-      const commands = interaction.client.commands;
-      const files = fs.readdirSync(categoryPath).filter((f) => f.endsWith('.js'));
       const emoji = categoryEmojis[category] || '📁';
 
-      const lines = files.map((f) => {
-        const name = f.replace('.js', '');
-        const cmd = commands.get(name);
-        if (!cmd) return null;
-        return `**\`${prefix}${name}\`** — ${cmd.data.description}`;
-      }).filter(Boolean);
+      const lines = inCategory.map((cmd) => `**\`${prefix}${cmd.data.name}\`** — ${cmd.data.description}`);
 
       const embed = new EmbedBuilder()
         .setColor(colors.primary)
@@ -83,10 +74,12 @@ module.exports = {
       track(interaction.commandName, { userId: interaction.user.id, guildId: interaction.guildId, type: 'slash', feedback: 'errored', error: err.message });
       log.error(`Command ${interaction.commandName} failed:`, err.message);
       const reply = { content: 'Something went wrong.', ephemeral: true };
+      // The interaction may already be expired or acknowledged elsewhere;
+      // don't let the error notice itself throw.
       if (interaction.replied || interaction.deferred) {
-        await interaction.followUp(reply);
+        await interaction.followUp(reply).catch(() => {});
       } else {
-        await interaction.reply(reply);
+        await interaction.reply(reply).catch(() => {});
       }
     }
   },
