@@ -15,6 +15,14 @@ function startDashboard(client) {
 
   // In-memory rate limiter
   const rateLimits = new Map();
+  // Keys include the raw Authorization header, so any client can mint new
+  // keys; evict expired windows so the map cannot grow without bound.
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of rateLimits) {
+      if (now > entry.resetAt) rateLimits.delete(key);
+    }
+  }, 60000).unref();
 
   function rateLimit(windowMs = 60000, max = 60) {
     return (req, res, next) => {
