@@ -43,6 +43,7 @@ module.exports = {
       const cb = callbacks.get(id);
       if (cb) cb();
       callbacks.delete(id);
+      callbacks.delete(`_timeout_${id}`);
       // Remove from DB after firing
       stmts.removeById.run(id);
     }, duration);
