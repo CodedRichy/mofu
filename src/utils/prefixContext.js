@@ -21,6 +21,9 @@ class PrefixContext {
     this.user = message.author;
     this.member = message.member;
     this.client = message.client;
+    this.guildId = message.guildId;
+    this.channelId = message.channelId;
+    this.createdTimestamp = message.createdTimestamp;
     this.commandName = command.data.name;
     this.replied = false;
     this.deferred = false;
@@ -43,7 +46,17 @@ class PrefixContext {
       else options = [];
     }
 
+    const attachments = [...(this.message.attachments?.values() ?? [])];
+
     for (const opt of options) {
+      // Attachments come from the message itself, not from text args.
+      if (opt.type === ApplicationCommandOptionType.Attachment) {
+        const file = attachments.shift();
+        if (file) this._parsed[opt.name] = file;
+        else if (opt.required) this._missingArgs.push(opt.name);
+        continue;
+      }
+
       if (args.length === 0) {
         if (opt.required) this._missingArgs.push(opt.name);
         continue;
@@ -69,11 +82,14 @@ class PrefixContext {
           break;
         }
         case ApplicationCommandOptionType.Integer: {
-          this._parsed[opt.name] = parseInt(args.shift()) || null;
+          // Keep 0 (e.g. `slowmode 0`); only unparseable input becomes null.
+          const n = parseInt(args.shift());
+          this._parsed[opt.name] = Number.isNaN(n) ? null : n;
           break;
         }
         case ApplicationCommandOptionType.Number: {
-          this._parsed[opt.name] = parseFloat(args.shift()) || null;
+          const n = parseFloat(args.shift());
+          this._parsed[opt.name] = Number.isNaN(n) ? null : n;
           break;
         }
         case ApplicationCommandOptionType.Boolean: {
@@ -131,6 +147,9 @@ class PrefixContext {
       getNumber(name) {
         return ctx._parsed[name] ?? null;
       },
+      getAttachment(name) {
+        return ctx._parsed[name] ?? null;
+      },
       getSubcommand() {
         return ctx._subcommand;
       },
@@ -155,6 +174,14 @@ class PrefixContext {
     this.deferred = true;
     this._lastReply = await this.message.reply({ content: DEFER_MESSAGES[Math.floor(Math.random() * DEFER_MESSAGES.length)] });
     return this._lastReply;
+  }
+
+  async fetchReply() {
+    return this._lastReply ?? null;
+  }
+
+  get memberPermissions() {
+    return this.member?.permissions ?? null;
   }
 
   async followUp(data) {
