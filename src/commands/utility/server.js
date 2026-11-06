@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, ChannelType } = require('discord.js');
 const { colors } = require('../../utils/constants');
+const { fetchAllMembers } = require('../../utils/members');
 const { base } = require('../../utils/embed');
 
 module.exports = {
@@ -21,7 +22,7 @@ module.exports = {
 
     if (sub === 'info') {
       const { guild } = interaction;
-      await guild.members.fetch().catch(() => {});
+      await fetchAllMembers(guild).catch(() => {});
 
       const text = guild.channels.cache.filter((c) => c.type === ChannelType.GuildText).size;
       const voice = guild.channels.cache.filter((c) => c.type === ChannelType.GuildVoice).size;

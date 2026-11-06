@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits, OverwriteType } = require('discord.js');
 const { colors } = require('../../utils/constants');
+const { fetchAllMembers } = require('../../utils/members');
 const { base, response } = require('../../utils/embed');
 
 module.exports = {
@@ -11,7 +12,7 @@ module.exports = {
   async execute(interaction) {
     await interaction.deferReply({ ephemeral: true });
 
-    const members = await interaction.guild.members.fetch();
+    const members = await fetchAllMembers(interaction.guild);
     const channels = interaction.guild.channels.cache;
     const issues = [];
 

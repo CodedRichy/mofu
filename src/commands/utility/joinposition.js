@@ -1,5 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { colors } = require('../../utils/constants');
+const { fetchAllMembers } = require('../../utils/members');
 const { response } = require('../../utils/embed');
 
 module.exports = {
@@ -11,7 +12,7 @@ module.exports = {
   async execute(interaction) {
     const target = interaction.options.getMember('user') || interaction.member;
 
-    const members = await interaction.guild.members.fetch();
+    const members = await fetchAllMembers(interaction.guild);
     const sorted = [...members.values()]
       .filter((m) => m.joinedTimestamp)
       .sort((a, b) => a.joinedTimestamp - b.joinedTimestamp);

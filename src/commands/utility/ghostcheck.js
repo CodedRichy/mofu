@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { colors } = require('../../utils/constants');
+const { fetchAllMembers } = require('../../utils/members');
 const { base, response } = require('../../utils/embed');
 
 module.exports = {
@@ -15,7 +16,7 @@ module.exports = {
     const minDays = interaction.options.getInteger('days') || 30;
     const cutoff = Date.now() - minDays * 86400000;
 
-    const members = await interaction.guild.members.fetch();
+    const members = await fetchAllMembers(interaction.guild);
     const ghosts = members.filter((m) =>
       !m.user.bot &&
       m.joinedTimestamp &&

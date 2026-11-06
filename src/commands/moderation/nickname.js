@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { colors } = require('../../utils/constants');
+const { fetchAllMembers } = require('../../utils/members');
 const { response } = require('../../utils/embed');
 const store = require('../../database/store');
 
@@ -58,7 +59,7 @@ module.exports = {
     if (sub === 'clearall') {
       await interaction.deferReply();
 
-      const members = await interaction.guild.members.fetch();
+      const members = await fetchAllMembers(interaction.guild);
       const withNicks = members.filter((m) => m.nickname && m.manageable);
       let cleared = 0;
 

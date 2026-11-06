@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { colors } = require('../../utils/constants');
+const { fetchAllMembers } = require('../../utils/members');
 const { base, response } = require('../../utils/embed');
 
 module.exports = {
@@ -39,7 +40,7 @@ module.exports = {
     }
 
     // Join position
-    const members = await interaction.guild.members.fetch();
+    const members = await fetchAllMembers(interaction.guild);
     const sorted = [...members.values()].filter((m) => m.joinedTimestamp).sort((a, b) => a.joinedTimestamp - b.joinedTimestamp);
     const position = sorted.findIndex((m) => m.id === target.id) + 1;
     if (position <= 10) milestones.push(`👑 **OG member** — #${position} to join`);
