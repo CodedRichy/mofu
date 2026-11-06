@@ -7,7 +7,7 @@ const xpStore = require('../database/xp');
 const { response } = require('../utils/embed');
 const { colors } = require('../utils/constants');
 const PrefixContext = require('../utils/prefixContext');
-const { postModlog } = require('../utils/modlog');
+const modlog = require('../utils/modlog');
 const { moderate } = require('../utils/ai');
 
 const cooldowns = new Collection();
@@ -93,7 +93,7 @@ module.exports = {
         await message.channel.bulkDelete(userMsgs).catch(() => {});
         message.channel.send({ embeds: [response({ client: message.client, description: `${message.author} muted for **1 minute** — spam detected.`, color: colors.error })] })
           .then((m) => setTimeout(() => m.delete().catch(() => {}), 5000)).catch(() => {});
-        await postModlog(message.guild, message.client, {
+        await modlog.send(message.guild, {
           action: 'Auto-Mute (Spam)',
           target: message.author,
           moderator: message.client.user,
@@ -124,7 +124,7 @@ module.exports = {
           message.delete().catch(() => {});
           message.channel.send({ embeds: [response({ client: message.client, description: `${message.author}, your message was removed by AI moderation.`, color: colors.error })] })
             .then((m) => setTimeout(() => m.delete().catch(() => {}), 5000)).catch(() => {});
-          postModlog(message.guild, message.client, {
+          modlog.send(message.guild, {
             action: 'Auto-Delete (AI)',
             target: message.author,
             moderator: message.client.user,
