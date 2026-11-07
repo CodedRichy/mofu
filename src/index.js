@@ -112,7 +112,10 @@ client.on('error', (err) => log.error('Client error:', err?.stack || err?.messag
 client.on('warn', (msg) => log.warn('Client warning:', msg));
 client.on('shardDisconnect', (ev, id) => log.warn(`Shard ${id} disconnected (code ${ev?.code}); discord.js will reconnect`));
 client.on('shardReconnecting', (id) => log.info(`Shard ${id} reconnecting`));
-client.on('shardResume', (id, replayed) => log.info(`Shard ${id} resumed (${replayed} events replayed)`));
+client.on('shardResume', (id, replayed) => {
+  log.info(`Shard ${id} resumed (${replayed} events replayed)`);
+  require('./utils/statusPost').reconnected(client);
+});
 
 // Graceful shutdown. docker stop sends SIGTERM (PID 1 ignores signals it has no handler for, then gets SIGKILLed
 // after 10s), so handle both: leave voice cleanly, close Discord, checkpoint SQLite, then exit.
@@ -123,6 +126,7 @@ async function shutdown(signal) {
   log.info(`${signal} received, shutting down...`);
   const force = setTimeout(() => process.exit(1), 15000); // never hang forever
   force.unref();
+  try { await Promise.race([require('./utils/statusPost').offline(client, signal), new Promise((r) => setTimeout(r, 3000))]); } catch { /* best effort */ }
   try { await player.destroy(); } catch { /* best effort */ }
   try { client.destroy(); } catch { /* best effort */ }
   try { await db.disconnect(); } catch { /* optional postgres */ }
