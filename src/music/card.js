@@ -7,6 +7,8 @@ const log = require('../utils/logger');
 // One live "record player" card per guild. It is edited every TICK_MS while a track plays and not at all while
 // paused (a stopped record is not animated), which also keeps us far inside Discord's edit rate limits.
 const TICK_MS = 6000;
+const MAX_TICK_MS = 60000;
+const EDIT_BUDGET_PER_SEC = 15; // all live cards combined
 const BAR = 18;
 const DISC = ['◐', '◓', '◑', '◒']; // half-filled circles: reads as a turning disc
 const LOOP_LABEL = { [QueueRepeatMode.OFF]: 'off', [QueueRepeatMode.TRACK]: 'track', [QueueRepeatMode.QUEUE]: 'queue', [QueueRepeatMode.AUTOPLAY]: 'autoplay' };
@@ -62,8 +64,7 @@ function buildCard(client, queue, frame = 0) {
     btn('shuffle', 'Shuffle'),
     btn('stop', 'Stop', ButtonStyle.Danger),
   );
-  const row2 = new ActionRowBuilder().addComponents(btn('voldown', 'Vol -'), btn('volup', 'Vol +'));
-  return { embeds: [embed], components: [row1, row2] };
+  return { embeds: [embed], components: [row1] };
 }
 
 function finalEmbed(client, text) {
@@ -92,18 +93,28 @@ async function start(queue) {
   try { message = await channel.send(buildCard(client, queue, 0)); } catch (err) { log.warn(`now-playing card failed: ${err.message}`); return; }
 
   const st = { message, frame: 0, busy: false, timer: null };
-  st.timer = setInterval(async () => {
+  const tick = async () => {
     const q = useQueue(guildId);
     if (!q?.currentTrack) return clear(guildId, 'Record stopped.', client);
-    if (q.node.isPaused() || st.busy) return;
-    st.busy = true;
-    st.frame += 1;
-    try { await st.message.edit(buildCard(client, q, st.frame)); }
-    catch (err) { clear(guildId); log.warn(`now-playing edit stopped: ${err.message}`); }
-    finally { st.busy = false; }
-  }, TICK_MS);
-  st.timer.unref?.();
+    if (!q.node.isPaused() && !st.busy) {
+      st.busy = true;
+      st.frame += 1;
+      try { await st.message.edit(buildCard(client, q, st.frame)); }
+      catch (err) { clear(guildId); log.warn(`now-playing edit stopped: ${err.message}`); return; }
+      finally { st.busy = false; }
+    }
+    schedule();
+  };
+  // Self-pacing: every card shares one global edit budget, so the more servers are playing the slower each card
+  // ticks. This keeps the bot far under Discord's 50 req/s global limit, with jitter so edits do not arrive in bursts.
+  const schedule = () => {
+    if (live.get(guildId) !== st) return; // this card was replaced or cleared mid-tick: do not leave an orphan timer
+    const delay = Math.min(MAX_TICK_MS, Math.max(TICK_MS, (live.size / EDIT_BUDGET_PER_SEC) * 1000));
+    st.timer = setTimeout(tick, delay * (0.85 + Math.random() * 0.3));
+    st.timer.unref?.();
+  };
   live.set(guildId, st);
+  schedule();
 }
 
 function refresh(queue) {
@@ -132,8 +143,6 @@ async function handleButton(interaction) {
       break;
     }
     case 'shuffle': queue.tracks.shuffle(); break;
-    case 'voldown': queue.node.setVolume(Math.max(0, queue.node.volume - 10)); break;
-    case 'volup': queue.node.setVolume(Math.min(100, queue.node.volume + 10)); break;
     case 'stop':
       queue.delete();
       clear(interaction.guild.id);
