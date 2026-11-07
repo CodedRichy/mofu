@@ -26,7 +26,13 @@ const stmts = {
   upsert: db.prepare('INSERT INTO xp (guild_id, user_id, xp, level, total_xp, last_message) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(guild_id, user_id) DO UPDATE SET xp = ?, level = ?, total_xp = ?, last_message = ?'),
   leaderboard: db.prepare('SELECT user_id, level, total_xp FROM xp WHERE guild_id = ? ORDER BY total_xp DESC LIMIT ?'),
   rank: db.prepare('SELECT COUNT(*) as rank FROM xp WHERE guild_id = ? AND total_xp > COALESCE((SELECT total_xp FROM xp WHERE guild_id = ? AND user_id = ?), 0)'),
+  atLevel: db.prepare('SELECT user_id, level FROM xp WHERE guild_id = ? AND level >= ? ORDER BY level DESC LIMIT ?'),
 };
+
+// Members at or past `minLevel`, highest first (used by /levelrole sync).
+function getMembersAtLevel(guildId, minLevel, limit = 1000) {
+  return stmts.atLevel.all(guildId, minLevel, limit).map((r) => ({ userId: r.user_id, level: r.level }));
+}
 
 function xpForLevel(level) {
   return 5 * (level * level) + 50 * level + 100;
@@ -113,4 +119,4 @@ function getRank(guildId, userId) {
   return (row?.rank ?? 0) + 1;
 }
 
-module.exports = { clampInt, MAX_LEVEL, MAX_XP, addXp, getStats, canEarnXp, getLeaderboard, setLevel, setXp, getRank, xpForLevel };
+module.exports = { clampInt, MAX_LEVEL, MAX_XP, addXp, getStats, canEarnXp, getLeaderboard, setLevel, setXp, getRank, xpForLevel, getMembersAtLevel };
