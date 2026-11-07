@@ -25,7 +25,7 @@ const stmts = {
   get: db.prepare('SELECT xp, level, total_xp, last_message FROM xp WHERE guild_id = ? AND user_id = ?'),
   upsert: db.prepare('INSERT INTO xp (guild_id, user_id, xp, level, total_xp, last_message) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(guild_id, user_id) DO UPDATE SET xp = ?, level = ?, total_xp = ?, last_message = ?'),
   leaderboard: db.prepare('SELECT user_id, level, total_xp FROM xp WHERE guild_id = ? ORDER BY total_xp DESC LIMIT ?'),
-  rank: db.prepare('SELECT COUNT(*) as rank FROM xp WHERE guild_id = ? AND total_xp > (SELECT COALESCE(total_xp, 0) FROM xp WHERE guild_id = ? AND user_id = ?)'),
+  rank: db.prepare('SELECT COUNT(*) as rank FROM xp WHERE guild_id = ? AND total_xp > COALESCE((SELECT total_xp FROM xp WHERE guild_id = ? AND user_id = ?), 0)'),
 };
 
 function xpForLevel(level) {
