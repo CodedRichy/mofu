@@ -19,6 +19,9 @@ module.exports = {
     .addSubcommand((s) => s.setName('on').setDescription('Turn image checks on'))
     .addSubcommand((s) => s.setName('off').setDescription('Turn image checks off'))
     .addSubcommand((s) => s.setName('status').setDescription('Show the image check settings and the daily count'))
+    .addSubcommand((s) => s.setName('test').setDescription('Try it yourself: check the next image you post, no crowd needed')
+      .addStringOption((o) => o.setName('mode').setDescription('scan = real check, buttons = fake alert to try the buttons')
+        .addChoices({ name: 'scan', value: 'scan' }, { name: 'buttons', value: 'buttons' })))
     .addSubcommand(withState('autodelete', 'Delete high-confidence matches automatically'))
     .addSubcommand(withState('scanall', 'Also check images from accounts under 7 days old'))
     .addSubcommand((s) => s.setName('categories').setDescription('List or change what is alerted on')
@@ -51,6 +54,16 @@ module.exports = {
         hasModlog ? 'Alerts go to your modlog channel with Delete, Timeout and Dismiss buttons.' : '**No modlog channel is set**, so nothing will be checked or alerted until one is configured.',
         imagemod.REPORT_LINE,
       ].join('\n'), hasModlog ? colors.success : colors.warning);
+    }
+
+    if (sub === 'test') {
+      if (!cfg.enabled) return reply('Turn image checks on first with `imagemod on`, then run the test again.', colors.warning);
+      if (!hasModlog) return reply('Set a modlog channel first: the test posts its alert there.', colors.warning);
+      const mode = interaction.options.getString('mode') === 'buttons' ? 'buttons' : 'scan';
+      require('../../handlers/imagemod').armTest(guild.id, interaction.user.id, mode);
+      return reply(mode === 'buttons'
+        ? 'Ready. Post any image in the next 5 minutes and I will send a clearly labelled TEST alert to the modlog channel so you can try its buttons. Delete will really delete the image you posted.'
+        : 'Ready. Post an image in the next 5 minutes and I will check it for real (login QR code, then the model) and say what I found. For a login QR test, use a QR that encodes a discord.com/ra/ link.', colors.success);
     }
 
     if (sub === 'autodelete' || sub === 'scanall') {

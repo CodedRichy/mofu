@@ -93,7 +93,8 @@ function alertEmbed({ client, guildId, message, decision, trigger, autoDeleted }
     `**Why it was checked** ${trigger.reasons.length ? trigger.reasons.join('; ') : trigger.label}`,
   ];
   if (autoDeleted) lines.push('**Status** Deleted automatically (auto-delete is on for this server).');
-  lines.push('', decision.source === 'model' ? imagemod.PROCESSED_LINE : 'The QR code was decoded on the bot host and the image was not sent to a model.');
+  lines.push('', decision.source === 'test' ? 'This is a TEST alert. Nothing was checked and the image was not sent to a model.'
+    : decision.source === 'model' ? imagemod.PROCESSED_LINE : 'The QR code was decoded on the bot host and the image was not sent to a model.');
   lines.push(imagemod.REPORT_LINE, 'The image is not copied, stored or re-posted here.');
   return base(client, autoDeleted ? colors.muted : colors.warning)
     .setAuthor({ name: 'IMAGE CHECK' })
@@ -172,6 +173,38 @@ async function handleFire(guild, ev) {
   await scanMessage(message, { crowd: true, label, reasons: ev.reasons });
 }
 
+// ---------- self test ----------
+
+// `;imagemod test [scan|buttons]`: the moderator's NEXT image (within 5 minutes) is checked right away, with no
+// crowd needed. 'scan' runs the real check (QR decode + model) and reports the result; 'buttons' skips the check
+// and posts a clearly labelled TEST alert so the Delete / Timeout / Dismiss buttons can be tried. A test alert
+// never feeds the crowd-threshold tuning (crowd is false, so feedback() ignores it).
+const TEST_WINDOW_MS = 5 * 60 * 1000;
+const armed = new Map(); // `${guildId}:${userId}` -> { mode, until }
+
+function armTest(guildId, userId, mode = 'scan') {
+  armed.set(`${guildId}:${userId}`, { mode: mode === 'buttons' ? 'buttons' : 'scan', until: Date.now() + TEST_WINDOW_MS });
+  while (armed.size > 200) armed.delete(armed.keys().next().value);
+}
+
+async function runTest(message, mode, cfg) {
+  const guild = message.guild;
+  const reply = (text) => message.reply({ content: text, allowedMentions: NO_PINGS }).catch(() => {});
+  if (!store.getConfig(guild.id, 'modlog_channel')) return reply('Image check test: no modlog channel is set, so there is nowhere to post the alert.');
+  if (mode === 'buttons') {
+    const category = cfg.categories[0] || 'scam_text';
+    const decision = { flagged: true, category, confidence: 1, source: 'test' };
+    const ok = await postAlert(guild, message, decision, { crowd: false, label: 'TEST: you asked for a check of your next image', reasons: [] });
+    return reply(ok ? 'Image check test: sent a TEST alert to the modlog channel. Try its buttons there (Delete will really delete this message).' : "Image check test: couldn't post to the modlog channel. Check my permissions there.");
+  }
+  alerted.delete(message.id);
+  const flagged = await scanMessage(message, { crowd: false, label: 'TEST: you asked for a check of your next image', reasons: [] });
+  if (!flagged) {
+    const u = imagemod.getUsage(guild.id);
+    return reply(`Image check test: not flagged (enabled categories: ${cfg.categories.join(', ') || 'none'}; ${u.used} of ${imagemod.DAILY_IMAGE_BUDGET} model checks used today). Use \`;imagemod test buttons\` to try the alert buttons.`);
+  }
+}
+
 // ---------- events ----------
 
 async function onMessage(message) {
@@ -180,6 +213,16 @@ async function onMessage(message) {
     if (!guild || !author || author.bot || message.webhookId) return;
     const cfg = imagemod.getConfig(guild.id);
     if (!cfg.enabled) return;
+
+    const arm = armed.get(`${guild.id}:${author.id}`);
+    if (arm) {
+      if (arm.until <= Date.now()) armed.delete(`${guild.id}:${author.id}`);
+      else if (isImageMessage(message)) {
+        armed.delete(`${guild.id}:${author.id}`);
+        await runTest(message, arm.mode, cfg);
+        return;
+      }
+    }
 
     ensureCounters(guild.id, message.channelId);
     const isImage = isImageMessage(message);
@@ -340,4 +383,4 @@ function statusFor(guildId) {
   return { usage: imagemod.getUsage(guildId), cfg: imagemod.getConfig(guildId), modlog: Boolean(store.getConfig(guildId, 'modlog_channel')) };
 }
 
-module.exports = { onMessage, onReaction, handleButton, gatherImages, isImageMessage, statusFor, _tracker: tracker };
+module.exports = { armTest, TEST_WINDOW_MS, onMessage, onReaction, handleButton, gatherImages, isImageMessage, statusFor, _tracker: tracker };
