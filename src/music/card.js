@@ -49,7 +49,6 @@ function buildCard(client, queue, frame = 0) {
     .setAuthor({ name: header })
     .setDescription(lines.join('\n'))
     .addFields(
-      { name: 'Volume', value: `\`${queue.node.volume}%\``, inline: true },
       { name: 'Loop', value: `\`${loop}\``, inline: true },
       { name: 'Up next', value: next ? `${next.title}`.slice(0, 60) + (queue.tracks.size > 1 ? ` (+${queue.tracks.size - 1})` : '') : 'nothing queued', inline: true },
     );
