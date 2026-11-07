@@ -55,7 +55,7 @@ function response({ client, description, color }) {
 function errorCard({ client, title, fix, ref }) {
   const embed = base(client, colors.error).setDescription(`**${title}**
 ${fix}`);
-  if (ref) embed.setFooter({ ...brand(client), text: `sonder | ref ${ref}` });
+  if (ref) embed.setFooter({ ...brand(client), text: `ref ${ref} - sonder` });
   return embed;
 }
 
@@ -75,7 +75,7 @@ function permissionDenied(client, command) {
   } catch { /* fall through to the generic wording */ }
   const name = command?.data?.name;
   const fix = names.length
-    ? `You need ${names.join(' and ')}${name ? ` for /${name}` : ''}. Ask an admin for a role that has it.`
+    ? `You need ${names.join(' and ')}${name ? ` for /${name}` : ''}. Ask an admin for a role with it.`
     : 'You do not have permission to use this command. Ask an admin for access.';
   return errorCard({ client, title: 'Missing permission', fix });
 }

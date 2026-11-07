@@ -5,7 +5,28 @@ const { colors } = require('../../utils/constants');
 const { response, base } = require('../../utils/embed');
 const log = require('../../utils/logger');
 
+// YouTube "Mix" playlists (list=RD...) are generated per viewer and the extractor cannot resolve them. When the link
+// also names a specific video, play that video and drop the Mix.
+function normalizeQuery(q) {
+  const raw = String(q || '').trim();
+  if (!/^https?:\/\//i.test(raw)) return raw;
+  try {
+    const u = new URL(raw);
+    const host = u.hostname.replace(/^www\./, '');
+    const isYt = host === 'youtu.be' || host.endsWith('youtube.com');
+    const hasVideo = host === 'youtu.be' ? u.pathname.length > 1 : u.searchParams.has('v');
+    if (isYt && hasVideo && /^RD/i.test(u.searchParams.get('list') || '')) {
+      u.searchParams.delete('list');
+      u.searchParams.delete('start_radio');
+      u.searchParams.delete('index');
+      return u.toString();
+    }
+  } catch { /* not a URL after all: leave it */ }
+  return raw;
+}
+
 module.exports = {
+  normalizeQuery,
   data: new SlashCommandBuilder()
     .setName('play')
     .setDescription('Play a song or add to queue')
@@ -25,7 +46,7 @@ module.exports = {
     await interaction.deferReply();
 
     const player = useMainPlayer();
-    const query = interaction.options.getString('query');
+    const query = normalizeQuery(interaction.options.getString('query'));
 
     try {
       const { track, searchResult } = await player.play(channel, query, {

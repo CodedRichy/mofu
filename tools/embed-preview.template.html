@@ -17,34 +17,40 @@
   main { max-width: 760px; margin: 0 auto; padding: 24px clamp(12px, 3vw, 24px) 80px; display: grid; gap: 28px; }
   .scene h2 { margin: 0 0 2px; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
   .scene .note { margin: 0 0 10px; font-size: 12px; color: #6d7078; font-family: ui-monospace, Consolas, monospace; }
-  .msg { background: var(--bg); border-radius: 8px; padding: 14px 16px 16px; display: grid; grid-template-columns: 40px 1fr; gap: 14px; }
-  .av { width: 40px; height: 40px; border-radius: 50%; background: #fff; color: #111; display: grid; place-items: center; font-weight: 700; }
-  .who { font-weight: 500; }
-  .app { font-size: 10px; background: var(--btn-blue); color: #fff; border-radius: 3px; padding: 1px 5px; margin-left: 6px; vertical-align: 1px; }
-  .embed { margin-top: 6px; background: var(--embed); border-left: 4px solid #fff; border-radius: 4px; padding: 8px 16px 16px 12px; max-width: 520px; display: grid; gap: 8px; position: relative; }
-  .embed.has-thumb { padding-right: 96px; }
-  .thumb { position: absolute; top: 8px; right: 16px; width: 80px; height: 80px; border-radius: 4px; background: #3a3c42; }
-  .e-author { font-size: 14px; font-weight: 600; margin-top: 8px; }
-  .e-title { font-size: 16px; font-weight: 600; }
-  .e-desc { font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .msg { background: var(--bg); border-radius: 8px; padding: 10px 16px 14px 72px; position: relative; min-height: 60px; }
+  .av { position: absolute; left: 16px; top: 12px; width: 40px; height: 40px; border-radius: 50%; background: #6366f1; color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 18px; }
+  .who { font-weight: 500; font-size: 16px; line-height: 1.375; }
+  .who time { color: var(--muted); font-size: 12px; font-weight: 400; margin-left: 8px; }
+  .app { font-size: 10px; background: var(--btn-blue); color: #fff; border-radius: 3px; padding: 0 4px; margin-left: 6px; vertical-align: 1px; line-height: 15px; display: inline-block; font-weight: 500; }
+  .embed { margin-top: 2px; background: var(--embed); border: 1px solid rgba(255,255,255,.04); border-left: 4px solid #fff; border-radius: 4px; padding: 8px 16px 16px 12px; max-width: 520px; width: fit-content; min-width: 0; display: grid; position: relative; }
+  .embed.has-thumb { grid-template-columns: minmax(0,1fr) 80px; column-gap: 16px; }
+  .main { display: grid; gap: 8px; min-width: 0; }
+  .thumb { width: 80px; height: 80px; border-radius: 4px; background: #3a3c42 center/cover; margin-top: 8px; }
+  .e-author { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; margin-top: 8px; }
+  .e-author img, .e-foot img { width: 24px; height: 24px; border-radius: 50%; }
+  .e-title { font-size: 16px; font-weight: 600; margin-top: 8px; }
+  .e-desc { font-size: 14px; line-height: 1.375; white-space: pre-wrap; overflow-wrap: anywhere; }
   .fields { display: grid; grid-template-columns: repeat(12, 1fr); gap: 8px; }
-  .field { grid-column: span 12; font-size: 14px; min-width: 0; }
+  .field { grid-column: span 12; font-size: 14px; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
   .field.inline { grid-column: span 4; }
   .field b.n { display: block; font-size: 14px; font-weight: 600; margin-bottom: 2px; }
-  .e-foot { font-size: 12px; color: var(--muted); }
+  .e-img { max-width: 100%; border-radius: 4px; margin-top: 8px; }
+  .e-foot { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); font-weight: 500; margin-top: 8px; }
+  .e-foot img { width: 20px; height: 20px; }
   a { color: var(--link); text-decoration: none; }
-  code { background: #1e1f22; border-radius: 3px; padding: 0 4px; font: 13px ui-monospace, Consolas, monospace; }
-  pre { background: #1e1f22; border: 1px solid #1a1b1e; border-radius: 4px; padding: 8px; margin: 4px 0; font: 13px ui-monospace, Consolas, monospace; overflow-x: auto; }
-  .mention { background: rgba(88,101,242,.3); color: #c9cdfb; border-radius: 3px; padding: 0 2px; }
+  code { background: #1e1f22; border-radius: 3px; padding: 0 4px; font: 85% ui-monospace, Consolas, monospace; }
+  pre { background: #1e1f22; border: 1px solid #1a1b1e; border-radius: 4px; padding: 7px 9px; margin: 6px 0 0; font: 14px/1.2 ui-monospace, Consolas, monospace; overflow-x: auto; white-space: pre; }
+  .mention { background: rgba(88,101,242,.3); color: #c9cdfb; border-radius: 3px; padding: 0 2px; font-weight: 500; }
   .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-  .btn { background: var(--btn); color: #fff; font-size: 14px; font-weight: 500; border-radius: 3px; padding: 2px 16px; height: 32px; display: inline-flex; align-items: center; }
+  .btn { background: var(--btn); color: #fff; font-size: 14px; font-weight: 500; border-radius: 3px; padding: 2px 16px; height: 32px; min-width: 60px; justify-content: center; display: inline-flex; align-items: center; gap: 6px; }
   .btn.s3 { background: var(--btn-green); } .btn.s4 { background: var(--btn-red); } .btn.s1 { background: var(--btn-blue); }
   .btn[data-disabled="1"] { opacity: .5; }
   .fail { color: #f23f42; font-size: 13px; }
+  .lint { margin: 8px 0 0; font: 12px ui-monospace, Consolas, monospace; color: #f0b232; }
 </style>
 </head>
 <body>
-<header><h1>Sonder embed preview</h1><span>Real builders, stub data. Re-run <code>node tools/embed-preview.js</code> to refresh.</span></header>
+<header><h1>Sonder embed preview</h1><span>Real builders where exported, else labelled mocks. Re-run <code>node tools/embed-preview.js</code> to refresh.</span></header>
 <main id="root"></main>
 <script>
 const SCENES = /*SCENES*/[];
@@ -54,7 +60,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 function md(s) {
   let out = esc(s);
   const blocks = [];
-  out = out.replace(/```(?:\w+\n)?([\s\S]*?)```/g, (_, c) => { blocks.push(c); return `\u0000${blocks.length - 1}\u0000`; });
+  out = out.replace(/```(?:\w+\n)?\n?([\s\S]*?)\n?```/g, (_, c) => { blocks.push(c); return `\u0000${blocks.length - 1}\u0000`; });
   out = out.replace(/`([^`\n]+)`/g, '<code>$1</code>')
     .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
     .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<i>$2</i>')
@@ -65,28 +71,49 @@ function md(s) {
 }
 
 function embedHtml(e) {
-  const color = '#' + (e.color ?? 0xffffff).toString(16).padStart(6, '0');
-  const parts = [];
-  if (e.author) parts.push(`<div class="e-author">${esc(e.author.name)}</div>`);
-  if (e.title) parts.push(`<div class="e-title">${md(e.title)}</div>`);
-  if (e.description) parts.push(`<div class="e-desc">${md(e.description)}</div>`);
-  if (e.fields?.length) parts.push(`<div class="fields">${e.fields.map((f) => `<div class="field ${f.inline ? 'inline' : ''}"><b class="n">${md(f.name)}</b>${md(f.value)}</div>`).join('')}</div>`);
-  if (e.footer || e.timestamp) parts.push(`<div class="e-foot">${esc(e.footer?.text || '')}${e.timestamp ? ' • today' : ''}</div>`);
-  return `<div class="embed ${e.thumbnail ? 'has-thumb' : ''}" style="border-left-color:${color}">${e.thumbnail ? '<div class="thumb"></div>' : ''}${parts.join('')}</div>`;
+  const color = '#' + (e.color ?? 0x202225).toString(16).padStart(6, '0');
+  const main = [];
+  if (e.author) main.push(`<div class="e-author">${e.author.icon_url ? `<img src="${esc(e.author.icon_url)}" alt="">` : ''}<span>${esc(e.author.name)}</span></div>`);
+  if (e.title) main.push(`<div class="e-title">${e.url ? `<a href="${esc(e.url)}">${md(e.title)}</a>` : md(e.title)}</div>`);
+  if (e.description) main.push(`<div class="e-desc">${md(e.description)}</div>`);
+  if (e.fields?.length) main.push(`<div class="fields">${e.fields.map((f) => `<div class="field ${f.inline ? 'inline' : ''}"><b class="n">${md(f.name)}</b>${md(f.value)}</div>`).join('')}</div>`);
+  if (e.image) main.push(`<img class="e-img" src="${esc(e.image.url)}" alt="">`);
+  if (e.footer || e.timestamp) main.push(`<div class="e-foot">${e.footer?.icon_url ? `<img src="${esc(e.footer.icon_url)}" alt="">` : ''}<span>${esc(e.footer?.text || '')}${e.footer && e.timestamp ? ' • ' : ''}${e.timestamp ? 'Today at 4:20 PM' : ''}</span></div>`);
+  const thumb = e.thumbnail ? `<div class="thumb" style="background-image:url('${esc(e.thumbnail.url)}')"></div>` : '';
+  return `<div class="embed ${e.thumbnail ? 'has-thumb' : ''}" style="border-left-color:${color}"><div class="main">${main.join('')}</div>${thumb}</div>`;
+}
+
+// Cheap design lint: flags things that read badly in real Discord.
+function lint(e) {
+  const w = [];
+  if ((e.title || '').length > 256) w.push('title >256');
+  if ((e.description || '').length > 4096) w.push('description >4096');
+  (e.fields || []).forEach((f) => { if (!f.value || !f.name) w.push('empty field'); else if (f.value.length > 1024) w.push('field value >1024'); });
+  if ((e.description || '').split('\n').some((l) => l.length > 70 && !/\]\(/.test(l))) w.push('long line >70 chars');
+  if (/[■-◿▀-▟]{3,}/.test(e.description || '')) w.push('bar glyphs render at uneven widths across fonts/mobile');
+  if ((e.color ?? 0) === 0xffffff) w.push('white colour bar (#ffffff): looks unset on light theme');
+  if (!e.footer) w.push('no footer');
+  return w;
 }
 
 function rowsHtml(rows) {
-  return rows.map((r) => `<div class="row">${(r.components || []).map((c) => `<span class="btn s${c.style}" data-disabled="${c.disabled ? 1 : 0}">${esc(c.label || '')}</span>`).join('')}</div>`).join('');
+  return rows.map((r) => `<div class="row">${(r.components || []).map((c) => c.type === 3
+    ? `<span class="btn" style="min-width:300px;justify-content:space-between">${esc(c.placeholder || 'Select')}<span>v</span></span>`
+    : `<span class="btn s${c.style}" data-disabled="${c.disabled ? 1 : 0}">${c.emoji?.name ? esc(c.emoji.name) : ''}${esc(c.label || '')}${c.style === 5 ? ' ↗' : ''}</span>`).join('')}</div>`).join('');
 }
 
 document.getElementById('root').innerHTML = SCENES.map((sc) => `
   <section class="scene">
     <h2>${esc(sc.title)}</h2><p class="note">${esc(sc.note || '')}</p>
-    ${sc.messages.length ? sc.messages.map((m) => `
-      <div class="msg"><div class="av">S</div><div>
-        <div class="who">sonder<span class="app">APP</span></div>
+    ${sc.messages.length ? sc.messages.map((m) => {
+      const lints = [...new Set(m.embeds.flatMap(lint))];
+      return `
+      <div class="msg"><div class="av">S</div>
+        <div class="who">sonder<span class="app">APP</span><time>Today at 4:20 PM</time></div>
         ${m.embeds.map(embedHtml).join('')}${rowsHtml(m.components)}
-      </div></div>`).join('') : '<div class="fail">No render: see note.</div>'}
+        ${lints.length ? `<p class="lint">lint: ${lints.map(esc).join(' | ')}</p>` : ''}
+      </div>`;
+    }).join('') : '<div class="fail">No render: see note.</div>'}
   </section>`).join('');
 </script>
 </body>

@@ -22,7 +22,7 @@ function buildPage(client, guild, queue, wanted) {
 
   let desc = `**Now playing**\n[${current.title}](${current.url}) - ${current.duration}\n\n`;
   desc += tracks.length
-    ? '**Up next**\n' + tracks.slice(start, start + PAGE_SIZE).map((t, i) => `\`${start + i + 1}.\` [${t.title}](${t.url}) - ${t.duration}`).join('\n')
+    ? '**Up next**\n' + tracks.slice(start, start + PAGE_SIZE).map((t, i) => `\`${String(start + i + 1).padStart(2, ' ')}.\` [${t.title}](${t.url}) - ${t.duration}`).join('\n')
     : '*No more tracks in the queue.*';
 
   const total = tracks.reduce((n, t) => n + (t.durationMS || 0), 0);

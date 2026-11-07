@@ -81,7 +81,8 @@ module.exports = {
       result = `You lost **⌬ ${amount.toLocaleString()}**`;
     }
 
-    const frame = (a, b, c) => '```\n+-----------+\n| ' + a + ' ' + b + ' ' + c + ' |\n+-----------+\n```';
+    // Emoji are wider than monospace cells, so a drawn box always misaligns: use a plain large line instead.
+    const frame = (a, b, c) => `## ${a}  ${b}  ${c}`;
     const stage = (color, a, b, c, text) =>
       base(interaction.client, color)
         .setAuthor({ name: 'Slots', iconURL: user.displayAvatarURL() })
