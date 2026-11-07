@@ -18,10 +18,11 @@
 
   --radius-sm: 4px;
   --radius-md: 6px;
-  --radius-lg: 10px;
-  --radius-xl: 14px;
-  --radius-2xl: 20px;
+  --radius-lg: 12px;
+  --radius-xl: 18px;
+  --radius-2xl: 28px;
   --radius-full: 9999px;
+  --radius-hero: 32px;
 
   --sidebar-width: 232px;
   --topbar-height: 64px;

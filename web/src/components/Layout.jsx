@@ -59,7 +59,7 @@ function LogoMark() {
         borderRadius: 'var(--radius-lg)',
         objectFit: 'cover',
         boxShadow: h
-          ? '0 0 20px rgba(94, 106, 210, 0.4), 0 0 0 1px rgba(94, 106, 210, 0.25)'
+          ? '0 0 20px rgba(255, 255, 255, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.13)'
           : '0 0 0 1px rgba(255, 255, 255, 0.06)',
         transition: 'box-shadow 280ms var(--ease-default)',
       }} />
@@ -183,7 +183,7 @@ export function Layout({ children, bare = false }) {
               top: 0,
               width: 240,
               height: '100%',
-              background: 'radial-gradient(ellipse at center, rgba(94, 106, 210, 0.10) 0%, transparent 70%)',
+              background: 'radial-gradient(ellipse at center, rgba(255, 255, 255, 0.05) 0%, transparent 70%)',
               opacity: 0,
               transition: 'opacity 350ms var(--ease-default)',
             }}
@@ -196,7 +196,7 @@ export function Layout({ children, bare = false }) {
             left: 0,
             right: 0,
             height: 1,
-            background: 'linear-gradient(90deg, transparent 0%, rgba(94, 106, 210, 0.4) 20%, rgba(139, 92, 246, 0.6) 50%, rgba(94, 106, 210, 0.4) 80%, transparent 100%)',
+            background: 'linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.2) 20%, rgba(255, 255, 255, 0.3) 50%, rgba(255, 255, 255, 0.2) 80%, transparent 100%)',
             backgroundSize: '200% 100%',
             animation: 'gradient-sweep 6s linear infinite',
             opacity: scrolled ? 0.85 : 0.3,
@@ -219,8 +219,8 @@ export function Layout({ children, bare = false }) {
               width: pill.width,
               height: 36,
               borderRadius: 'var(--radius-md)',
-              background: 'rgba(94, 106, 210, 0.12)',
-              boxShadow: '0 0 20px rgba(94, 106, 210, 0.15), inset 0 0 0 1px rgba(94, 106, 210, 0.1)',
+              background: 'rgba(255, 255, 255, 0.06)',
+              boxShadow: '0 0 20px rgba(255, 255, 255, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.05)',
               transition: 'left 400ms var(--ease-spring), width 400ms var(--ease-spring), opacity 300ms var(--ease-default)',
               opacity: pill.opacity,
               pointerEvents: 'none',
@@ -284,20 +284,12 @@ export function Layout({ children, bare = false }) {
                   height: 36, padding: '0 18px', borderRadius: 'var(--radius-md)',
                   textDecoration: 'none',
                   boxShadow: loginHover
-                    ? '0 4px 24px rgba(94, 106, 210, 0.5), 0 0 0 1px rgba(94, 106, 210, 0.5), inset 0 1px 0 rgba(255,255,255,0.2)'
-                    : '0 2px 8px rgba(94, 106, 210, 0.25), inset 0 1px 0 rgba(255,255,255,0.1)',
+                    ? '0 4px 24px rgba(255, 255, 255, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.25), inset 0 1px 0 rgba(255,255,255,0.2)'
+                    : '0 2px 8px rgba(255, 255, 255, 0.13), inset 0 1px 0 rgba(255,255,255,0.1)',
                   transition: 'all 220ms var(--ease-spring)',
                   transform: loginHover ? 'translateY(-1.5px)' : 'translateY(0)',
                 }}
               >
-                {/* Shimmer sweep — runs once on mount */}
-                <span style={{
-                  position: 'absolute',
-                  top: 0, left: 0, right: 0, bottom: 0,
-                  background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%)',
-                  animation: 'shimmer-sweep 1.5s ease-in-out 1.2s 1 both',
-                  pointerEvents: 'none',
-                }} />
                 <LogIn size={13} style={{ position: 'relative' }} />
                 <span style={{ position: 'relative' }}>Login</span>
               </a>
@@ -309,6 +301,16 @@ export function Layout({ children, bare = false }) {
       <div style={{ position: 'relative', zIndex: 1 }}>
         {children}
       </div>
+
+      <footer style={{ position: 'relative', zIndex: 1, borderTop: '1px solid var(--border-default)', marginTop: 'var(--space-16, 64px)' }}>
+        <div style={{ maxWidth: 1160, margin: '0 auto', padding: '28px clamp(16px, 4vw, 40px)', display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--text-sm)', color: 'var(--fg-3)' }}>
+          <span>sonder. Your server's data is deleted 30 days after the bot leaves.</span>
+          <span style={{ display: 'flex', gap: 20 }}>
+            <Link to="/commands" style={{ color: 'inherit', textDecoration: 'none' }}>Commands</Link>
+            <Link to="/dashboard" style={{ color: 'inherit', textDecoration: 'none' }}>Dashboard</Link>
+          </span>
+        </div>
+      </footer>
     </div>
   )
 }

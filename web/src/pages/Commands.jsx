@@ -258,7 +258,7 @@ export function Commands() {
           borderRadius: 'var(--radius-lg)',
           border: `1px solid ${searchFocused ? 'var(--border-focus)' : 'var(--border-default)'}`,
           background: 'var(--surface-1)',
-          boxShadow: searchFocused ? '0 0 0 3px rgba(94,106,210,0.1)' : 'none',
+          boxShadow: searchFocused ? '0 0 0 3px rgba(255, 255, 255, 0.05)' : 'none',
           transition: 'border-color 100ms, box-shadow 100ms',
           marginBottom: 'var(--space-8)',
         }}>

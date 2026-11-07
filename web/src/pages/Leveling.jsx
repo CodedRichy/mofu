@@ -131,7 +131,7 @@ function Toggle({ label, description, checked, onChange }) {
         border: `1px solid ${checked ? 'var(--accent)' : 'var(--border-default)'}`,
         transition: 'all 140ms var(--ease-default)',
         flexShrink: 0,
-        boxShadow: checked ? '0 0 10px rgba(94,106,210,0.25)' : 'none',
+        boxShadow: checked ? '0 0 10px rgba(255, 255, 255, 0.13)' : 'none',
       }}>
         <div style={{
           width: 14, height: 14, borderRadius: '50%', background: '#fff',

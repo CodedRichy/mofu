@@ -43,6 +43,20 @@ function startDashboard(client) {
     res.status(ready ? 200 : 503).json({ ok: ready });
   });
 
+  // Three public numbers for the marketing site. Counts only, no user or server data; cached so a busy
+  // landing page costs nothing. (The detailed /api/stats stays behind auth.)
+  let publicStats = { at: 0, body: null };
+  app.get('/api/public-stats', (req, res) => {
+    if (!client.isReady()) return res.status(503).json({ error: 'starting' });
+    if (Date.now() - publicStats.at > 30000) {
+      publicStats = {
+        at: Date.now(),
+        body: { servers: client.guilds.cache.size, commands: client.commands.size, uptimeSeconds: Math.floor(process.uptime()) },
+      };
+    }
+    res.set('Cache-Control', 'public, max-age=30').json(publicStats.body);
+  });
+
   // Apply rate limits — stricter for write endpoints, relaxed for reads
   app.use('/api', rateLimit(60000, 60));
 

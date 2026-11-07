@@ -36,7 +36,7 @@ export function Input({
         background: 'var(--surface-1)',
         border: `1px solid ${error ? 'var(--error)' : focused ? 'var(--border-focus)' : 'var(--border-default)'}`,
         borderRadius: 'var(--radius-md)',
-        boxShadow: error ? '0 0 0 2px rgba(248,113,113,0.15)' : focused ? '0 0 0 2px rgba(94,106,210,0.18)' : 'none',
+        boxShadow: error ? '0 0 0 2px rgba(248,113,113,0.15)' : focused ? '0 0 0 2px rgba(255, 255, 255, 0.09)' : 'none',
         transition: 'border-color 100ms var(--ease-default), box-shadow 100ms var(--ease-default)',
         opacity: disabled ? 0.45 : 1,
       }}>

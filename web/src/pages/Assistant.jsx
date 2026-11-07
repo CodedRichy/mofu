@@ -30,7 +30,7 @@ function ChatInput({ onSend, disabled }) {
         border: `1px solid ${focused ? 'var(--border-focus)' : 'var(--border-default)'}`,
         borderRadius: 'var(--radius-xl)', overflow: 'hidden',
         background: 'var(--surface-1)',
-        boxShadow: focused ? '0 0 0 3px rgba(94,106,210,0.08)' : 'var(--shadow-xs)',
+        boxShadow: focused ? '0 0 0 3px rgba(255, 255, 255, 0.04)' : 'var(--shadow-xs)',
         transition: 'border-color 100ms var(--ease-default), box-shadow 100ms var(--ease-default)',
       }}>
         <textarea

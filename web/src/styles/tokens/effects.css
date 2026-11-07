@@ -1,22 +1,23 @@
 :root {
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.55);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45), 0 1px 4px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.4),
-               inset 0 1px 0 rgba(255, 255, 255, 0.055);
-  --shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.6), 0 4px 16px rgba(0, 0, 0, 0.4),
-               inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.55);
+  --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.5), 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 16px rgb(0 0 0 / 0.45), 0 1px 4px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 12px 40px rgb(0 0 0 / 0.5), 0 2px 8px rgb(0 0 0 / 0.4),
+               inset 0 1px 0 rgb(255 255 255 / 0.055);
+  --shadow-xl: 0 24px 64px rgb(0 0 0 / 0.6), 0 4px 16px rgb(0 0 0 / 0.4),
+               inset 0 1px 0 rgb(255 255 255 / 0.05);
 
-  --shadow-accent: 0 0 0 1px rgba(94, 106, 210, 0.45), 0 4px 16px rgba(94, 106, 210, 0.2);
-  --shadow-accent-lg: 0 0 0 1px rgba(94, 106, 210, 0.5), 0 8px 32px rgba(94, 106, 210, 0.28);
+  /* "accent" emphasis is a white hairline ring, no coloured glow */
+  --shadow-accent: 0 0 0 1px rgb(255 255 255 / 0.2), 0 4px 16px rgb(0 0 0 / 0.4);
+  --shadow-accent-lg: 0 0 0 1px rgb(255 255 255 / 0.28), 0 8px 32px rgb(0 0 0 / 0.5);
 
-  --highlight-top: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  --highlight-top: inset 0 1px 0 rgb(255 255 255 / 0.07);
 
   --ring-focus: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
   --ring-error: 0 0 0 2px var(--bg), 0 0 0 4px var(--error);
 
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 0 0 1px var(--glass-border);
+  --glass-shadow: 0 8px 32px rgb(0 0 0 / 0.45), inset 0 1px 0 rgb(255 255 255 / 0.07), 0 0 0 1px var(--glass-border);
 
-  --gradient-bg-top: linear-gradient(to bottom, rgba(94, 106, 210, 0.06) 0%, transparent 40%);
+  --gradient-bg-top: linear-gradient(to bottom, rgb(255 255 255 / 0.035) 0%, transparent 40%);
   --gradient-fade-down: linear-gradient(to bottom, transparent, var(--bg));
 }

@@ -1,53 +1,60 @@
+/* Sonder palette: layered near-black surfaces, white as the one accent (matches the white cat avatar and the
+   white embeds in Discord). Surfaces and text alpha follow the quey.gg approach: depth from stacked surfaces
+   and hairlines, not from colour. Chroma stays ~0 on purpose; the only colour is semantic (status). */
 :root {
-  --bg: #09090b;
-  --bg-subtle: #0d0d10;
+  /* surfaces, darkest to lightest */
+  --bg: oklch(0.1 0.003 270);
+  --bg-subtle: oklch(0.13 0.003 270);
 
-  --surface-1: #111116;
-  --surface-2: #1a1a22;
-  --surface-3: #242432;
-  --surface-overlay: #2d2d3d;
+  --surface-1: oklch(0.16 0.003 270);
+  --surface-2: oklch(0.2 0.004 270);
+  --surface-3: oklch(0.25 0.004 270);
+  --surface-overlay: oklch(0.29 0.005 270);
 
-  --surface-hover: rgba(255, 255, 255, 0.04);
-  --surface-active: rgba(255, 255, 255, 0.07);
-  --surface-selected: rgba(94, 106, 210, 0.10);
+  --surface-hover: rgb(255 255 255 / 0.04);
+  --surface-active: rgb(255 255 255 / 0.07);
+  --surface-selected: rgb(255 255 255 / 0.07);
 
-  --fg-1: #fafafa;
-  --fg-2: #a1a1aa;
-  --fg-3: #71717a;
-  --fg-4: #3f3f46;
-  --fg-inverse: #09090b;
+  /* text: white at decreasing opacity (secondary and tertiary both clear 4.5:1 on --bg) */
+  --fg-1: oklch(0.985 0 0);
+  --fg-2: rgb(255 255 255 / 0.66);
+  --fg-3: rgb(255 255 255 / 0.5);
+  --fg-4: rgb(255 255 255 / 0.24);
+  --fg-inverse: oklch(0.14 0 0);
 
-  --accent: #5e6ad2;
-  --accent-hover: #6b76e5;
-  --accent-active: #5560c4;
-  --accent-subtle: rgba(94, 106, 210, 0.12);
-  --accent-subtle-hover: rgba(94, 106, 210, 0.18);
-  --accent-fg: #ffffff;
-  --accent-muted: #3d4492;
+  /* the accent is white: solid white pills with near-black text */
+  --accent: oklch(0.985 0 0);
+  --accent-hover: oklch(0.9 0 0);
+  --accent-active: oklch(0.82 0 0);
+  --accent-subtle: rgb(255 255 255 / 0.08);
+  --accent-subtle-hover: rgb(255 255 255 / 0.13);
+  --accent-fg: oklch(0.14 0 0);
+  --accent-muted: oklch(0.6 0 0);
 
-  --border-subtle: rgba(255, 255, 255, 0.05);
-  --border-default: rgba(255, 255, 255, 0.09);
-  --border-strong: rgba(255, 255, 255, 0.16);
-  --border-accent: rgba(94, 106, 210, 0.45);
-  --border-focus: rgba(94, 106, 210, 0.7);
+  --border-subtle: rgb(255 255 255 / 0.05);
+  --border-default: rgb(255 255 255 / 0.08);
+  --border-strong: rgb(255 255 255 / 0.16);
+  --border-accent: rgb(255 255 255 / 0.26);
+  --border-focus: rgb(255 255 255 / 0.55);
 
-  --success: #3ecf8e;
-  --success-subtle: rgba(62, 207, 142, 0.12);
-  --success-fg: #0d2b1f;
+  /* status colours: the only chroma on the site */
+  --success: oklch(0.82 0.17 156);
+  --success-subtle: oklch(0.82 0.17 156 / 0.13);
+  --success-fg: oklch(0.2 0.05 156);
 
-  --warning: #f59e0b;
-  --warning-subtle: rgba(245, 158, 11, 0.12);
-  --warning-fg: #2d1f05;
+  --warning: oklch(0.86 0.15 85);
+  --warning-subtle: oklch(0.86 0.15 85 / 0.13);
+  --warning-fg: oklch(0.22 0.05 85);
 
-  --error: #f87171;
-  --error-subtle: rgba(248, 113, 113, 0.12);
-  --error-fg: #2d0808;
+  --error: oklch(0.7 0.2 27);
+  --error-subtle: oklch(0.7 0.2 27 / 0.13);
+  --error-fg: oklch(0.2 0.06 27);
 
-  --info: #60a5fa;
-  --info-subtle: rgba(96, 165, 250, 0.12);
-  --info-fg: #071525;
+  --info: oklch(0.82 0.12 220);
+  --info-subtle: oklch(0.82 0.12 220 / 0.13);
+  --info-fg: oklch(0.2 0.04 220);
 
-  --glass-bg: rgba(13, 13, 18, 0.72);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-blur: 16px;
+  --glass-bg: rgb(10 10 12 / 0.62);
+  --glass-border: rgb(255 255 255 / 0.08);
+  --glass-blur: 22px;
 }

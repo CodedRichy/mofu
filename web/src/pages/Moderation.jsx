@@ -78,7 +78,7 @@ function SearchField({ value, onChange, placeholder }) {
       display: 'flex', alignItems: 'center', borderRadius: 'var(--radius-md)',
       border: `1px solid ${focused ? 'var(--border-focus)' : 'var(--border-default)'}`,
       background: 'var(--surface-1)',
-      boxShadow: focused ? '0 0 0 3px rgba(94,106,210,0.1)' : 'none',
+      boxShadow: focused ? '0 0 0 3px rgba(255, 255, 255, 0.05)' : 'none',
       transition: 'border-color 100ms var(--ease-default), box-shadow 100ms var(--ease-default)',
       overflow: 'hidden',
     }}>
