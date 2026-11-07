@@ -122,6 +122,18 @@ async function registerCommands(client) {
     .filter((cmd) => !PREFIX_ONLY.has(cmd.data.name))
     .map((cmd) => cmd.data.toJSON());
 
+  // Production: REGISTER_GLOBAL=1 registers once globally (works in every server, powers the profile's
+  // featured commands) and wipes the per-guild copies so nothing shows twice. Global updates can take up
+  // to an hour to propagate, so dev keeps the default guild-scoped mode below (instant).
+  if (process.env.REGISTER_GLOBAL === '1') {
+    const data = await rest.put(Routes.applicationCommands(config.discord.clientId), { body: slashCommands });
+    log.info(`Registered ${data.length} global slash commands`);
+    await Promise.all(client.guilds.cache.map((guild) =>
+      rest.put(Routes.applicationGuildCommands(config.discord.clientId, guild.id), { body: [] })
+        .catch((err) => log.warn(`Could not clear guild commands in ${guild.name}:`, err.message))));
+    return;
+  }
+
   // Clear stale global commands from previous registration
   await rest.put(Routes.applicationCommands(config.discord.clientId), { body: [] });
 

@@ -1,0 +1,17 @@
+# Run the bot on any VPS:  cp .env.example .env  (fill in DISCORD_TOKEN, DISCORD_CLIENT_ID, GROQ_API_KEY)
+#                          docker compose up -d --build
+# Set REGISTER_GLOBAL=1 in .env for production so slash commands work in every server.
+services:
+  sonder:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:3001:3001"   # dashboard API; put a reverse proxy (Caddy/nginx) with TLS in front of it
+    volumes:
+      - sonder-data:/app/data
+      - sonder-logs:/app/logs
+
+volumes:
+  sonder-data:
+  sonder-logs:

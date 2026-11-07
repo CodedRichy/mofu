@@ -13,7 +13,7 @@ npm start          # Start bot (node src/index.js)
 npm run dev        # Start with --watch (auto-restart on file changes)
 ```
 
-No test suite yet. No linter configured. No build step — plain JS, no transpilation.
+`npm test` runs the node:test suite. No linter configured. No build step — plain JS, no transpilation.
 
 ## Architecture
 
@@ -27,7 +27,11 @@ No test suite yet. No linter configured. No build step — plain JS, no transpil
 
 **Embed system:** All embeds go through `src/utils/embed.js` — `base()`, `modAction()`, `dmNotice()`, `response()`. Colors in `src/utils/constants.js`. Brand color is indigo `0x6366f1`. Every embed gets a branded footer + timestamp.
 
-**Data layer:** `src/database/store.js` is an in-memory Map (warnings, guild config). Not persistent — resets on restart. PostgreSQL (`src/database/postgres.js`) and Redis (`src/database/redis.js`) are wired but optional — bot runs without them. Store must be replaced with PostgreSQL-backed implementation before production.
+**Data layer:** `src/database/store.js` is SQLite (better-sqlite3, `data/sonder.db`) with a write-through config cache (`getConfig`/`setConfig`; call `clearConfigCache` after raw SQL deletes). `src/database/retention.js` purges a guild's rows 30 days after the bot leaves (any table with a `guild_id` column is covered automatically). PostgreSQL and Redis are wired but optional and unused.
+
+**AI:** `src/utils/ai.js` (Groq: gpt-oss-20b for moderation, qwen3.8-27b for chat). Saying "sonder" in chat is handled in `messageCreate.js`; actions (mute, unmute, warn, kick) are parsed by code in `src/ai/actions.js`, permission-checked at proposal and button press. Per-server notes via `/memory` (config key `ai_notes`).
+
+**Tests:** `npm test` (node:test, `test/*.test.js`). **Deploy:** `docker compose up -d --build`; set `REGISTER_GLOBAL=1` for global slash commands.
 
 **Modlog:** `src/utils/modlog.js` — reads `modlog_channel` from store, posts formatted embeds for every mod action. Silent no-op if no channel configured.
 
