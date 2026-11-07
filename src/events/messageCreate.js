@@ -290,6 +290,16 @@ module.exports = {
 
     // Conversational reply: any message containing the word "sonder" (or @mentioning the bot),
     // from someone allowed to invoke it. Plain chat only: no tools, no actions, no pings.
+    // "sonder play <song>" / "sonder skip" etc. are music commands, not chat: rewrite to the prefix form
+    // and let the normal command path run them (same permission checks, same output).
+    if (!message.content.startsWith(prefix)) {
+      const m = message.content.match(/^\s*(?:(?:hey|yo)\s+)?(?:sonder|<@!?\d+>)[,:]?\s+(play|skip|pause|resume|stop|queue|shuffle|loop|volume|nowplaying)\b\s*(.*)$/is);
+      if (m && (!/^<@!?\d+>/.test(message.content.trim()) || new RegExp(`^\\s*<@!?${message.client.user.id}>`).test(message.content))) {
+        const verb = m[1].toLowerCase() === 'resume' ? 'pause' : m[1].toLowerCase();
+        message.content = `${prefix}${verb} ${m[2]}`.trim();
+      }
+    }
+
     if (!message.content.startsWith(prefix)) {
       const botId = message.client.user.id;
       const mentionRe = new RegExp(`<@!?${botId}>`, 'g');
