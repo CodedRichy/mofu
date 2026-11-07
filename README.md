@@ -30,6 +30,12 @@ cd web && npm install && npm run dev    # dashboard
 
 A `Dockerfile` is included.
 
+## Permissions
+
+mofu never asks for Administrator. The invite (run `;invite` or `/invite`) requests the minimum set, with the reason for each permission listed in the reply; the list lives in `src/commands/utility/invite.js` and a test fails if Administrator is ever added.
+
+Intents: Server Members and Message Content are privileged. Slash commands and @mention chat work without Message Content; prefix commands and name triggers need it. Details and the verification text are in `docs/verification.md`.
+
 ## License
 
 All rights reserved.

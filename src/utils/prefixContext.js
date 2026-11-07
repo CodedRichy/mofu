@@ -206,7 +206,7 @@ class PrefixContext {
     this.replied = true;
     if (typeof data === 'string') data = { content: data };
     if (data.ephemeral) delete data.ephemeral;
-    this._lastReply = await this.message.reply(data);
+    this._lastReply = await this.message.reply({ failIfNotExists: false, ...data });
     return this._lastReply;
   }
 
@@ -216,7 +216,7 @@ class PrefixContext {
     // so every embed reply ended up under stray text. Clear it unless the caller set content on purpose.
     if (!('content' in data)) data = { ...data, content: null };
     if (this._lastReply) return this._lastReply.edit(data);
-    return this.message.reply(data);
+    return this.message.reply({ failIfNotExists: false, ...data });
   }
 
   async deleteReply() {
@@ -226,7 +226,7 @@ class PrefixContext {
 
   async deferReply() {
     this.deferred = true;
-    this._lastReply = await this.message.reply({ content: DEFER_MESSAGES[Math.floor(Math.random() * DEFER_MESSAGES.length)] });
+    this._lastReply = await this.message.reply({ failIfNotExists: false, content: DEFER_MESSAGES[Math.floor(Math.random() * DEFER_MESSAGES.length)] });
     return this._lastReply;
   }
 
@@ -241,7 +241,7 @@ class PrefixContext {
   async followUp(data) {
     if (typeof data === 'string') data = { content: data };
     if (data.ephemeral) delete data.ephemeral;
-    return this.message.reply(data);
+    return this.message.reply({ failIfNotExists: false, ...data });
   }
 
   isChatInputCommand() {

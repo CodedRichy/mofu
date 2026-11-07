@@ -5,7 +5,7 @@ const path = require('path');
 const fs = require('fs');
 
 // Isolated XP db; the config store is a fake passed via deps, so data/sonder.db is never opened.
-const DB = path.join(os.tmpdir(), `sonder-xp-flow-${process.pid}.db`);
+const DB = path.join(os.tmpdir(), `sonder-xp-flow-${process.pid}-${Date.now()}.db`);
 process.env.SONDER_XP_DB = DB;
 const xpDb = require('../src/database/xp');
 const lv = require('../src/utils/xp');

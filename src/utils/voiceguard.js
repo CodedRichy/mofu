@@ -181,12 +181,25 @@ async function propose(finding, deps = {}) {
 
   const run = (withTimeout) => async ({ interaction, p, show }) => {
     if (state.done) return show({ embeds: [resultCard({ client: interaction.client, title: 'ALREADY HANDLED', kind: kindTag, note: 'Nothing more was done.', color: colors.muted })] });
+    // Check the presser against every target BEFORE consuming the alert: a helper whose rank or permissions fall
+    // short must not use the alert up for the people who can act on it.
+    const checks = new Map();
+    for (const uid of finding.userIds) checks.set(uid, await validateTarget(guild, interaction.user.id, uid, 'disconnect'));
+    const vs = [...checks.values()];
+    const presserBlocked = vs.some((v) => v.error || v.skip === 'has a higher or equal role' || v.skip === 'is you');
+    if (presserBlocked && !vs.some((v) => v.target)) {
+      arm();
+      const why = vs.find((v) => v.error)?.error || 'their role is not above the members in this alert.';
+      show({ embeds: [embed], components: [row], allowedMentions: NO_PINGS });
+      interaction.followUp({ embeds: [require('./embed').response({ client: interaction.client, description: `Nothing was done and the alert is still open: ${why}`, color: colors.error })], ephemeral: true }).catch(() => {});
+      return;
+    }
     settle();
     const done = [];
     const skipped = [];
     const reason = `${label} (${BRAND} voice alert, confirmed by ${interaction.user.tag})`.slice(0, 512);
     for (const uid of finding.userIds) {
-      const v = await validateTarget(guild, interaction.user.id, uid, 'disconnect');
+      const v = checks.get(uid);
       if (v.error) {
         audit.resolve(auditId, 'rejected', v.error);
         return show({ embeds: [resultCard({ client: interaction.client, title: 'NOT DONE', kind: kindTag, note: v.error, color: colors.error })] });
@@ -212,19 +225,25 @@ async function propose(finding, deps = {}) {
     return show({ embeds: [resultCard({ client: interaction.client, title: done.length ? 'DONE' : 'NOT DONE', kind: kindTag, note, color: done.length ? colors.success : colors.error })] });
   };
 
-  const expire = setTimeout(() => {
-    if (state.done) return;
-    settle();
-    audit.resolve(auditId, 'expired');
-    card.edit({ embeds: [resultCard({ client: guild.client, title: 'EXPIRED', kind: kindTag, note: 'Nothing was done.', color: colors.muted })], components: [], allowedMentions: NO_PINGS }).catch(() => {});
-  }, ALERT_TTL_MS);
-  expire.unref?.();
-  const sibling = setTimeout(() => pending.delete(idTime), ALERT_TTL_MS);
-  sibling.unref?.();
-
   const common = { guildId: guild.id, invokerId: approver, targetId: finding.userIds[0], dur: null, anyoneWithPerm: 'MoveMembers' };
-  pending.set(idDisc, { ...common, auditId, kind: kindTag, timer: expire, onConfirm: run(false) });
-  pending.set(idTime, { ...common, auditId, kind: kindTag, timer: sibling, onConfirm: run(true) });
+  let expire = null;
+  let sibling = null;
+  // (Re)register both buttons and their timers. Also used to hand the alert back after a press that did nothing.
+  function arm() {
+    clearTimeout(expire); clearTimeout(sibling);
+    expire = setTimeout(() => {
+      if (state.done) return;
+      settle();
+      audit.resolve(auditId, 'expired');
+      card.edit({ embeds: [resultCard({ client: guild.client, title: 'EXPIRED', kind: kindTag, note: 'Nothing was done.', color: colors.muted })], components: [], allowedMentions: NO_PINGS }).catch(() => {});
+    }, ALERT_TTL_MS);
+    expire.unref?.();
+    sibling = setTimeout(() => pending.delete(idTime), ALERT_TTL_MS);
+    sibling.unref?.();
+    pending.set(idDisc, { ...common, auditId, kind: kindTag, timer: expire, onConfirm: run(false) });
+    pending.set(idTime, { ...common, auditId, kind: kindTag, timer: sibling, onConfirm: run(true) });
+  }
+  arm();
   log.info(`voiceguard alert posted: ${finding.kind} channel=${finding.channelId} users=${finding.userIds.length} guild=${guild.id}`);
   return card;
 }

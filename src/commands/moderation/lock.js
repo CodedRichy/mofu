@@ -42,7 +42,7 @@ module.exports = {
     if (sub === 'on') {
       const current = overwriteState(channel, everyone.id, 'SendMessages');
       const hadStored = !!store.getConfig(guild.id, key(channel.id));
-      const shouldStore = current !== 'deny' && !hadStored;
+      const shouldStore = !hadStored;
       if (shouldStore) store.setConfig(guild.id, key(channel.id), current);
       try {
         await channel.permissionOverwrites.edit(everyone, { SendMessages: false }, { reason: clip(reason, 512) });

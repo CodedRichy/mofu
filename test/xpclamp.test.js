@@ -4,7 +4,7 @@ const os = require('os');
 const path = require('path');
 
 // Point the xp module at a temp db before it loads (never the live db).
-process.env.SONDER_XP_DB = path.join(os.tmpdir(), `sonder-xp-test-${process.pid}.db`);
+process.env.SONDER_XP_DB = path.join(os.tmpdir(), `sonder-xp-test-${process.pid}-${Date.now()}.db`);
 const xp = require('../src/database/xp');
 
 test('clampInt rejects non-numbers, negatives and unsafe ints', () => {

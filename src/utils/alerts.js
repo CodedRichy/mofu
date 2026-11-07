@@ -6,6 +6,8 @@
 // at post time and go straight into the embed.
 const crypto = require('crypto');
 const dns = require('dns');
+const http = require('http');
+const https = require('https');
 const net = require('net');
 const log = require('./logger');
 const { colors } = require('./constants');
@@ -112,12 +114,55 @@ async function assertPublicUrl(input, lookup = dns.promises.lookup) {
 
 // ---- bounded fetch ----
 
-// GET text with an 8s timeout, <=512KB body, redirects followed by hand (each hop re-checked).
-// Known limit: the HTTP client resolves the name again, so a DNS answer that changes between the check and the
-// connection is not covered. Standard ports plus the pre-check keep the exposure small.
+// A DNS lookup for sockets that refuses private answers: the address that is checked is the address that is
+// connected to, so a hostname cannot rebind to an internal host between the check and the connection.
+function guardedLookup(lookup = dns.promises.lookup) {
+  return (host, options, cb) => {
+    const done = typeof options === 'function' ? options : cb;
+    const wantAll = typeof options === 'object' && options && options.all;
+    lookup(host, { all: true }).then((addrs) => {
+      if (!addrs?.length || addrs.some((a) => isPrivateIp(a.address))) return done(new Error('Private addresses are not allowed.'));
+      if (wantAll) return done(null, addrs);
+      return done(null, addrs[0].address, addrs[0].family);
+    }, () => done(new Error('Could not resolve that host.')));
+  };
+}
+
+// Minimal fetch over node:http(s) whose connection uses guardedLookup. Returns the small Response-like object that
+// fetchText needs (status, ok, headers.get, text()).
+function pinnedFetch(url, init = {}, lookup) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const mod = u.protocol === 'https:' ? https : http;
+    const req = mod.request(u, { method: 'GET', headers: init.headers, signal: init.signal, lookup: guardedLookup(lookup) }, (res) => {
+      resolve({
+        status: res.statusCode,
+        ok: res.statusCode >= 200 && res.statusCode < 300,
+        headers: { get: (n) => { const v = res.headers[String(n).toLowerCase()]; return v === undefined ? null : String(v); } },
+        text: () => new Promise((ok, bad) => {
+          const chunks = [];
+          let total = 0;
+          res.on('data', (c) => {
+            total += c.length;
+            if (total > MAX_BODY_BYTES) { res.destroy(); bad(new Error('Feed is too large.')); return; }
+            chunks.push(c);
+          });
+          res.on('end', () => ok(Buffer.concat(chunks).toString('utf8')));
+          res.on('error', bad);
+        }),
+      });
+      if (res.statusCode >= 300 && res.statusCode < 400) res.resume();
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+// GET text with an 8s timeout, <=512KB body, redirects followed by hand (each hop re-checked, and the connection
+// itself only goes to an address that passed the same check).
 async function fetchText(url, opts = {}) {
-  const fetchImpl = opts.fetchImpl || globalThis.fetch;
   const lookup = opts.lookup || dns.promises.lookup;
+  const fetchImpl = opts.fetchImpl || ((u, init) => pinnedFetch(u, init, lookup));
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), opts.timeoutMs || FETCH_TIMEOUT_MS);
   try {
@@ -485,6 +530,6 @@ function startSweep(client) {
 
 module.exports = {
   MAX_SUBS_PER_GUILD, SWEEP_MS, MAX_FAILURES, FETCH_TIMEOUT_MS, MAX_BODY_BYTES, MAX_POSTS_PER_SWEEP,
-  isPrivateIp, checkUrl, assertPublicUrl, fetchText, parseFeed, classifyYoutube, channelIdFromPage,
+  isPrivateIp, checkUrl, assertPublicUrl, guardedLookup, pinnedFetch, fetchText, parseFeed, classifyYoutube, channelIdFromPage,
   resolveYoutube, youtubeFeedUrl, hashId, selectNew, mergeSeen, nextState, buildEmbed, sweepOnce, startSweep,
 };

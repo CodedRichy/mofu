@@ -281,11 +281,14 @@ async function applyVoiceBan(guild, member, { roleId = null, reason }) {
     return { method: 'role', roleId: role.id, touched: 1 };
   }
   let touched = 0;
-  for (const ch of voiceChannels(guild)) {
-    try {
-      await ch.permissionOverwrites.edit(member.id, { Connect: false }, { reason });
-      touched++;
-    } catch { /* channel the bot cannot edit: skip */ }
+  const chans = voiceChannels(guild);
+  for (let k = 0; k < chans.length; k += 5) { // bounded parallelism: 5 REST calls at a time
+    await Promise.all(chans.slice(k, k + 5).map(async (ch) => {
+      try {
+        await ch.permissionOverwrites.edit(member.id, { Connect: false }, { reason });
+        touched++;
+      } catch { /* channel the bot cannot edit: skip */ }
+    }));
   }
   if (!touched) throw new Error('no voice channel could be edited');
   if (member.voice?.channelId) await member.voice.disconnect(reason).catch(() => {});

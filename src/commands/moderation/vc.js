@@ -128,17 +128,19 @@ async function voiceBan(i) {
   if (ms > MAX_BAN_MS) return say(i, `Duration cannot exceed ${MAX_BAN_MS / 86400000} days.`);
   const store = require('../../database/store');
   let applied;
+  // Editing up to 100 channel overwrites can outlast the 3s interaction deadline: acknowledge first.
+  await i.deferReply();
   try {
     applied = await vc.applyVoiceBan(i.guild, target, { roleId: store.getConfig(i.guild.id, 'voiceban_role'), reason: audit(reason, i) });
   } catch {
-    return say(i, "Couldn't apply the voice ban. I need Manage Channels and Manage Roles on the voice channels, or a ban role I can assign.");
+    return i.editReply({ embeds: [response({ client: i.client, description: "Couldn't apply the voice ban. I need Manage Channels and Manage Roles on the voice channels, or a ban role I can assign.", color: colors.error })] });
   }
   const dur = format(ms);
   const caseId = modlog.openCase(i.guild, { action: 'vc_ban', target: target.user, moderator: i.user, reason, duration: dur });
   vc.tables().addBan({ guildId: i.guild.id, userId: target.id, expiresAt: Date.now() + ms, method: applied.method, roleId: applied.roleId, caseId, moderatorId: i.user.id });
   await target.user.send({ embeds: [dmNotice({ guild: i.guild, action: 'banned from voice', reason, color: colors.error, duration: dur, caseId })] }).catch(() => {});
   const how = applied.method === 'role' ? 'ban role' : `${applied.touched} voice channel(s)`;
-  await i.reply({ embeds: [modAction({ client: i.client, action: 'voice ban', color: colors.error, target: target.user, moderator: i.user, reason, duration: dur, extra: `Applied through: ${how}`, caseId })] });
+  await i.editReply({ embeds: [modAction({ client: i.client, action: 'voice ban', color: colors.error, target: target.user, moderator: i.user, reason, duration: dur, extra: `Applied through: ${how}`, caseId })] });
   await modlog.send(i.guild, { action: 'voice ban', target: target.user, moderator: i.user, reason, duration: dur, extra: `Applied through: ${how}`, caseId });
 }
 

@@ -24,6 +24,8 @@ const USER_CONFIG_PREFIXES = [
   { prefix: 'afk_', label: 'AFK status' },
   { prefix: 'inv_', label: 'inventory' },
   { prefix: 'lastfm_', label: 'Last.fm username' },
+  { prefix: 'fmact_', label: 'Last.fm activity marker' },
+  { prefix: 'fmhide_', label: 'Last.fm ranking preference' },
   { prefix: 'tz_', label: 'timezone' },
 ];
 
@@ -72,6 +74,20 @@ function forgetUser(db, userId, { guildId = null } = {}) {
         const rows = db.prepare(`SELECT guild_id FROM config WHERE key = ?${scope}`).all(...args(key));
         rows.forEach((r) => guilds.add(r.guild_id));
         add(label, db.prepare(`DELETE FROM config WHERE key = ?${scope}`).run(...args(key)).changes);
+      }
+      // Last.fm crowns name the holder by id inside one per-server JSON map: drop this member's entries.
+      const crownRows = db.prepare(`SELECT guild_id, value FROM config WHERE key = 'fm_crowns'${scope}`).all(...(guildId === null ? [] : [String(guildId)]));
+      for (const row of crownRows) {
+        let map;
+        try { map = JSON.parse(row.value); } catch { continue; }
+        if (!map || typeof map !== 'object') continue;
+        const kept = Object.fromEntries(Object.entries(map).filter(([, c]) => !(c && String(c.u) === uid)));
+        const removed = Object.keys(map).length - Object.keys(kept).length;
+        if (!removed) continue;
+        if (Object.keys(kept).length) db.prepare("UPDATE config SET value = ? WHERE guild_id = ? AND key = 'fm_crowns'").run(JSON.stringify(kept), row.guild_id);
+        else db.prepare("DELETE FROM config WHERE guild_id = ? AND key = 'fm_crowns'").run(row.guild_id);
+        guilds.add(row.guild_id);
+        add('Last.fm crowns', removed);
       }
     }
   })();

@@ -11,7 +11,7 @@ try { jsQR = require('jsqr'); } catch { /* not installed: stub mode */ }
 try { canvas = require('@napi-rs/canvas'); } catch { /* optional: only webp and gif need it */ }
 try { PNG = require('pngjs').PNG; } catch { /* optional */ }
 try { jpeg = require('jpeg-js'); } catch { /* optional */ }
-const MAX_PIXELS = 20 * 1000 * 1000; // refuse to decode anything larger (memory bomb guard)
+const MAX_PIXELS = 12 * 1000 * 1000; // refuse to decode anything larger (memory bomb guard; a 4K screenshot is ~8MP)
 
 const MAX_BYTES = 2 * 1024 * 1024;
 const MAX_DIM = 1000;
@@ -56,9 +56,51 @@ function sniff(buf) {
   return 'other';
 }
 
+// Declared pixel size from the file header, read BEFORE any decoder allocates. null = unparseable.
+function headerDims(buf) {
+  try {
+    if (buf.length >= 24 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) {
+      return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+    }
+    if (buf.length >= 10 && buf.toString('latin1', 0, 3) === 'GIF') {
+      return { width: buf.readUInt16LE(6), height: buf.readUInt16LE(8) };
+    }
+    if (buf.length >= 30 && buf.toString('latin1', 0, 4) === 'RIFF' && buf.toString('latin1', 8, 12) === 'WEBP') {
+      const fmt = buf.toString('latin1', 12, 16);
+      if (fmt === 'VP8X') return { width: 1 + buf.readUIntLE(24, 3), height: 1 + buf.readUIntLE(27, 3) };
+      if (fmt === 'VP8L' && buf[20] === 0x2f) {
+        const b = buf.readUInt32LE(21);
+        return { width: (b & 0x3fff) + 1, height: ((b >> 14) & 0x3fff) + 1 };
+      }
+      if (fmt === 'VP8 ') return { width: buf.readUInt16LE(26) & 0x3fff, height: buf.readUInt16LE(28) & 0x3fff };
+      return null;
+    }
+    if (buf.length > 4 && buf[0] === 0xff && buf[1] === 0xd8) {
+      let i = 2;
+      while (i + 9 < buf.length) {
+        if (buf[i] !== 0xff) { i++; continue; }
+        const m = buf[i + 1];
+        if (m === 0xff) { i++; continue; }
+        if (m === 0xd8 || m === 0x01 || (m >= 0xd0 && m <= 0xd7)) { i += 2; continue; }
+        if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) {
+          return { height: buf.readUInt16BE(i + 5), width: buf.readUInt16BE(i + 7) };
+        }
+        i += 2 + buf.readUInt16BE(i + 2);
+      }
+    }
+  } catch { /* fall through */ }
+  return null;
+}
+
+function tooBig(buf) {
+  const d = headerDims(buf);
+  return !d || !d.width || !d.height || d.width * d.height > MAX_PIXELS;
+}
+
 async function decodeBuffer(buf) {
   if (!available()) return { status: 'unavailable', urls: [] };
   try {
+    if (tooBig(buf)) return { status: 'skipped', urls: [] };
     const kind = sniff(buf);
     if (kind === 'png' && PNG) {
       const png = PNG.sync.read(buf);
@@ -111,4 +153,4 @@ async function scanAttachment(att) {
   }
 }
 
-module.exports = { available, decodePixels, decodeBuffer, scanAttachment, sniff, shrink };
+module.exports = { headerDims, available, decodePixels, decodeBuffer, scanAttachment, sniff, shrink };

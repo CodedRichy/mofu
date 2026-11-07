@@ -5,7 +5,7 @@ const path = require('path');
 const { EventEmitter } = require('events');
 
 // Never touch data/sonder.db: isolated XP db, and the config store replaced before any command module loads it.
-process.env.SONDER_XP_DB = path.join(os.tmpdir(), `sonder-xp-import-${process.pid}.db`);
+process.env.SONDER_XP_DB = path.join(os.tmpdir(), `sonder-xp-import-${process.pid}-${Date.now()}.db`);
 const config = new Map();
 const fakeStore = {
   getConfig: (g, k) => config.get(`${g}:${k}`) ?? null,

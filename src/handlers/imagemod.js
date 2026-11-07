@@ -288,29 +288,30 @@ async function handleButton(interaction) {
   const { guild } = interaction;
   if (!guild || guild.id !== p.guildId) return ephemeral('That alert belongs to another server.', colors.error);
   if (p.busy) return ephemeral('That button is already being handled.');
+  p.busy = true; // claim before the first await so a double click cannot run twice; released on every early exit
+  const bail = (d, c) => { p.busy = false; return ephemeral(d, c); };
 
   // Fresh permission read, every press.
   const member = await guild.members.fetch({ user: interaction.user.id, force: true }).catch(() => null);
-  if (!member) return ephemeral("Couldn't verify your permissions.", colors.error);
+  if (!member) return bail("Couldn't verify your permissions.", colors.error);
   const channel = guild.channels.cache.get(p.channelId);
   const canMessages = channel ? member.permissionsIn(channel).has('ManageMessages') : member.permissions.has('ManageMessages');
   const need = verb === 'to' ? { ok: member.permissions.has('ModerateMembers'), label: 'Moderate Members' } : { ok: canMessages, label: 'Manage Messages' };
-  if (!['del', 'to', 'no'].includes(verb)) return ephemeral('Unknown button.', colors.error);
-  if (!need.ok) return ephemeral(`You need the **${need.label}** permission to do that.`, colors.error);
+  if (!['del', 'to', 'no'].includes(verb)) return bail('Unknown button.', colors.error);
+  if (!need.ok) return bail(`You need the **${need.label}** permission to do that.`, colors.error);
 
   let target = null;
   if (verb === 'to') {
     target = await guild.members.fetch(p.authorId).catch(() => null);
-    if (!target) return ephemeral("That member isn't in the server.", colors.error);
-    if (target.id === interaction.user.id) return ephemeral("You can't time yourself out.", colors.error);
-    if (target.id === guild.ownerId || target.id === guild.client.user.id) return ephemeral("That member can't be timed out.", colors.error);
-    if (!target.moderatable) return ephemeral("I can't time that member out (their role is above mine, or I'm missing a permission).", colors.error);
+    if (!target) return bail("That member isn't in the server.", colors.error);
+    if (target.id === interaction.user.id) return bail("You can't time yourself out.", colors.error);
+    if (target.id === guild.ownerId || target.id === guild.client.user.id) return bail("That member can't be timed out.", colors.error);
+    if (!target.moderatable) return bail("I can't time that member out (their role is above mine, or I'm missing a permission).", colors.error);
     if (interaction.user.id !== guild.ownerId && target.roles.highest.position >= member.roles.highest.position) {
-      return ephemeral("You can't time out someone with a higher or equal role.", colors.error);
+      return bail("You can't time out someone with a higher or equal role.", colors.error);
     }
   }
 
-  p.busy = true; // double-click guard: released below
   try {
     await interaction.deferUpdate();
   } catch {

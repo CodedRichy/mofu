@@ -91,3 +91,4 @@ Pending confirmation cards (chat mute/kick) are held in memory, so they expire o
 - Set `SESSION_SECRET` to a long random value (`openssl rand -hex 32`).
 - Run `/migrate scan` in your own server and read what a new admin would see.
 - Watch the first day: `docker compose logs -f sonder | grep -i "warn\|error"`.
+- Full ordered list: `docs/launch-checklist.md`. Intents and verification text: `docs/verification.md`. Invite only with the `;invite` link (no Administrator).

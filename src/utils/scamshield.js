@@ -294,10 +294,8 @@ async function inspectMessage(message) {
     if (!remote) {
       const qr = require('./qrscan');
       if (qr.available()) {
-        for (const a of attachments) {
-          const res = await qr.scanAttachment(a);
-          if (res.status === 'ok' && res.urls.some(hasRemoteAuthLink)) { remote = true; break; }
-        }
+        const results = await Promise.all(attachments.slice(0, 4).map((a) => qr.scanAttachment(a)));
+        remote = results.some((res) => res.status === 'ok' && res.urls.some(hasRemoteAuthLink));
       }
     }
     if (remote) {
@@ -317,7 +315,17 @@ async function inspectMessage(message) {
   }
 }
 
-function staffSnapshot(guild) {
+const STAFF_TTL_MS = 60000;
+const staffCache = new Map(); // guild id -> { at, list }
+function staffSnapshot(guild, now = Date.now()) {
+  const hit = staffCache.get(guild.id);
+  if (hit && now - hit.at < STAFF_TTL_MS) return hit.list;
+  const list = buildStaffSnapshot(guild);
+  staffCache.set(guild.id, { at: now, list });
+  if (staffCache.size > 500) staffCache.delete(staffCache.keys().next().value);
+  return list;
+}
+function buildStaffSnapshot(guild) {
   const out = [];
   for (const m of guild.members.cache.values()) {
     if (m.user.bot) continue;

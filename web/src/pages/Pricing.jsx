@@ -15,7 +15,7 @@ const GREED_PREMIUM = 'https://greed.best/premium'
 const MEE6_TABLE = 'https://help.mee6.xyz/en/articles/710936-mee6-free-vs-premium-plans-comparison'
 
 const FREE = [
-  ['Moderation', 'case numbers, warns, tempbans and appeals'], // moderation/case, warn, tempban, appeal
+  ['Moderation', 'case numbers, warns, tempbans and mute appeals'], // moderation/case, warn, tempban, appeal
   ['Levels', 'text and voice XP, level roles'], // leveling/leveling (voice), levelrole
   ['Logging', 'deletes, edits, joins and voice'], // config/logging
   ['Tickets', 'private channels, transcripts on close'], // config/ticket

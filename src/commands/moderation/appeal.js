@@ -11,7 +11,7 @@ const MAX_CASE = 1e9;
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('appeal')
-    .setDescription('Appeal a mute or tempban you received; staff review it')
+    .setDescription('Appeal a mute you received; staff review it')
     .addIntegerOption((o) => o.setName('case').setDescription('Your case number (shown in the DM you got)').setRequired(true).setMinValue(1).setMaxValue(MAX_CASE))
     // free-text reason must stay LAST: the prefix parser gives every earlier string option a single word
     .addStringOption((o) => o.setName('reason').setDescription('Why the punishment should be lifted').setRequired(true).setMinLength(10).setMaxLength(500)),
@@ -30,10 +30,12 @@ module.exports = {
     if (problem) return fail(problem);
 
     // Is the punishment still in effect? An already-lifted one has nothing to appeal.
-    if (c.action === 'tempban' && !infractions.getTempban(guild.id, user.id)) return fail('That tempban is no longer active.');
     if (c.action === 'mute') {
       const member = interaction.member || guild.members.cache.get(user.id);
       if (!member?.isCommunicationDisabled?.()) return fail('That mute is no longer active.');
+      if (!handler.isLatestMuteCase(infractions.casesFor(guild.id, user.id, 50), number)) {
+        return fail('Appeal your most recent mute instead; that is the one in effect now.');
+      }
     }
 
     const blocked = appeals.blockReason(guild.id, number);

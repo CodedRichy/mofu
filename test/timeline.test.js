@@ -113,7 +113,7 @@ test('appeal rules: ownership, appealable actions, self-approval', () => {
   assert.strictEqual(appealH.eligibilityProblem(c, 'u1'), null);
   assert.match(appealH.eligibilityProblem(c, 'u2'), /no case/);
   assert.match(appealH.eligibilityProblem(null, 'u1'), /no case/);
-  assert.match(appealH.eligibilityProblem({ ...c, action: 'warn' }, 'u1'), /mute and tempban/);
+  assert.match(appealH.eligibilityProblem({ ...c, action: 'warn' }, 'u1'), /Only mute/);
   assert.match(appealH.eligibilityProblem({ ...c, status: 'void' }, 'u1'), /did not go through/);
 
   const appeal = { user_id: 'u1' };

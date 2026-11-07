@@ -8,7 +8,8 @@ const { colors } = require('../utils/constants');
 const { base, response } = require('../utils/embed');
 const { clip } = require('../utils/modguard');
 
-const APPEALABLE = Object.freeze(['mute', 'tempban']);
+// Tempbans are not listed: a banned user is outside the server and cannot run a guild command, so there is no way in.
+const APPEALABLE = Object.freeze(['mute']);
 const PREFIX = 'appeal';
 
 // Permission a moderator needs to decide an appeal against this kind of case.
@@ -23,6 +24,14 @@ function eligibilityProblem(caseRow, userId) {
   if (!APPEALABLE.includes(caseRow.action)) return `Only ${APPEALABLE.join(' and ')} cases can be appealed. Ask a moderator about other cases.`;
   if (caseRow.status !== 'active') return 'That case did not go through, so there is nothing to appeal.';
   return null;
+}
+
+// A mute appeal lifts whatever timeout is active now, so it is only allowed for the member's newest active mute
+// case (casesNewestFirst: that member's cases, highest case id first). Otherwise an old mild case could be used to
+// get a newer, longer timeout lifted.
+function isLatestMuteCase(casesNewestFirst, caseId) {
+  const latest = (casesNewestFirst || []).find((c) => c.action === 'mute' && c.status === 'active');
+  return !!latest && Number(latest.case_id) === Number(caseId);
 }
 
 // Why `approverId` may not APPROVE this appeal, or null. Denying has no such rule.
@@ -169,6 +178,6 @@ async function handleButton(interaction, deps = {}) {
 }
 
 module.exports = {
-  APPEALABLE, neededPermission, eligibilityProblem, approvalProblem, customId, parseId,
+  APPEALABLE, neededPermission, eligibilityProblem, isLatestMuteCase, approvalProblem, customId, parseId,
   buttons, appealCard, postAppeal, liftPunishment, handleButton,
 };

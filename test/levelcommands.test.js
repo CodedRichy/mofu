@@ -5,7 +5,7 @@ const path = require('path');
 
 // Never touch data/sonder.db: isolated XP db, and the config store replaced in the require cache before any
 // command module loads it.
-process.env.SONDER_XP_DB = path.join(os.tmpdir(), `sonder-xp-cmd-${process.pid}.db`);
+process.env.SONDER_XP_DB = path.join(os.tmpdir(), `sonder-xp-cmd-${process.pid}-${Date.now()}.db`);
 const data = new Map();
 const fakeStore = {
   getConfig: (g, k) => (data.has(`${g}:${k}`) ? JSON.parse(JSON.stringify(data.get(`${g}:${k}`))) : null),
