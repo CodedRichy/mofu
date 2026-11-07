@@ -45,7 +45,7 @@ export function Switch() {
 
           <section>
             <h2 style={h2}>what does not</h2>
-            <p>Levels and economy balances start fresh: other bots give servers no export, so there is nothing for us to import. If your old bot can export a file of them, tell us in the support server and we will look at supporting it.</p>
+            <p>Economy balances start fresh, and so do levels unless your old bot can export them. If you have a file with a user id and XP (or level) per member, <code>/import levels</code> previews what it would change and writes nothing until you confirm. It never lowers a member's XP unless you choose overwrite. Other bots use different level formulas, so a level can come out a little different here. After an import, run <code>/levelrole sync</code> to hand out level roles.</p>
           </section>
 
           <section>
