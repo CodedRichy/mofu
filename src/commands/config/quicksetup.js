@@ -90,49 +90,62 @@ module.exports = {
 
       await i.deferUpdate();
 
-      const created = {};
       const summary = [];
 
-      for (const name of template.channels) {
+      // Find or create a text channel; returns its id or null (and notes why).
+      const ensureChannel = async (name, isPrivate) => {
         const existing = guild.channels.cache.find((c) => c.name === name && c.type === ChannelType.GuildText);
-        if (existing) {
-          created[name] = existing.id;
-        } else {
-          try {
-            const ch = await guild.channels.create({
-              name,
-              type: ChannelType.GuildText,
-              permissionOverwrites: [
-                { id: guild.id, deny: ['ViewChannel'] },
-                { id: client.user.id, allow: ['ViewChannel', 'SendMessages'] },
-              ],
-            });
-            created[name] = ch.id;
-          } catch {
-            summary.push(`⚠️ Couldn't create #${name} — missing Manage Channels permission`);
-            continue;
-          }
+        if (existing) return existing.id;
+        try {
+          const ch = await guild.channels.create({
+            name,
+            type: ChannelType.GuildText,
+            permissionOverwrites: isPrivate
+              ? [
+                  { id: guild.id, deny: ['ViewChannel'] },
+                  { id: client.user.id, allow: ['ViewChannel', 'SendMessages'] },
+                ]
+              : [],
+          });
+          return ch.id;
+        } catch {
+          summary.push(`⚠️ Couldn't create #${name} — missing Manage Channels permission`);
+          return null;
         }
+      };
+
+      // Write a value, then read it back so the summary only reports what is stored.
+      const write = (configKey, value, text) => {
+        store.setConfig(guild.id, configKey, value);
+        const stored = store.getConfig(guild.id, configKey);
+        if (stored === value) summary.push(`✅ ${text}`);
+        else summary.push(`⚠️ \`${configKey}\` could not be saved`);
+        return stored === value;
+      };
+
+      for (const name of template.channels) {
+        const id = await ensureChannel(name, true);
         const configKey = channelKeyMap[name];
-        if (configKey && created[name]) {
-          store.setConfig(guild.id, configKey, created[name]);
-          summary.push(`✅ <#${created[name]}> set as \`${configKey.replace('_', ' ')}\``);
-        }
+        if (id && configKey) write(configKey, id, `<#${id}> set as \`${configKey}\``);
       }
 
       for (const [configKey, value] of Object.entries(template.config)) {
-        store.setConfig(guild.id, configKey, value);
-        summary.push(`✅ \`${configKey}\` set to \`${value}\``);
+        write(configKey, value, `\`${configKey}\` set to \`${value}\``);
       }
 
+      // A welcome/goodbye message does nothing without a channel, so set both.
       if (template.welcome) {
-        store.setConfig(guild.id, 'welcome_message', template.welcome);
-        summary.push('✅ Welcome message configured');
+        const id = await ensureChannel('welcome', false);
+        if (id && write('welcome_channel', id, `Welcome channel set to <#${id}>`)) {
+          write('welcome_message', template.welcome, 'Welcome message configured');
+        }
       }
 
       if (template.goodbye) {
-        store.setConfig(guild.id, 'goodbye_message', template.goodbye);
-        summary.push('✅ Goodbye message configured');
+        const id = await ensureChannel('goodbye', false);
+        if (id && write('goodbye_channel', id, `Goodbye channel set to <#${id}>`)) {
+          write('goodbye_message', template.goodbye, 'Goodbye message configured');
+        }
       }
 
       const resultEmbed = base(client, colors.success)

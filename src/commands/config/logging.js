@@ -19,11 +19,7 @@ module.exports = {
             .addChoices(
               { name: 'Message deletes', value: 'log_message_delete' },
               { name: 'Message edits', value: 'log_message_edit' },
-              { name: 'Member joins', value: 'log_member_join' },
-              { name: 'Member leaves', value: 'log_member_leave' },
-              { name: 'Role changes', value: 'log_role_change' },
               { name: 'Voice state', value: 'log_voice' },
-              { name: 'Nickname changes', value: 'log_nickname' },
             )
         )
         .addBooleanOption((o) => o.setName('enabled').setDescription('Enable or disable').setRequired(true))
@@ -75,7 +71,7 @@ module.exports = {
 
     } else {
       const ch = store.getConfig(guild.id, 'log_channel');
-      const types = ['log_message_delete', 'log_message_edit', 'log_member_join', 'log_member_leave', 'log_role_change', 'log_voice', 'log_nickname'];
+      const types = ['log_message_delete', 'log_message_edit', 'log_voice'];
       const lines = types.map((t) => {
         const enabled = store.getConfig(guild.id, t) ?? true;
         const label = t.replace('log_', '').replace('_', ' ');
@@ -85,7 +81,7 @@ module.exports = {
       await interaction.reply({
         embeds: [response({
           client: interaction.client,
-          description: `**Channel** ${ch ? `<#${ch}>` : 'Not set'}\n\n${lines.join('\n')}`,
+          description: `**Channel** ${ch ? `<#${ch}>` : 'Not set'}\n\n${lines.join('\n')}\n\nMember join/leave, role and nickname events are not logged by this command yet.`,
           color: colors.info,
         })],
       });

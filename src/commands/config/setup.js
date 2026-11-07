@@ -15,26 +15,29 @@ const { base, response } = require('../../utils/embed');
 const store = require('../../database/store');
 
 const CATEGORIES = [
-  { label: 'Protection', value: 'protection', emoji: '\u{1F6E1}️', description: 'Antispam, antilink, antiraid, word filter' },
+  { label: 'Protection', value: 'protection', emoji: '\u{1F6E1}️', description: 'Antispam, antilink, antiraid' },
   { label: 'Logging', value: 'logging', emoji: '\u{1F4CB}', description: 'Log channel, modlog channel, audit channel' },
   { label: 'Welcome & Goodbye', value: 'welcome', emoji: '\u{1F44B}', description: 'Channels and messages' },
   { label: 'Roles', value: 'roles', emoji: '\u{1F3AD}', description: 'Autorole configuration' },
-  { label: 'Features', value: 'features', emoji: '\u{1F3AB}', description: 'Tickets, starboard, leveling, counter' },
+  { label: 'Features', value: 'features', emoji: '\u{1F3AB}', description: 'Leveling and tickets' },
 ];
 
+// Keys here must match what the runtime reads (see test/configkeys.test.js).
 const PROTECTION_KEYS = [
-  { label: 'Antispam', key: 'antispam' },
-  { label: 'Antilink', key: 'antilink' },
-  { label: 'Antiraid', key: 'antiraid' },
-  { label: 'Word Filter', key: 'wordfilter' },
+  { label: 'Antispam', key: 'antispam', def: false },
+  { label: 'Antilink', key: 'antilink', def: false },
+  { label: 'Antiraid', key: 'antiraid', def: false },
 ];
 
+// `word_filter` holds the word LIST (not a boolean), so it is shown read-only here.
 const FEATURE_KEYS = [
-  { label: 'Leveling', key: 'leveling_enabled' },
-  { label: 'Tickets', key: 'tickets_enabled' },
-  { label: 'Starboard', key: 'starboard_enabled' },
-  { label: 'Counter', key: 'counter_enabled' },
+  { label: 'Leveling', key: 'leveling', def: true },
+  { label: 'Tickets', key: 'ticket_enabled', def: false },
 ];
+
+function isOn(guildId, entry) {
+  return (store.getConfig(guildId, entry.key) ?? entry.def) === true;
+}
 
 function categoryMenu() {
   return new ActionRowBuilder().addComponents(
@@ -102,9 +105,12 @@ function overviewEmbed(client) {
 
 function protectionEmbed(client, guildId) {
   const lines = PROTECTION_KEYS.map((p) => {
-    const enabled = store.getConfig(guildId, p.key);
+    const enabled = isOn(guildId, p);
     return `${enabled ? '\u{1F7E2}' : '\u{1F534}'} **${p.label}** — ${enabled ? 'Enabled' : 'Disabled'}`;
   });
+  const words = store.getConfig(guildId, 'word_filter');
+  const wordCount = Array.isArray(words) ? words.length : 0;
+  lines.push(`\u{1F4DD} **Word Filter** — ${wordCount} word${wordCount === 1 ? '' : 's'} (manage with \`/wordfilter\`)`);
   return base(client, colors.primary)
     .setTitle('\u{1F6E1}️ Protection')
     .setDescription(lines.join('\n') + '\n\nSelect a feature below to toggle it.');
@@ -112,7 +118,7 @@ function protectionEmbed(client, guildId) {
 
 function protectionMenu(guildId) {
   const options = PROTECTION_KEYS.map((p) => {
-    const enabled = store.getConfig(guildId, p.key);
+    const enabled = isOn(guildId, p);
     return {
       label: `${enabled ? 'Disable' : 'Enable'} ${p.label}`,
       value: p.key,
@@ -130,7 +136,7 @@ function protectionMenu(guildId) {
 function loggingEmbed(client, guildId, step) {
   const logCh = store.getConfig(guildId, 'log_channel');
   const modlogCh = store.getConfig(guildId, 'modlog_channel');
-  const auditCh = store.getConfig(guildId, 'audit_channel');
+  const auditCh = store.getConfig(guildId, 'audit_log_channel');
 
   if (step === 'log') {
     return base(client, colors.primary)
@@ -212,17 +218,21 @@ function welcomeStepEmbed(client, guildId, step) {
 
 function featuresEmbed(client, guildId) {
   const lines = FEATURE_KEYS.map((f) => {
-    const enabled = store.getConfig(guildId, f.key);
+    const enabled = isOn(guildId, f);
     return `${enabled ? '\u{1F7E2}' : '\u{1F534}'} **${f.label}** — ${enabled ? 'Enabled' : 'Disabled'}`;
   });
+  const sb = store.getConfig(guildId, 'starboard_channel');
+  const ct = store.getConfig(guildId, 'counter_channel');
+  lines.push(`\u2B50 **Starboard** — ${sb ? `<#${sb}>` : 'Off'} (set with \`/starboard\`)`);
+  lines.push(`\u{1F522} **Counter** — ${ct ? `<#${ct}>` : 'Off'} (set with \`/counter\`)`);
   return base(client, colors.primary)
     .setTitle('\u{1F3AB} Features')
-    .setDescription(lines.join('\n') + '\n\nSelect a feature below to toggle it.');
+    .setDescription(lines.join('\n') + '\n\nSelect a feature below to toggle it. Tickets also need the panel set up with `/ticket`.');
 }
 
 function featuresMenu(guildId) {
   const options = FEATURE_KEYS.map((f) => {
-    const enabled = store.getConfig(guildId, f.key);
+    const enabled = isOn(guildId, f);
     return {
       label: `${enabled ? 'Disable' : 'Enable'} ${f.label}`,
       value: f.key,
@@ -339,9 +349,9 @@ module.exports = {
         }
 
         if (i.customId === 'setup_protection') {
-          const key = i.values[0];
-          const current = store.getConfig(guildId, key);
-          store.setConfig(guildId, key, !current);
+          const entry = PROTECTION_KEYS.find((p) => p.key === i.values[0]);
+          if (!entry) return;
+          store.setConfig(guildId, entry.key, !isOn(guildId, entry));
           return await i.update({
             embeds: [protectionEmbed(client, guildId)],
             components: [protectionMenu(guildId), backButton()],
@@ -394,7 +404,7 @@ module.exports = {
 
         if (i.customId === 'setup_audit_channel') {
           const channelId = i.values[0];
-          store.setConfig(guildId, 'audit_channel', channelId);
+          store.setConfig(guildId, 'audit_log_channel', channelId);
           wizardStep = null;
           return await i.update({
             embeds: [loggingEmbed(client, guildId, 'done')],
@@ -553,9 +563,9 @@ module.exports = {
         }
 
         if (i.customId === 'setup_features') {
-          const key = i.values[0];
-          const current = store.getConfig(guildId, key);
-          store.setConfig(guildId, key, !current);
+          const entry = FEATURE_KEYS.find((f) => f.key === i.values[0]);
+          if (!entry) return;
+          store.setConfig(guildId, entry.key, !isOn(guildId, entry));
           return await i.update({
             embeds: [featuresEmbed(client, guildId)],
             components: [featuresMenu(guildId), backButton()],

@@ -105,19 +105,13 @@ module.exports = {
       suggestions.push('💡 Goodbye message is set but no channel configured');
     }
 
-    const logEvents = store.getConfig(guildId, 'log_events');
-    const logChannel = store.getConfig(guildId, 'log_channel');
-    if (logEvents && !logChannel) {
-      suggestions.push('💡 Log events enabled but no log channel set');
-    }
-
     const starboardThreshold = store.getConfig(guildId, 'starboard_threshold');
     const starboardChannel = store.getConfig(guildId, 'starboard_channel');
     if (starboardThreshold && !starboardChannel) {
       suggestions.push('💡 Starboard threshold is set but no starboard channel configured');
     }
 
-    const levelingEnabled = store.getConfig(guildId, 'leveling_enabled');
+    const levelingEnabled = store.getConfig(guildId, 'leveling') ?? true;
     const levelupChannel = store.getConfig(guildId, 'levelup_channel');
     if (levelingEnabled && !levelupChannel) {
       suggestions.push('💡 Leveling is on but no level-up announcement channel set');

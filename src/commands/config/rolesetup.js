@@ -1,7 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { colors } = require('../../utils/constants');
 const { base, response } = require('../../utils/embed');
-const store = require('../../database/store');
 const { createRole, lockdownRoleInChannels, ROLE_PRESETS } = require('../../utils/roleCreate');
 
 const PRESET_OPTIONS = [
@@ -78,7 +77,7 @@ module.exports = {
           const count = await lockdownRoleInChannels(interaction.guild, role, {
             deny: ['ViewChannel', 'SendMessages', 'AddReactions', 'Connect'],
           });
-          store.setConfig(interaction.guild.id, 'jail_role', role.id);
+          // /jail finds this role by name ('Jailed'); no config key is needed.
           results[results.length - 1].channelCount = count;
         }
       }
