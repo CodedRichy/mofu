@@ -77,10 +77,13 @@ player.events.on('emptyChannel', (queue) => musicCard.clear(queue.guild.id, 'Rec
 // Start
 async function start() {
   try {
-    try {
-      await db.connect();
-    } catch (err) {
-      log.warn('PostgreSQL unavailable — running without database:', err.message);
+    // PostgreSQL is optional: only try it when a URL is configured, so a normal SQLite-only boot logs no warning.
+    if (config.database.url) {
+      try {
+        await db.connect();
+      } catch (err) {
+        log.warn('PostgreSQL unavailable, running without it:', err.message || err.code || 'connection failed');
+      }
     }
 
     log.info('Starting bot...');
@@ -93,21 +96,39 @@ async function start() {
 }
 
 // Global error handlers
+// Log the stack, not just the message: "Cannot read properties of undefined" alone is unfindable after the fact.
 process.on('unhandledRejection', (err) => {
-  log.error('Unhandled rejection:', err?.message || err);
+  log.error('Unhandled rejection:', err?.stack || err?.message || err);
 });
 process.on('uncaughtException', (err) => {
-  log.error('Uncaught exception:', err.message);
+  log.error('Uncaught exception:', err?.stack || err?.message || err);
   process.exit(1);
 });
 
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  log.info('Shutting down...');
-  client.destroy();
-  await db.disconnect();
-  redis?.disconnect();
+// Gateway problems: without listeners an 'error' event becomes an uncaught exception and restarts the whole bot.
+client.on('error', (err) => log.error('Client error:', err?.stack || err?.message || err));
+client.on('warn', (msg) => log.warn('Client warning:', msg));
+client.on('shardDisconnect', (ev, id) => log.warn(`Shard ${id} disconnected (code ${ev?.code}); discord.js will reconnect`));
+client.on('shardReconnecting', (id) => log.info(`Shard ${id} reconnecting`));
+client.on('shardResume', (id, replayed) => log.info(`Shard ${id} resumed (${replayed} events replayed)`));
+
+// Graceful shutdown. docker stop sends SIGTERM (PID 1 ignores signals it has no handler for, then gets SIGKILLed
+// after 10s), so handle both: leave voice cleanly, close Discord, checkpoint SQLite, then exit.
+let shuttingDown = false;
+async function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  log.info(`${signal} received, shutting down...`);
+  const force = setTimeout(() => process.exit(1), 15000); // never hang forever
+  force.unref();
+  try { await player.destroy(); } catch { /* best effort */ }
+  try { client.destroy(); } catch { /* best effort */ }
+  try { await db.disconnect(); } catch { /* optional postgres */ }
+  try { redis?.disconnect(); } catch { /* optional redis */ }
+  try { require('./database/store').close?.(); } catch { /* store may not expose close */ }
   process.exit(0);
-});
+}
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
 
 start();

@@ -4,7 +4,9 @@ const log = require('../utils/logger');
 
 let redis = null;
 
+// Redis is optional: without REDIS_URL, skip it entirely (no connection attempts, no boot-time warning).
 try {
+  if (!process.env.REDIS_URL) throw new Error('not configured');
   redis = new Redis(config.redis.url, {
     maxRetriesPerRequest: 3,
     lazyConnect: true,
@@ -28,7 +30,7 @@ try {
   });
   redis.connect().catch(() => {});
 } catch {
-  log.warn('Redis not configured — running without cache');
+  redis = null;
 }
 
 module.exports = redis;

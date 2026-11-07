@@ -102,6 +102,12 @@ const configCache = new Map();
 module.exports = {
   db,
 
+  // Flush the WAL into the main file and close, for a clean shutdown.
+  close() {
+    try { db.pragma('wal_checkpoint(TRUNCATE)'); } catch { /* ignore */ }
+    try { db.close(); } catch { /* ignore */ }
+  },
+
   // Write-through cache of raw JSON strings (null = known missing). Only this module writes the config table.
   // Raw strings, parsed per read, so callers that mutate a returned array/object can't corrupt the cache.
   getConfig(guildId, key) {
