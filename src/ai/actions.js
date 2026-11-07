@@ -47,7 +47,49 @@ const NAME_AFTER = {
 };
 const DURATION = /\b(\d+)\s*(seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h|days?|d|weeks?|w)\b/i;
 // words that follow "mute" but are not a name ("how do i mute someone", "what does mute do")
-const NAME_STOP = new Set(['someone', 'somebody', 'anyone', 'everyone', 'everybody', 'people', 'user', 'users', 'member', 'members', 'him', 'her', 'them', 'his', 'hers', 'this', 'that', 'these', 'those', 'guy', 'girl', 'person', 'me', 'myself', 'you', 'yourself', 'it', 'the', 'and', 'for', 'now', 'please', 'pls', 'again', 'later', 'how', 'what', 'why', 'when', 'who', 'can', 'could', 'should', 'would', 'does', 'did', 'command', 'commands', 'works', 'work', 'mean', 'means', 'role', 'roles', 'feature', 'off', 'out', 'back', 'around', 'down', 'up']);
+const NAME_STOP = new Set(['someone', 'somebody', 'anyone', 'everyone', 'everybody', 'people', 'user', 'users', 'member', 'members', 'him', 'her', 'them', 'his', 'hers', 'this', 'that', 'these', 'those', 'guy', 'girl', 'person', 'me', 'myself', 'you', 'yourself', 'it', 'the', 'and', 'for', 'now', 'please', 'pls', 'again', 'later', 'how', 'what', 'why', 'when', 'who', 'can', 'could', 'should', 'would', 'does', 'did', 'command', 'commands', 'works', 'work', 'mean', 'means', 'role', 'roles', 'feature', 'off', 'out', 'back', 'around', 'down', 'up',
+  // pronouns, determiners, auxiliaries and prepositions: never a username in "mute <word>"
+  'your', 'yours', 'my', 'mine', 'our', 'ours', 'their', 'theirs', 'its', 'whoever', 'whatever', 'whomever', 'all', 'both', 'each', 'every', 'none', 'nobody', 'here', 'there', 'is', 'was', 'are', 'were', 'be', 'been', 'being', 'am', 'will', 'shall', 'may', 'might', 'must', 'not', 'no', 'dont', 'do', 'to', 'of', 'in', 'on', 'at', 'by', 'with', 'from', 'about', 'if', 'then', 'so', 'but', 'or', 'as', 'too', 'very', 'just', 'also',
+  // words that follow a verb in ordinary chat ("the mute button", "my timeout ends soon", "warn level high today")
+  'button', 'buttons', 'mic', 'ends', 'end', 'level', 'high', 'low', 'today', 'tomorrow', 'yesterday', 'tonight', 'soon', 'time', 'times', 'position', 'ass', 'asses', 'butt', 'rocks', 'rock', 'bucket', 'habit', 'tires', 'tire', 'chat', 'channel', 'server', 'bot', 'sonder', 'music', 'sound', 'volume', 'game', 'stream', 'event', 'gently', 'softly', 'slowly', 'quickly', 'harder', 'hard', 'already', 'forever', 'permanently', 'temporarily',
+  // filler, laughter and address terms
+  'lol', 'lmao', 'lmfao', 'rofl', 'omg', 'idk', 'ok', 'okay', 'kk', 'plz', 'pleas', 'bro', 'bruh', 'dude', 'fam', 'man', 'guys', 'gang', 'yo', 'hey', 'hi', 'hello', 'xd', 'haha', 'hehe', 'nvm', 'tho', 'though', 'bhai', 'yaar', 'yar',
+  // Hinglish / French / Spanish particles that follow a borrowed English verb
+  'karo', 'kar', 'kr', 'kro', 'kardo', 'karna', 'karde', 'mat', 'nahi', 'nhi', 'na', 'ko', 'ka', 'ki', 'ke', 'se', 'pe', 'isko', 'usko', 'inko', 'unko', 'pas', 'les', 'tu', 'peux', 'por', 'para', 'con', 'una', 'los']);
+// Typed names must look like a username: no channel marks, and not an adverb ("kick gently").
+const looksLikeName = (n) => /^[\p{L}\p{N}_.-]+$/u.test(n) && !/^\d/.test(n) && !/^(?:l+o+l+|lm+a+o+|(?:ha){2,}h?|(?:he){2,}h?|x+d+|a+h+|o+h+|u+m+|h+m+|e+h+|y+e+s+|n+o+p?e?)$/i.test(n);
+
+// ---- is this message addressed to the bot as an imperative? ----
+// Everything between the bot's name and the verb must be polite filler ("yo sonder, can you please mute ...").
+// Anything else ("i will kick", "dont mute", "why did you kick", "he said mute", "the sonder mute button") is
+// conversation, not a request.
+const PREFIX_FILLER = /^(?:(?:hey|yo|hi|hello|hiya|ok|okay|so|and|then|just|kindly|quickly|now|please|pls|plz|bot|sonder|ya|go ahead and|(?:can|could|would|will)\s+(?:you|u|ya)|you\s+(?:can|could|may)|(?:i\s+)?(?:want|need|wanna|would like|id like)\s+(?:you\s+)?to)(?:\s+|$))+/;
+// first word after the verb that makes it a noun / statement ("mute button", "mute is cringe", "kick your ass")
+const FOLLOW_BLOCK = new Set(['your', 'yours', 'my', 'his', 'her', 'their', 'our', 'its', 'is', 'was', 'are', 'were', 'be', 'been', 'being', 'button', 'buttons', 'mic', 'the', 'a', 'an', 'to', 'of', 'in', 'on', 'at', 'with', 'if', 'but', 'because', 'when', 'how', 'why', 'what', 'who', 'not', 'dont', 'never']);
+const MAX_CONTENT = 4000;
+
+function inCommandPosition(content, botId, verbAt, verbLen) {
+  let before = content.slice(0, verbAt);
+  if (botId) before = before.replace(new RegExp(`<@!?${botId}>`, 'g'), ' sonder ');
+  before = before.replace(/<@!?\d+>/g, ' @m ').toLowerCase();
+  // only what follows the bot's name counts: "lol sonder, mute x" is fine, "the sonder mute button" is judged by what follows the verb
+  const named = before.lastIndexOf('sonder');
+  // "@someone sonder mute @x": the line is addressed to someone else
+  if (named >= 0 && /@m[\s,:]*$/.test(before.slice(0, named))) return false;
+  if (named >= 0) before = before.slice(named + 'sonder'.length);
+  before = before.replace(/[^a-z0-9@'\s]/g, ' ').replace(/'/g, '').replace(/\s+/g, ' ').trim();
+  if (before) {
+    // a mention before the verb is only OK as "sonder @user mute" (named, exactly one)
+    let rest = before;
+    for (let prev = null; prev !== rest;) { prev = rest; rest = rest.replace(PREFIX_FILLER, '').trim(); }
+    if (named >= 0 && rest === '@m') rest = '';
+    if (rest) return false;
+  }
+  const after = content.slice(verbAt + verbLen).trimStart();
+  const next = after.match(/^@?([^\s<>,.!?;:]+)/);
+  if (next && FOLLOW_BLOCK.has(next[1].toLowerCase().replace(/'/g, ''))) return false;
+  return true;
+}
 
 /**
  * Returns null when the message is not a mute request (so it falls through to normal chat),
@@ -56,15 +98,18 @@ const NAME_STOP = new Set(['someone', 'somebody', 'anyone', 'everyone', 'everybo
  * and must not be phrased as a question.
  */
 function parseMuteIntent(content, botId) {
+  if (typeof content !== 'string' || content.length > MAX_CONTENT) return null;
   if (/\?\s*$/.test(content.trim())) return null;
   // Several verbs in one message ("kick him, he should have been muted"): act on whichever comes first,
   // and never more than one action per message.
-  const hits = [['unmute', UNMUTE_VERB], ['warn', WARN_VERB], ['kick', KICK_VERB]]
-    .map(([kind, re]) => [kind, content.search(re)]).filter(([, i]) => i >= 0);
-  const muteAt = content.search(MUTE_VERB);
-  if (muteAt >= 0) hits.push(['mute', muteAt]);
+  const hits = [];
+  for (const [kind, re] of [['unmute', UNMUTE_VERB], ['warn', WARN_VERB], ['kick', KICK_VERB], ['mute', MUTE_VERB]]) {
+    const m = re.exec(content);
+    if (m) hits.push([kind, m.index, m[0].length]);
+  }
   if (!hits.length) return null;
   hits.sort((a, b) => a[1] - b[1]);
+  if (!inCommandPosition(content, botId, hits[0][1], hits[0][2])) return null;
   if (hits[0][0] !== 'mute') return parseSimple(hits[0][0], content, botId);
 
   const targetIds = [...new Set([...content.matchAll(/<@!?(\d+)>/g)].map((m) => m[1]))].filter((id) => id !== botId);
@@ -75,7 +120,7 @@ function parseMuteIntent(content, botId) {
   let targetName = null;
   if (targetIds.length === 0) {
     const nm = text.match(/\b(?:mute|timeout|time\s*out|silence|shush)\s+@?([^\s<>@,.!?]{3,32})/i);
-    if (!nm || /^\d/.test(nm[1]) || NAME_STOP.has(nm[1].toLowerCase())) return null;
+    if (!nm || !looksLikeName(nm[1]) || NAME_STOP.has(nm[1].toLowerCase())) return null;
     targetName = nm[1];
     text = text.replace(nm[0], ' ');
   }
@@ -103,7 +148,7 @@ function parseSimple(kind, content, botId) {
   let targetName = null;
   if (targetIds.length === 0) {
     const nm = text.match(NAME_AFTER[kind]);
-    if (!nm || /^\d/.test(nm[1]) || NAME_STOP.has(nm[1].toLowerCase())) return null;
+    if (!nm || !looksLikeName(nm[1]) || NAME_STOP.has(nm[1].toLowerCase())) return null;
     targetName = nm[1];
     text = text.replace(nm[0], ' ');
   }
@@ -128,7 +173,10 @@ function usageHint(content, botId = null) {
   if ([...content.matchAll(/<@!?(\d+)>/g)].some((m) => m[1] !== botId)) return null;
   const words = content.toLowerCase().replace(/<@!?\d+>/g, ' ').replace(/[^a-z\s]/g, ' ').split(/\s+/)
     .filter((w) => w && !HINT_FILLER.has(w));
-  return words.length === 1 ? HINTS[words[0]] || null : null;
+  if (words.length === 1) return HINTS[words[0]] || null;
+  // the hint text itself says "@someone": people paste it back verbatim, so answer that with the hint again
+  if (words.length >= 2 && words[1] === 'someone' && HINTS[words[0]]) return HINTS[words[0]];
+  return null;
 }
 
 // Find one member by a typed name. Exact (case-insensitive) match on username / display name wins;

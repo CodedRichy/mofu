@@ -13,7 +13,7 @@ function normalizeQuery(q) {
   try {
     const u = new URL(raw);
     const host = u.hostname.replace(/^www\./, '');
-    const isYt = host === 'youtu.be' || host.endsWith('youtube.com');
+    const isYt = host === 'youtu.be' || host === 'youtube.com' || host.endsWith('.youtube.com');
     const hasVideo = host === 'youtu.be' ? u.pathname.length > 1 : u.searchParams.has('v');
     if (isYt && hasVideo && /^RD/i.test(u.searchParams.get('list') || '')) {
       u.searchParams.delete('list');

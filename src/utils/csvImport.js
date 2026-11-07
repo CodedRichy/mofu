@@ -4,23 +4,34 @@
 //   - problems are reported per line, they never abort the whole import silently
 const MAX_ROWS = 1000;
 const MAX_REASON = 1000;
+const MAX_FIELD = 20000;
 const SNOWFLAKE = /^\d{15,21}$/;
 
-// Minimal RFC-4180 style parser: quoted fields, "" escapes, commas and newlines inside quotes.
-function parseCsv(text) {
+// Minimal RFC-4180 style parser: quoted fields, "" escapes, delimiters and newlines inside quotes.
+// The delimiter (comma, semicolon or tab) is detected from the first line unless given.
+// Returns rows; `rows.unterminatedFrom` is the 1-based line where a quote was opened and never closed (0 if none).
+function parseCsv(text, delimiter) {
+  const src = String(text || '').replace(/^\uFEFF/, '');
+  const delim = delimiter || detectDelimiter(src);
   const rows = [];
+  let line = 1;
+  let quoteLine = 0;
   let row = [];
   let field = '';
   let inQuotes = false;
-  const src = String(text || '').replace(/^﻿/, '');
   for (let i = 0; i < src.length; i++) {
     const c = src[i];
+    if (c === '\n' || (c === '\r' && src[i + 1] !== '\n')) line++;
     if (inQuotes) {
       if (c === '"') {
         if (src[i + 1] === '"') { field += '"'; i++; } else inQuotes = false;
-      } else field += c;
-    } else if (c === '"') inQuotes = true;
-    else if (c === ',') { row.push(field); field = ''; }
+      } else {
+        field += c;
+        // a real reason is capped at MAX_REASON; a quoted field this long is a quote that was never closed
+        if (field.length > MAX_FIELD) break;
+      }
+    } else if (c === '"' && field.trim() === '') { inQuotes = true; quoteLine = line; field = ''; }
+    else if (c === delim) { row.push(field); field = ''; }
     else if (c === '\n' || c === '\r') {
       if (c === '\r' && src[i + 1] === '\n') i++;
       row.push(field); field = '';
@@ -28,9 +39,25 @@ function parseCsv(text) {
       row = [];
     } else field += c;
   }
+  Object.defineProperty(rows, 'unterminatedFrom', { value: inQuotes ? quoteLine : 0, enumerable: false });
+  if (inQuotes) return rows; // the half-read row is dropped, never imported
   row.push(field);
   if (row.some((v) => v.trim() !== '')) rows.push(row);
   return rows;
+}
+
+// Pick the delimiter from the header line: whichever of , ; tab appears most outside quotes (comma wins ties).
+function detectDelimiter(src) {
+  const first = src.split(/\r\n|\n|\r/, 1)[0] || '';
+  const counts = { ',': 0, ';': 0, '\t': 0 };
+  let q = false;
+  for (const c of first) {
+    if (c === '"') q = !q;
+    else if (!q && c in counts) counts[c]++;
+  }
+  let best = ',';
+  for (const d of [';', '\t']) if (counts[d] > counts[best]) best = d;
+  return best;
 }
 
 const ALIASES = {
@@ -64,7 +91,9 @@ function toIso(value) {
 function parseWarningsCsv(text) {
   const table = parseCsv(text);
   const errors = [];
-  if (!table.length) return { rows: [], errors: ['the file is empty.'], truncated: false };
+  const badQuoteLine = table.unterminatedFrom || 0;
+  const quoteError = badQuoteLine ? `line ${badQuoteLine}: a quote was opened and never closed, so this row and everything after it was skipped. fix the quote and re-upload.` : null;
+  if (!table.length) return { rows: [], errors: quoteError ? [quoteError] : ['the file is empty.'], truncated: false };
 
   // header row if the first cell of the first row is not a snowflake
   const hasHeader = !SNOWFLAKE.test(table[0][0].trim());
@@ -95,6 +124,7 @@ function parseWarningsCsv(text) {
     seen.add(key);
     rows.push({ userId, reason, moderatorId, timestamp });
   }
+  if (quoteError) errors.push(quoteError);
   return { rows, errors, truncated };
 }
 

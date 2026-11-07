@@ -69,3 +69,40 @@ test('imported warnings keep their original date in the store', () => {
   assert.ok(w.every((x) => !Number.isNaN(Date.parse(x.timestamp))));
   store.db.prepare('DELETE FROM warnings WHERE guild_id = ?').run(g);
 });
+
+test('an unterminated quote is reported and does not swallow the following rows', () => {
+  const csv = `user_id,reason\n${U1},ok\n${U2},"never closed\n${U1},next row\n${U2},another`;
+  const { rows, errors } = parseWarningsCsv(csv);
+  assert.deepStrictEqual(rows.map((r) => r.reason), ['ok']);
+  assert.strictEqual(errors.length, 1);
+  assert.match(errors[0], /line 3.*never closed/);
+});
+
+test('a runaway quote stops at the field cap instead of merging the whole file', () => {
+  const body = Array.from({ length: 3000 }, () => `${U1},spam reason text here`).join('\n');
+  const { rows, errors } = parseWarningsCsv(`user_id,reason\n${U2},"oops\n${body}`);
+  assert.strictEqual(rows.length, 0);
+  assert.ok(errors.some((e) => /never closed/.test(e)));
+});
+
+test('a quote inside an unquoted field is just text', () => {
+  const { rows, errors } = parseWarningsCsv(`user_id,reason\n${U1},5" nails\n${U2},fine`);
+  assert.deepStrictEqual(errors, []);
+  assert.deepStrictEqual(rows.map((r) => r.reason), ['5" nails', 'fine']);
+});
+
+test('semicolon and tab delimited files are detected', () => {
+  const semi = parseWarningsCsv(`user_id;reason;moderator\n${U1};"a; b";${MOD}\n${U2};rude;`);
+  assert.deepStrictEqual(semi.errors, []);
+  assert.deepStrictEqual(semi.rows.map((r) => r.reason), ['a; b', 'rude']);
+  assert.strictEqual(semi.rows[0].moderatorId, MOD);
+  const tab = parseWarningsCsv(`user_id\treason\n${U1}\tspam, again\n${U2}\trude`);
+  assert.deepStrictEqual(tab.errors, []);
+  assert.deepStrictEqual(tab.rows.map((r) => r.reason), ['spam, again', 'rude']);
+});
+
+test('a comma file with a semicolon inside a reason is still comma delimited', () => {
+  const { rows, errors } = parseWarningsCsv(`user_id,reason\n${U1},"a;b;c"`);
+  assert.deepStrictEqual(errors, []);
+  assert.strictEqual(rows[0].reason, 'a;b;c');
+});

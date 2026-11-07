@@ -18,3 +18,14 @@ test('keeps real playlists, plain searches and other sites untouched', () => {
   assert.strictEqual(normalizeQuery('let me love you dj snake'), 'let me love you dj snake');
   assert.strictEqual(normalizeQuery('https://open.spotify.com/track/1?list=RD1'), 'https://open.spotify.com/track/1?list=RD1');
 });
+
+test('only real YouTube hosts get the Mix cleanup', () => {
+  const mix = 'watch?v=abc123&list=RDabc123';
+  for (const host of ['notyoutube.com', 'evilyoutube.com', 'youtube.com.evil.io', 'fakeyoutu.be']) {
+    const u = `https://${host}/${mix}`;
+    assert.strictEqual(normalizeQuery(u), u, host);
+  }
+  for (const host of ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com']) {
+    assert.strictEqual(normalizeQuery(`https://${host}/${mix}`), `https://${host}/watch?v=abc123`, host);
+  }
+});

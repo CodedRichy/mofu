@@ -107,3 +107,34 @@ test('long timeout re-arms instead of firing early', () => {
   assert.strictEqual(delays.length, 1);
   assert.ok(delays[0] <= MAX_DELAY);
 });
+
+test('artists and titles that start with an article or "bad" match', () => {
+  for (const [s, args] of [
+    ['sonder play the weeknd', 'the weeknd'],
+    ['sonder play bad bunny', 'bad bunny'],
+    ['sonder play the chainsmokers closer', 'the chainsmokers closer'],
+    ['sonder play a sky full of stars', 'a sky full of stars'],
+    ['yo sonder, play the beatles', 'the beatles'],
+    ['sonder play good 4 u', 'good 4 u'],
+  ]) assert.deepStrictEqual(hit(s), { verb: 'play', args }, s);
+});
+
+test('explicit phrases stop/skip/pause work, other trailing words do not', () => {
+  assert.deepStrictEqual(hit('sonder stop the music'), { verb: 'stop', args: '' });
+  assert.deepStrictEqual(hit('sonder skip this'), { verb: 'skip', args: '' });
+  assert.deepStrictEqual(hit('sonder skip this song'), { verb: 'skip', args: '' });
+  assert.deepStrictEqual(hit('sonder skip this track please'), { verb: 'skip', args: '' });
+  assert.deepStrictEqual(hit('sonder skip this one'), { verb: 'skip', args: '' });
+  assert.deepStrictEqual(hit('sonder pause the music'), { verb: 'pause', args: '' });
+  for (const s of ['sonder stop the madness', 'sonder skip this part', 'sonder skip this conversation', 'sonder stop this', 'sonder skip the intro', 'sonder stop the music lol im joking']) {
+    assert.strictEqual(hit(s), null, s);
+  }
+});
+
+test('idioms starting with an article or pronoun stay conversation', () => {
+  for (const s of [
+    'sonder play it cool', 'sonder, play it cool', 'sonder play the fool', 'sonder play the game', 'sonder play the part',
+    'sonder play the victim', 'sonder play the', 'sonder play a', 'sonder play bad', 'sonder play good with others',
+    'sonder stop being weird', 'sonder loop me in', 'sonder queue up the meeting', 'sonder play my part',
+  ]) assert.strictEqual(hit(s), null, s);
+});
