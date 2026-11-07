@@ -207,6 +207,11 @@ class PrefixContext {
     return this.message.reply(data);
   }
 
+  async deleteReply() {
+    if (this._lastReply) await this._lastReply.delete();
+    this._lastReply = null;
+  }
+
   async deferReply() {
     this.deferred = true;
     this._lastReply = await this.message.reply({ content: DEFER_MESSAGES[Math.floor(Math.random() * DEFER_MESSAGES.length)] });

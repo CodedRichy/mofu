@@ -53,7 +53,7 @@ function buildCard(client, queue, frame = 0) {
       { name: 'Up next', value: next ? `${next.title}`.slice(0, 60) + (queue.tracks.size > 1 ? ` (+${queue.tracks.size - 1})` : '') : 'nothing queued', inline: true },
     );
   if (track.thumbnail) embed.setThumbnail(track.thumbnail);
-  if (track.requestedBy) embed.setFooter({ text: `requested by ${track.requestedBy.username} - sonder`, iconURL: client.user.displayAvatarURL() });
+  if (track.requestedBy) embed.setFooter({ text: `requested by ${track.requestedBy.globalName || track.requestedBy.username} - sonder`, iconURL: client.user.displayAvatarURL() });
 
   const btn = (id, label, style = ButtonStyle.Secondary) => new ButtonBuilder().setCustomId(`mp:${id}`).setLabel(label).setStyle(style);
   const row1 = new ActionRowBuilder().addComponents(

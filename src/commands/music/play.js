@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { useMainPlayer } = require('discord-player');
+const { useMainPlayer, useQueue } = require('discord-player');
 const { YoutubeExtractor } = require('discord-player-youtubei');
 const { colors } = require('../../utils/constants');
 const { response, base } = require('../../utils/embed');
@@ -64,6 +64,14 @@ module.exports = {
         // Pasted links still resolve to whichever service they belong to.
         ...(/^https?:\/\//i.test(query) ? {} : { searchEngine: `ext:${YoutubeExtractor.identifier}` }),
       });
+
+      // A single track that starts immediately gets the now-playing card; an "Added to queue" embed on top of it
+      // is the same information twice. Queued tracks and playlists still get the acknowledgement.
+      const nowPlaying = useQueue(interaction.guild.id)?.currentTrack;
+      if (!searchResult?.playlist && nowPlaying && nowPlaying.id === track.id) {
+        await interaction.deleteReply().catch(() => {});
+        return;
+      }
 
       const embed = base(interaction.client, colors.success)
         .setAuthor({ name: 'Added to queue' })
