@@ -29,6 +29,10 @@ module.exports = {
   groq: {
     apiKey: process.env.GROQ_API_KEY,
   },
+  gemini: {
+    apiKey: process.env.GEMINI_API_KEY,
+    model: process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite',
+  },
   openai: {
     apiKey: process.env.OPENAI_API_KEY,
   },
