@@ -4,6 +4,7 @@ const { response } = require('../../utils/embed');
 const store = require('../../database/store');
 
 const COINFLIP_COOLDOWN = 15000;
+const LUCKY_COIN_MAX_BET = 500;
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -34,6 +35,8 @@ module.exports = {
       return interaction.reply({ embeds: [response({ client: interaction.client, description: `You only have **⌬ ${bal.wallet.toLocaleString()}** in your wallet.`, color: colors.error })], ephemeral: true });
     }
 
+    const coinSkipped = amount > LUCKY_COIN_MAX_BET && (store.getConfig(guild.id, `inv_${user.id}`) || {}).lucky_coin > 0;
+
     store.setCooldown(guild.id, user.id, 'coinflip', Date.now() + COINFLIP_COOLDOWN);
 
     // Deduct bet upfront to prevent race condition with concurrent flips
@@ -41,7 +44,7 @@ module.exports = {
 
     const inv = store.getConfig(guild.id, `inv_${user.id}`) || {};
     let hasLuck = false;
-    if (inv.lucky_coin && inv.lucky_coin > 0) {
+    if (inv.lucky_coin && inv.lucky_coin > 0 && amount <= LUCKY_COIN_MAX_BET) {
       inv.lucky_coin -= 1;
       if (inv.lucky_coin === 0) delete inv.lucky_coin;
       store.setConfig(guild.id, `inv_${user.id}`, inv);
@@ -59,12 +62,13 @@ module.exports = {
     const newBal = store.getBalance(guild.id, user.id);
     const emoji = result === 'heads' ? '👑' : '🪙';
 
+    const note = coinSkipped ? `\n-# Your Lucky Coin only works on bets of ⌬ ${LUCKY_COIN_MAX_BET} or less, so it was not used.` : '';
     const desc = won
       ? `${emoji} It landed on **${result}**! You won **⌬ ${amount.toLocaleString()}**\n**Wallet** \`⌬ ${newBal.wallet.toLocaleString()}\``
       : `${emoji} It landed on **${result}**. You lost **⌬ ${amount.toLocaleString()}**\n**Wallet** \`⌬ ${newBal.wallet.toLocaleString()}\``;
 
     await interaction.reply({
-      embeds: [response({ client: interaction.client, description: desc, color: won ? colors.success : colors.error })],
+      embeds: [response({ client: interaction.client, description: desc + note, color: won ? colors.success : colors.error })],
     });
   },
 };

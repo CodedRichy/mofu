@@ -22,7 +22,7 @@ module.exports = {
       return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Confession channel no longer exists.', color: colors.error })], ephemeral: true });
     }
 
-    const message = interaction.options.getString('message');
+    const message = interaction.options.getString('message').slice(0, 4000);
     confessionCounter++;
 
     const embed = base(interaction.client, colors.primary)

@@ -19,6 +19,7 @@ function spin() {
 }
 
 const SLOTS_COOLDOWN = 15000;
+const LUCKY_COIN_MAX_BET = 500;
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -46,7 +47,8 @@ module.exports = {
 
     const inv = store.getConfig(guild.id, `inv_${user.id}`) || {};
     let hasLuck = false;
-    if (inv.lucky_coin && inv.lucky_coin > 0) {
+    const coinSkipped = inv.lucky_coin > 0 && amount > LUCKY_COIN_MAX_BET;
+    if (inv.lucky_coin && inv.lucky_coin > 0 && amount <= LUCKY_COIN_MAX_BET) {
       inv.lucky_coin -= 1;
       if (inv.lucky_coin === 0) delete inv.lucky_coin;
       store.setConfig(guild.id, `inv_${user.id}`, inv);
@@ -101,7 +103,7 @@ module.exports = {
     const embed = stage(
       won ? colors.success : multiplier > 0 ? colors.warning : colors.error,
       r1, r2, r3,
-      `${head}${result}\n**Wallet** \`⌬ ${newBal.wallet.toLocaleString()}\``
+      `${head}${result}\n**Wallet** \`⌬ ${newBal.wallet.toLocaleString()}\`${coinSkipped ? `\n-# Your Lucky Coin only works on bets of ⌬ ${LUCKY_COIN_MAX_BET} or less, so it was not used.` : ''}`
     );
 
     await interaction.editReply({ embeds: [embed] });

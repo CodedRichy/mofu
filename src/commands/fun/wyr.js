@@ -35,9 +35,14 @@ module.exports = {
     });
 
     await interaction.reply({ embeds: [embed] });
-    const msg = await interaction.fetchReply();
-    await msg.react('🅰️');
-    await msg.react('🅱️');
+    const msg = await interaction.fetchReply().catch(() => null);
+    if (!msg) return;
+    try {
+      await msg.react('🅰️');
+      await msg.react('🅱️');
+    } catch {
+      // Missing Add Reactions permission or the message is gone: the poll still runs on whatever reactions exist
+    }
 
     const collector = msg.createReactionCollector({ time: 30000 });
 

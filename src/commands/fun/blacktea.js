@@ -39,7 +39,7 @@ module.exports = {
     const filter = (m) => {
       if (m.author.bot) return false;
       const word = m.content.toLowerCase().trim();
-      return word.length >= 3 && word.includes(prompt);
+      return word.length >= 3 && /^[a-z]+$/.test(word) && word.includes(prompt);
     };
 
     try {

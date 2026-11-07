@@ -1,7 +1,7 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 
-const dbPath = path.join(__dirname, '..', '..', 'data', 'sonder.db');
+const dbPath = process.env.SONDER_XP_DB || path.join(__dirname, '..', '..', 'data', 'sonder.db');
 require('fs').mkdirSync(path.dirname(dbPath), { recursive: true });
 
 const db = new Database(dbPath);
@@ -76,7 +76,19 @@ function getLeaderboard(guildId, limit = 10) {
   return stmts.leaderboard.all(guildId, limit).map((r) => ({ userId: r.user_id, level: r.level, totalXp: r.total_xp }));
 }
 
+const MAX_LEVEL = 1000;
+const MAX_XP = 2 ** 31;
+
+// Reject non-integers/negatives, clamp huge values so the O(level) loops stay bounded.
+function clampInt(value, max, label) {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
+    throw new RangeError(`${label} must be a non-negative integer`);
+  }
+  return Math.min(value, max);
+}
+
 function setLevel(guildId, userId, level) {
+  level = clampInt(level, MAX_LEVEL, 'level');
   const m = { xp: 0, level, totalXp: 0, lastMessage: getMember(guildId, userId).lastMessage };
   for (let i = 0; i < level; i++) m.totalXp += xpForLevel(i);
   saveMember(guildId, userId, m);
@@ -84,6 +96,7 @@ function setLevel(guildId, userId, level) {
 }
 
 function setXp(guildId, userId, xp) {
+  xp = clampInt(xp, MAX_XP, 'xp');
   const m = { xp: 0, level: 0, totalXp: xp, lastMessage: getMember(guildId, userId).lastMessage };
   let remaining = xp;
   while (remaining >= xpForLevel(m.level)) {
@@ -100,4 +113,4 @@ function getRank(guildId, userId) {
   return (row?.rank ?? 0) + 1;
 }
 
-module.exports = { addXp, getStats, canEarnXp, getLeaderboard, setLevel, setXp, getRank, xpForLevel };
+module.exports = { clampInt, MAX_LEVEL, MAX_XP, addXp, getStats, canEarnXp, getLeaderboard, setLevel, setXp, getRank, xpForLevel };

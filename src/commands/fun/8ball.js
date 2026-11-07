@@ -18,7 +18,7 @@ module.exports = {
     .addStringOption((o) => o.setName('question').setDescription('Your question').setRequired(true)),
 
   async execute(interaction) {
-    const question = interaction.options.getString('question');
+    const question = interaction.options.getString('question').slice(0, 1000);
     const answer = RESPONSES[Math.floor(Math.random() * RESPONSES.length)];
 
     await interaction.reply({

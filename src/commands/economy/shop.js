@@ -49,6 +49,13 @@ module.exports = {
 
       const bal = store.getBalance(interaction.guild.id, interaction.user.id);
 
+      if (item.id === 'fishing_rod' || item.id === 'laptop') {
+        const owned = store.getConfig(interaction.guild.id, `inv_${interaction.user.id}`) || {};
+        if (owned[itemId] > 0) {
+          return interaction.reply({ embeds: [response({ client: interaction.client, description: `You already own a ${item.emoji} **${item.name}**. It is permanent, so a second one would be wasted.`, color: colors.error })], ephemeral: true });
+        }
+      }
+
       if (bal.wallet < item.price) {
         return interaction.reply({ embeds: [response({ client: interaction.client, description: `You need **⌬ ${item.price.toLocaleString()}** but only have **⌬ ${bal.wallet.toLocaleString()}**`, color: colors.error })], ephemeral: true });
       }

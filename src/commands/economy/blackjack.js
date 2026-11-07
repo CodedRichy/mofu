@@ -34,7 +34,7 @@ function displayHand(hand) {
   return hand.map((c) => `\`${c.rank}${c.suit}\``).join(' ');
 }
 
-function buildEmbed(client, user, playerHand, dealerHand, amount, status, hideDealer) {
+function buildEmbed(client, user, guildId, playerHand, dealerHand, amount, status, hideDealer) {
   const pVal = handValue(playerHand);
   const dVal = hideDealer ? cardValue(dealerHand[0].rank) : handValue(dealerHand);
   const dealerDisplay = hideDealer
@@ -61,7 +61,7 @@ function buildEmbed(client, user, playerHand, dealerHand, amount, status, hideDe
       bust: `Bust! You lost **⌬ ${amount.toLocaleString()}**`,
       push: `Push — your bet was returned`,
     };
-    const newBal = store.getBalance(user.guild?.id || '0', user.id);
+    const newBal = store.getBalance(guildId, user.id);
     embed.addFields({ name: 'Result', value: `${messages[status]}\n**Wallet** \`⌬ ${newBal.wallet.toLocaleString()}\`` });
   }
 
@@ -106,21 +106,29 @@ module.exports = {
     const dealerHand = [deck.pop(), deck.pop()];
 
     if (handValue(playerHand) === 21) {
-      store.addWallet(guild.id, user.id, Math.floor(amount * 2.5));
-      const embed = buildEmbed(interaction.client, user, playerHand, dealerHand, amount, 'blackjack', false);
+      const dealerBj = handValue(dealerHand) === 21;
+      store.addWallet(guild.id, user.id, dealerBj ? amount : Math.floor(amount * 2.5));
+      const embed = buildEmbed(interaction.client, user, guild.id, playerHand, dealerHand, amount, dealerBj ? 'push' : 'blackjack', false);
       return interaction.reply({ embeds: [embed] });
     }
 
     const gameId = `bj_${user.id}_${Date.now()}`;
-    activeGames.set(user.id, { deck, playerHand, dealerHand, amount, guildId: guild.id });
+    activeGames.set(user.id, { deck, playerHand, dealerHand, amount, guildId: guild.id, acted: false });
 
     const buttons = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId(`${gameId}_hit`).setLabel('Hit').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId(`${gameId}_stand`).setLabel('Stand').setStyle(ButtonStyle.Secondary),
     );
 
-    const embed = buildEmbed(interaction.client, user, playerHand, dealerHand, amount, 'playing', true);
-    const msg = await interaction.reply({ embeds: [embed], components: [buttons], fetchReply: true });
+    const embed = buildEmbed(interaction.client, user, guild.id, playerHand, dealerHand, amount, 'playing', true);
+    let msg;
+    try {
+      msg = await interaction.reply({ embeds: [embed], components: [buttons], fetchReply: true });
+    } catch (err) {
+      // The player never saw the hand: give the bet back and free the slot
+      if (activeGames.delete(user.id)) store.addWallet(guild.id, user.id, amount);
+      throw err;
+    }
 
     const collector = msg.createMessageComponentCollector({ time: 60000 });
 
@@ -131,6 +139,8 @@ module.exports = {
 
       const game = activeGames.get(user.id);
       if (!game) return btn.update({ components: [] });
+
+      game.acted = true;
 
       if (btn.customId.endsWith('_hit')) {
         if (game.deck.length === 0) {
@@ -143,14 +153,14 @@ module.exports = {
           if (pVal > 21) {
             activeGames.delete(user.id);
             collector.stop();
-            const embed = buildEmbed(interaction.client, user, game.playerHand, game.dealerHand, game.amount, 'bust', false);
+            const embed = buildEmbed(interaction.client, user, guild.id, game.playerHand, game.dealerHand, game.amount, 'bust', false);
             return btn.update({ embeds: [embed], components: [] });
           }
 
           if (pVal === 21) {
             btn.customId = `${gameId}_stand`;
           } else {
-            const embed = buildEmbed(interaction.client, user, game.playerHand, game.dealerHand, game.amount, 'playing', true);
+            const embed = buildEmbed(interaction.client, user, guild.id, game.playerHand, game.dealerHand, game.amount, 'playing', true);
             return btn.update({ embeds: [embed], components: [buttons] });
           }
         }
@@ -177,18 +187,22 @@ module.exports = {
 
         activeGames.delete(user.id);
         collector.stop();
-        const embed = buildEmbed(interaction.client, user, game.playerHand, game.dealerHand, game.amount, status, false);
+        const embed = buildEmbed(interaction.client, user, guild.id, game.playerHand, game.dealerHand, game.amount, status, false);
         return btn.update({ embeds: [embed], components: [] });
       }
     });
 
     collector.on('end', (_, reason) => {
-      if (activeGames.has(user.id)) {
-        // Refund bet if game wasn't resolved (timeout, idle, or any non-explicit stop)
-        store.addWallet(guild.id, user.id, amount);
+      const game = activeGames.get(user.id);
+      if (game) {
+        // Refund only if the player never acted; walking away mid-hand forfeits the bet
         activeGames.delete(user.id);
+        if (!game.acted) store.addWallet(guild.id, user.id, amount);
+        const text = game.acted
+          ? `Blackjack timed out mid-hand — you forfeit your **⌬ ${amount.toLocaleString()}** bet.`
+          : `Blackjack timed out — your **⌬ ${amount.toLocaleString()}** bet has been refunded.`;
         interaction.editReply({
-          embeds: [response({ client: interaction.client, description: `Blackjack timed out — your **⌬ ${amount.toLocaleString()}** bet has been refunded.`, color: colors.warning })],
+          embeds: [response({ client: interaction.client, description: text, color: colors.warning })],
           components: [],
         }).catch(() => {});
       }

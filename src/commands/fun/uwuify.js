@@ -22,8 +22,8 @@ module.exports = {
     .addStringOption((o) => o.setName('text').setDescription('Text to uwuify').setRequired(true)),
 
   async execute(interaction) {
-    const text = interaction.options.getString('text');
-    const result = uwuify(text);
+    const text = interaction.options.getString('text').slice(0, 1000);
+    const result = uwuify(text).slice(0, 4000);
 
     await interaction.reply({
       embeds: [response({ client: interaction.client, description: result, color: colors.primary })],
