@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { colors } = require('../../utils/constants');
 const { base } = require('../../utils/embed');
+const { statusOf } = require('../../utils/presence');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -13,9 +14,10 @@ module.exports = {
       .sort((a, b) => a.user.username.localeCompare(b.user.username));
 
     const desc = bots.map((m) => {
-      const status = m.presence?.status || 'offline';
-      const dot = status === 'online' ? '🟢' : status === 'idle' ? '🟡' : status === 'dnd' ? '🔴' : '⚫';
-      return `${dot} ${m}`;
+      // presence is only shown when Discord actually sent it; otherwise no dot rather than a false "offline"
+      const status = statusOf(m);
+      const dot = status === 'online' ? '🟢' : status === 'idle' ? '🟡' : status === 'dnd' ? '🔴' : status === 'offline' ? '⚫' : '';
+      return dot ? `${dot} ${m}` : `${m}`;
     }).join('\n');
 
     const embed = base(interaction.client, colors.primary)

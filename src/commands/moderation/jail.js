@@ -108,16 +108,17 @@ module.exports = {
         return send(interaction, { embeds: [response({ client: interaction.client, description: "Couldn't jail that member. Check my permissions and role position.", color: colors.error })], ephemeral: true });
       }
 
-      await target.user.send({ embeds: [dmNotice({ guild: interaction.guild, action: 'Jailed', reason, color: colors.error })] }).catch(() => {});
+      const caseId = modlog.openCase(interaction.guild, { action: 'Jail', target: target.user, moderator: interaction.user, reason });
+      await target.user.send({ embeds: [dmNotice({ guild: interaction.guild, action: 'Jailed', reason, color: colors.error, caseId })] }).catch(() => {});
 
       const embed = modAction({
         client: interaction.client, action: 'Jail', color: colors.error,
-        target: target.user, moderator: interaction.user, reason,
+        target: target.user, moderator: interaction.user, reason, caseId,
       });
 
       const warnText = failureText(setup.failedNames);
       await send(interaction, { embeds: warnText ? [embed, response({ client: interaction.client, description: warnText, color: colors.warning })] : [embed] });
-      await modlog.send(interaction.guild, { action: 'Jail', target: target.user, moderator: interaction.user, reason });
+      await modlog.send(interaction.guild, { action: 'Jail', target: target.user, moderator: interaction.user, reason, caseId });
     } else if (sub === 'remove') {
       if (target.id === interaction.user.id) {
         return interaction.reply({ embeds: [response({ client: interaction.client, description: "You can't unjail yourself.", color: colors.error })], ephemeral: true });
@@ -142,13 +143,14 @@ module.exports = {
       }
       store.setConfig(interaction.guild.id, `jail_roles_${target.id}`, null);
 
+      const caseId = modlog.openCase(interaction.guild, { action: 'Unjail', target: target.user, moderator: interaction.user, reason });
       const embed = modAction({
         client: interaction.client, action: 'Unjail', color: colors.success,
-        target: target.user, moderator: interaction.user, reason,
+        target: target.user, moderator: interaction.user, reason, caseId,
       });
 
       await interaction.reply({ embeds: [embed] });
-      await modlog.send(interaction.guild, { action: 'Unjail', target: target.user, moderator: interaction.user, reason });
+      await modlog.send(interaction.guild, { action: 'Unjail', target: target.user, moderator: interaction.user, reason, caseId });
     }
   },
 };

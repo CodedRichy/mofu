@@ -63,10 +63,11 @@ module.exports = {
         return send(interaction, { embeds: [response({ client: interaction.client, description: "Couldn't reaction mute that member. Check my permissions and role position.", color: colors.error })], ephemeral: true });
       }
 
-      const embed = modAction({ client: interaction.client, action: 'Reaction Mute', color: colors.warning, target: member.user, moderator: interaction.user, reason });
+      const caseId = modlog.openCase(interaction.guild, { action: 'Reaction Mute', target: member.user, moderator: interaction.user, reason });
+      const embed = modAction({ client: interaction.client, action: 'Reaction Mute', color: colors.warning, target: member.user, moderator: interaction.user, reason, caseId });
       const warnText = failureText(setup.failedNames);
       await send(interaction, { embeds: warnText ? [embed, response({ client: interaction.client, description: warnText, color: colors.warning })] : [embed] });
-      await modlog.send(interaction.guild, { action: 'Reaction Mute', target: member.user, moderator: interaction.user, reason });
+      await modlog.send(interaction.guild, { action: 'Reaction Mute', target: member.user, moderator: interaction.user, reason, caseId });
     } else if (sub === 'remove') {
       const rmuteRole = interaction.guild.roles.cache.find((r) => r.name === 'Reaction Muted');
       if (!rmuteRole || !member.roles.cache.has(rmuteRole.id)) {
@@ -74,9 +75,10 @@ module.exports = {
       }
 
       await member.roles.remove(rmuteRole);
-      const embed = modAction({ client: interaction.client, action: 'Reaction Unmute', color: colors.success, target: member.user, moderator: interaction.user, reason: 'Removed' });
+      const caseId = modlog.openCase(interaction.guild, { action: 'Reaction Unmute', target: member.user, moderator: interaction.user, reason: 'Removed' });
+      const embed = modAction({ client: interaction.client, action: 'Reaction Unmute', color: colors.success, target: member.user, moderator: interaction.user, reason: 'Removed', caseId });
       await interaction.reply({ embeds: [embed] });
-      await modlog.send(interaction.guild, { action: 'Reaction Unmute', target: member.user, moderator: interaction.user, reason: 'Removed' });
+      await modlog.send(interaction.guild, { action: 'Reaction Unmute', target: member.user, moderator: interaction.user, reason: 'Removed', caseId });
     }
   },
 };

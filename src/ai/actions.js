@@ -6,10 +6,11 @@
 //  - The target must be explicitly @mentioned by the invoker.
 //  - Authority is the invoker's real Discord permissions + role hierarchy, checked when the card is
 //    shown AND again when the button is pressed. The bot's own permissions are never the gate.
-//  - Every action needs a confirmation button that only the invoker can press (60s expiry).
+//  - Every action needs a confirmation button that only the invoker can press (120s expiry). Cards the bot raises
+//    itself (voice guard) may set `anyoneWithPerm`; the presser's permission is then read fresh at press time.
 //  - Every executed action is tagged "via mofu AI" in the Discord audit log and the modlog.
 const crypto = require('crypto');
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits } = require('discord.js');
 const { colors, BRAND, TRIGGER_WORDS, TRIGGER_ALT } = require('../utils/constants');
 const { base, modAction, dmNotice, response } = require('../utils/embed');
 const { parse, format } = require('../utils/duration');
@@ -379,6 +380,19 @@ async function proposeMute(message, intent) {
   log.info(`AI action proposed: ${kind} target=${v.target.id} dur=${dur} by=${message.author.id} guild=${guild.id}`);
 }
 
+// Who may press a card. Cards made from a person's sentence are requester-only. A card raised by the bot itself
+// (e.g. voice guard) may carry `anyoneWithPerm` (a PermissionFlagsBits name): any member holding that permission
+// right now may press it. The permission is read fresh from Discord at press time, never from a cached member.
+// Whatever the card then runs still re-checks the presser's own permissions and role order.
+async function canPress(p, interaction) {
+  if (interaction.user.id === p.invokerId) return { ok: true };
+  const flag = p.anyoneWithPerm;
+  if (!flag || !PermissionFlagsBits[flag]) return { ok: false, message: `only <@${p.invokerId}> can confirm this.` };
+  const member = await interaction.guild?.members?.fetch({ user: interaction.user.id, force: true }).catch(() => null);
+  if (member && member.permissions.has(flag)) return { ok: true };
+  return { ok: false, message: `you need the **${flag.replace(/([a-z])([A-Z])/g, '$1 $2')}** permission to confirm this.` };
+}
+
 async function handleButton(interaction) {
   const [, id, verb] = interaction.customId.split(':');
   const ephemeral = (description, color = colors.muted) =>
@@ -391,7 +405,8 @@ async function handleButton(interaction) {
     return interaction.update({ embeds: [resultCard({ client: interaction.client, title: 'EXPIRED', kind: 'action', note: 'Nothing was done. Ask again if you still want it.', color: colors.muted })], components: [], allowedMentions: NO_PINGS })
       .catch(() => ephemeral('that one expired.'));
   }
-  if (interaction.user.id !== p.invokerId) return ephemeral(`only <@${p.invokerId}> can confirm this.`, colors.error);
+  const gate = await canPress(p, interaction);
+  if (!gate.ok) return ephemeral(gate.message, colors.error);
 
   // delete before executing so a double click can never run it twice
   pending.delete(id);
@@ -467,6 +482,6 @@ async function handleButton(interaction) {
 module.exports = {
   parseMuteIntent, proposeMute, handleButton, usageHint,
   // shared with src/ai/router.js (one pending map, one set of limits, one name resolver)
-  shared: { pending, hasPending, userRateOk, rateOk, resolveName, looksLikeName, NAME_STOP, NO_PINGS, resultCard, audit },
+  shared: { pending, hasPending, userRateOk, rateOk, resolveName, looksLikeName, NAME_STOP, NO_PINGS, resultCard, audit, canPress },
   _limits: { windowOk, USER_RATE_MAX, RATE_MAX }, _cards: { proposalCard, resultCard },
 };

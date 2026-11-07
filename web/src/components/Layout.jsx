@@ -79,8 +79,8 @@ function LogoMark() {
   )
 }
 
-// wide: marketing pages whose framed cards use --page-max / --page-gutter; the nav and footer edges follow them.
-export function Layout({ children, bare = false, wide = false }) {
+// wide (default on, so the nav and footer look the same on every page): pages whose framed cards use --page-max / --page-gutter; the nav and footer edges follow them.
+export function Layout({ children, bare = false, wide = true }) {
   const edge = wide ? { maxWidth: 'var(--page-max)', pad: 'var(--page-gutter)' } : { maxWidth: 1120, pad: 'var(--space-6)' }
   const location = useLocation()
   const navigate = useNavigate()

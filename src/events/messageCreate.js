@@ -14,6 +14,7 @@ const { parseMusicIntent } = require('../utils/musicIntent');
 const { parseTimezoneIntent } = require('../utils/tzIntent');
 const { routeMessage } = require('../ai/router');
 const automod = require('../utils/automod');
+const { detectMentionTrigger } = require('../utils/mentionTrigger');
 
 // The bot's name as a whole word: 'mofu' or the old name 'sonder' (TRIGGER_WORDS in src/utils/constants.js).
 // Chat only: a stretched "mofuuu" still counts as saying the name. Actions use their own stricter parsers.
@@ -379,7 +380,8 @@ module.exports = {
     if (!message.content.startsWith(prefix)) {
       const botId = message.client.user.id;
       const mentionRe = new RegExp(`<@!?${botId}>`, 'g');
-      let named = TRIGGER_RE.test(message.content) || mentionRe.test(message.content);
+      // mention-first: a message that STARTS with @mofu counts (works without Message Content), then the name or a mention anywhere
+      let named = detectMentionTrigger({ content: message.content, botId }).triggered || TRIGGER_RE.test(message.content) || mentionRe.test(message.content);
       // Replying to one of the bot's own messages is talking to it, no name needed. Only chat is eligible
       // (a reply never becomes a mute/music action: those parsers still need the name in the text).
       if (!named && message.reference?.messageId && canInvokeAi(message)) {

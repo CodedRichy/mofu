@@ -63,10 +63,11 @@ module.exports = {
         return send(interaction, { embeds: [response({ client: interaction.client, description: "Couldn't image mute that member. Check my permissions and role position.", color: colors.error })], ephemeral: true });
       }
 
-      const embed = modAction({ client: interaction.client, action: 'Image Mute', color: colors.warning, target: member.user, moderator: interaction.user, reason });
+      const caseId = modlog.openCase(interaction.guild, { action: 'Image Mute', target: member.user, moderator: interaction.user, reason });
+      const embed = modAction({ client: interaction.client, action: 'Image Mute', color: colors.warning, target: member.user, moderator: interaction.user, reason, caseId });
       const warnText = failureText(setup.failedNames);
       await send(interaction, { embeds: warnText ? [embed, response({ client: interaction.client, description: warnText, color: colors.warning })] : [embed] });
-      await modlog.send(interaction.guild, { action: 'Image Mute', target: member.user, moderator: interaction.user, reason });
+      await modlog.send(interaction.guild, { action: 'Image Mute', target: member.user, moderator: interaction.user, reason, caseId });
     } else if (sub === 'remove') {
       const imuteRole = interaction.guild.roles.cache.find((r) => r.name === 'Image Muted');
       if (!imuteRole || !member.roles.cache.has(imuteRole.id)) {
@@ -74,9 +75,10 @@ module.exports = {
       }
 
       await member.roles.remove(imuteRole);
-      const embed = modAction({ client: interaction.client, action: 'Image Unmute', color: colors.success, target: member.user, moderator: interaction.user, reason: 'Removed' });
+      const caseId = modlog.openCase(interaction.guild, { action: 'Image Unmute', target: member.user, moderator: interaction.user, reason: 'Removed' });
+      const embed = modAction({ client: interaction.client, action: 'Image Unmute', color: colors.success, target: member.user, moderator: interaction.user, reason: 'Removed', caseId });
       await interaction.reply({ embeds: [embed] });
-      await modlog.send(interaction.guild, { action: 'Image Unmute', target: member.user, moderator: interaction.user, reason: 'Removed' });
+      await modlog.send(interaction.guild, { action: 'Image Unmute', target: member.user, moderator: interaction.user, reason: 'Removed', caseId });
     }
   },
 };

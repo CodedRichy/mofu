@@ -146,7 +146,7 @@ test('healthz: 200 with gateway, ping, db and uptime when ready; 503 when not re
     const r = await fetch(`${base}/healthz`);
     assert.equal(r.status, 200);
     const body = await r.json();
-    assert.deepEqual(Object.keys(body).sort(), ['db', 'discord', 'ok', 'uptimeSeconds']);
+    assert.deepEqual(Object.keys(body).sort(), ['commands', 'db', 'discord', 'lastBackupAt', 'ok', 'providers', 'sharding', 'uptimeSeconds']);
     assert.equal(body.discord.ready, true);
     assert.equal(body.discord.wsPingMs, 42);
     assert.equal(body.db.ok, true);

@@ -4,24 +4,7 @@ const { response } = require('../../utils/embed');
 const { cmdRef } = require('../../utils/invocation');
 const store = require('../../database/store');
 
-const KEYS = [
-  'prefix', 'welcome_channel', 'welcome_message', 'welcome_card',
-  'goodbye_channel', 'goodbye_message', 'goodbye_card',
-  'log_channel', 'modlog_channel', 'audit_log_channel',
-  'log_message_delete', 'log_message_edit', 'log_member_join',
-  'log_member_leave', 'log_role_change', 'log_voice', 'log_nickname',
-  'antispam', 'antilink', 'antilink_whitelist', 'antiraid',
-  'antiraid_threshold', 'antiraid_action', 'antiraid_account_age',
-  'antinuke', 'antinuke_whitelist', 'antinuke_thresholds',
-  'ai_automod', 'word_filter',
-  'autoroles', 'ticket_enabled', 'ticket_support_role',
-  'ticket_category', 'ticket_logs',
-  'starboard_channel', 'starboard_threshold', 'starboard_emoji', 'starboard_selfstar',
-  'counter_channel', 'leveling', 'levelup_channel',
-  'nightwatch', 'confession_channel', 'bump_channel',
-];
-
-const KEYS_SET = new Set(KEYS);
+const backup = require('../../utils/backup');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -41,22 +24,8 @@ module.exports = {
     const { guild } = interaction;
 
     if (sub === 'export') {
-      const config = {};
-      for (const key of KEYS) {
-        const value = store.getConfig(guild.id, key);
-        if (value !== null && value !== undefined) config[key] = value;
-      }
-
-      const data = {
-        _meta: {
-          guild: guild.name,
-          exportedAt: new Date().toISOString(),
-          version: 1,
-        },
-        config,
-      };
-
-      const keyCount = Object.keys(config).length;
+      const data = backup.buildExport(guild, { store });
+      const keyCount = Object.keys(data.config).length;
       const file = new AttachmentBuilder(Buffer.from(JSON.stringify(data, null, 2)), {
         name: `mofu-backup-${guild.id}.json`,
       });
@@ -65,7 +34,7 @@ module.exports = {
         embeds: [
           response({
             client: interaction.client,
-            description: `Config exported. **${keyCount}** settings backed up.`,
+            description: `Config exported: **${keyCount}** settings, **${data.panels.length}** role panels and **${data.tags.length}** tags saved to the file. Import restores settings and tags; role panels are saved for reference and have to be rebuilt by hand. Mod cases, levels and economy are not in this file.`,
             color: colors.success,
           }),
         ],
@@ -101,25 +70,18 @@ module.exports = {
         });
       }
 
-      if (!data._meta || !data.config || typeof data.config !== 'object' || data._meta.version !== 1) {
+      if (!backup.validateExport(data).ok) {
         return interaction.reply({
           embeds: [response({ client: interaction.client, description: `This doesn't look like a mofu backup. Use ${cmdRef(interaction.guild.id, 'backup export')} to create one.`, color: colors.error })],
           ephemeral: true,
         });
       }
 
-      let appliedCount = 0;
-      const skippedKeys = [];
-      for (const [key, value] of Object.entries(data.config)) {
-        if (!KEYS_SET.has(key)) {
-          skippedKeys.push(key);
-          continue;
-        }
-        store.setConfig(guild.id, key, value);
-        appliedCount++;
-      }
+      const { applied: appliedCount, skippedKeys, tagsAdded, tagsSkipped, panelsInFile } = backup.applyImport(guild.id, data, { store });
 
       let desc = `Config restored. **${appliedCount}** settings imported.`;
+      if (tagsAdded || tagsSkipped) desc += ` **${tagsAdded}** tags added${tagsSkipped ? `, ${tagsSkipped} skipped (already exist or invalid)` : ''}.`;
+      if (panelsInFile) desc += `\n\nThe file lists **${panelsInFile}** role panels. They are not restored automatically; recreate them with the panel commands.`;
       if (skippedKeys.length) {
         desc += `\n\n⚠️ **${skippedKeys.length}** unknown keys skipped: ${skippedKeys.map((k) => `\`${k}\``).join(', ')}`;
       }

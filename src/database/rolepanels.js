@@ -78,6 +78,17 @@ function create(db) {
       return createTx.immediate({ guildId: String(guildId), channelId, type, mode, title, description, createdBy, entries, now });
     },
 
+    // Read-only export for /backup: definitions only (no message, channel or creator ids).
+    exportPanels(guildId) {
+      return s.listPanels.all(String(guildId)).map((p) => ({
+        panelId: p.panel_id, type: p.type, mode: p.mode, title: p.title, description: p.description,
+        entries: s.entries.all(p.guild_id, p.panel_id).map((e) => ({
+          roleId: e.role_id, position: e.position, label: e.label, emoji: e.emoji, emojiKey: e.emoji_key,
+          description: e.description, dangerOk: e.danger_ok,
+        })),
+      }));
+    },
+
     countPanels(guildId) {
       return s.countPanels.get(String(guildId)).n;
     },
@@ -139,7 +150,7 @@ function api() {
   return shared;
 }
 
-const methods = ['createPanel', 'countPanels', 'getPanel', 'panelByMessage', 'listPanels', 'setMessage',
+const methods = ['createPanel', 'exportPanels', 'countPanels', 'getPanel', 'panelByMessage', 'listPanels', 'setMessage',
   'updatePanel', 'deletePanel', 'upsertEntry', 'removeEntry'];
 const lazy = {};
 for (const m of methods) lazy[m] = (...args) => api()[m](...args);

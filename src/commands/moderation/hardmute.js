@@ -95,16 +95,17 @@ module.exports = {
         return send(interaction, { embeds: [response({ client: interaction.client, description: "Couldn't hardmute that member. Check my permissions and role position.", color: colors.error })], ephemeral: true });
       }
 
-      await target.user.send({ embeds: [dmNotice({ guild: interaction.guild, action: 'Hardmuted', reason, color: colors.error })] }).catch(() => {});
+      const caseId = modlog.openCase(interaction.guild, { action: 'Hardmute', target: target.user, moderator: interaction.user, reason });
+      await target.user.send({ embeds: [dmNotice({ guild: interaction.guild, action: 'Hardmuted', reason, color: colors.error, caseId })] }).catch(() => {});
 
       const embed = modAction({
         client: interaction.client, action: 'Hardmute', color: colors.error,
-        target: target.user, moderator: interaction.user, reason,
+        target: target.user, moderator: interaction.user, reason, caseId,
       });
 
       const warnText = failureText(setup.failedNames);
       await send(interaction, { embeds: warnText ? [embed, response({ client: interaction.client, description: warnText, color: colors.warning })] : [embed] });
-      await modlog.send(interaction.guild, { action: 'Hardmute', target: target.user, moderator: interaction.user, reason });
+      await modlog.send(interaction.guild, { action: 'Hardmute', target: target.user, moderator: interaction.user, reason, caseId });
     } else if (sub === 'remove') {
       const muteRole = interaction.guild.roles.cache.find((r) => r.name === 'Hardmuted');
       if (!muteRole || !target.roles.cache.has(muteRole.id)) {
@@ -125,13 +126,14 @@ module.exports = {
       }
       store.setConfig(interaction.guild.id, `hardmute_roles_${target.id}`, null);
 
+      const caseId = modlog.openCase(interaction.guild, { action: 'Unhardmute', target: target.user, moderator: interaction.user, reason });
       const embed = modAction({
         client: interaction.client, action: 'Unhardmute', color: colors.success,
-        target: target.user, moderator: interaction.user, reason,
+        target: target.user, moderator: interaction.user, reason, caseId,
       });
 
       await interaction.reply({ embeds: [embed] });
-      await modlog.send(interaction.guild, { action: 'Unhardmute', target: target.user, moderator: interaction.user, reason });
+      await modlog.send(interaction.guild, { action: 'Unhardmute', target: target.user, moderator: interaction.user, reason, caseId });
     }
   },
 };

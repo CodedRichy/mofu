@@ -60,6 +60,11 @@ function create(db) {
     listTags(guildId) {
       return s.list.all(String(guildId));
     },
+    // Read-only export for /backup: saved responses (server config), no owner ids.
+    exportTags(guildId) {
+      return db.prepare('SELECT name, content, embed, uses FROM tags WHERE guild_id = ? ORDER BY name ASC')
+        .all(String(guildId)).map((r) => ({ ...r, embed: !!r.embed }));
+    },
     countTags(guildId) {
       return s.count.get(String(guildId)).n;
     },
@@ -79,7 +84,7 @@ function api() {
   return shared;
 }
 
-const methods = ['createTag', 'getTag', 'updateTag', 'deleteTag', 'listTags', 'countTags', 'searchTags', 'bumpUses'];
+const methods = ['createTag', 'getTag', 'updateTag', 'deleteTag', 'listTags', 'exportTags', 'countTags', 'searchTags', 'bumpUses'];
 const lazy = {};
 for (const m of methods) lazy[m] = (...args) => api()[m](...args);
 

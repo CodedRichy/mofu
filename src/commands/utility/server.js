@@ -29,7 +29,7 @@ module.exports = {
       const categories = guild.channels.cache.filter((c) => c.type === ChannelType.GuildCategory).size;
       const humans = guild.members.cache.filter((m) => !m.user.bot).size;
       const bots = guild.members.cache.filter((m) => m.user.bot).size;
-      const online = guild.members.cache.filter((m) => m.presence?.status !== 'offline').size;
+      // no online count: presence is not available to this bot, and counting it would report everyone as online/offline wrongly
 
       const embed = base(interaction.client, colors.primary)
         .setAuthor({ name: guild.name, iconURL: guild.iconURL({ size: 256 }) })

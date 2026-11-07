@@ -25,8 +25,10 @@ module.exports = {
     restoreGiveaways(client);
     require('../database/reminders').startSweep(client);
     require('../utils/tempban').startSweep(client); // DB-backed: expired tempbans are lifted even after a restart
+    require('../utils/alerts').startSweep(client); // free social alerts; idempotent, no-op without subscriptions
     require('../utils/announceUpdate').announceUpdate(client);
     require('../utils/statusPost').online(client);
+    require('../utils/healthpostRun').startSweep(client); // weekly health post (per-guild opt-in)
 
     // Enforce the data-retention promise: purge servers that removed the bot over 30 days ago.
     const retention = require('../database/retention');

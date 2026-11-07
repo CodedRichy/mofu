@@ -61,9 +61,11 @@ module.exports = {
       return;
     }
 
+    const caseId = modlog.openCase(interaction.guild, { action: 'softban', target: user, moderator: interaction.user, reason });
     const embed = modAction({
       client: interaction.client,
       action: 'softban',
+      caseId,
       color: colors.error,
       target: user,
       moderator: interaction.user,
@@ -72,6 +74,6 @@ module.exports = {
     });
 
     await send(interaction, { embeds: [embed] });
-    await modlog.send(interaction.guild, { action: 'softban', target: user, moderator: interaction.user, reason });
+    await modlog.send(interaction.guild, { action: 'softban', target: user, moderator: interaction.user, reason, caseId });
   },
 };

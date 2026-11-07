@@ -41,6 +41,8 @@ const PREFIX_ONLY = new Set([
   'fm',
   // added: moderation (appeal stays slash so a muted member can use it), config, utility
   'preset', 'reportvc', 'vc', 'scamshield', 'gambling', 'isstaff', 'invite',
+  // added: image checks, weekly health post, free social alerts, AI setup plan
+  'imagemod', 'healthpost', 'alerts', 'plan',
 ]);
 
 const ALIASES = {

@@ -72,8 +72,23 @@ function createApp(client, deps = {}) {
       discord: { ready, wsPingMs: Number.isFinite(ping) && ping >= 0 ? Math.round(ping) : null },
       db: { ok: dbOk },
       uptimeSeconds: Math.floor(process.uptime()),
+      // Booleans and counts only: never keys, ids or names.
+      providers: healthProviders(),
+      commands: Number(client.commands?.size) || 0,
+      lastBackupAt: healthLastBackup(),
+      sharding: { sharded: !!client.shard, note: 'single process; see docs/operations.md' },
     });
   });
+
+  function healthProviders() {
+    try {
+      const p = require('../utils/ai').getProviderStatus();
+      return { groq: !!p.groq, gemini: !!p.gemini };
+    } catch { return { groq: false, gemini: false }; }
+  }
+  function healthLastBackup() {
+    try { return require('../utils/backup').lastBackupAt(); } catch { return null; }
+  }
 
   // Three public numbers for the marketing site. Counts only, no user or server data; cached so a busy
   // landing page costs nothing. (The detailed /api/stats stays behind auth.)

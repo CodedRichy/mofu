@@ -84,3 +84,12 @@ This must match the Privacy page (`web/src/pages/Privacy.jsx`), `/privacy` and `
 - [ ] Support contact reachable (support server link TODO).
 - [ ] Data deletion on request works (`/forgetme`, 30-day removal purge: true in code, covered by `test/privacy.test.js` and `test/retention.test.js`).
 - [ ] Team members on the application are real accounts of the owner (no alt or friend seeding to reach server counts).
+
+## Image checks
+
+- Off by default per server (`/imagemod on`). When a server turns it on, the one image that the chat reacted to (a burst of shock or "where are the mods" replies, or alarm emoji reactions), or an image from an account under 7 days old if the server also turned on scan-all, is fetched from Discord's CDN, checked for QR codes on the bot host, and processed by Google's Gemini. A paid-tier Gemini API key is required, so that images sent through the API are not used to improve Google's products (TODO owner confirms against Google's current terms before enabling).
+- Stored: counters only (images checked per day, flagged, deleted, dismissed, and per-channel confirmed or false-alarm counts that tune the crowd threshold). Not stored: image bytes, message text, model output beyond category and confidence. A short fingerprint (hash of the CDN path and size) is kept in a bounded in-memory cache.
+- Flagged images are never re-posted. The alert in the modlog channel links to the message. Alerts tell staff to use Discord's report flow for illegal content.
+- Scope: scam images, login QR codes and server-specific rule categories. Discord already blurs explicit media for many members, so the explicit category is opt-in and not part of the default set.
+- Delete and Timeout buttons re-check the presser's Manage Messages / Moderate Members permission at press time and are recorded in the AI action audit table. Optional auto-delete (confidence 0.9 or higher) is off unless a server enables it.
+- Per-server allowance: 200 model checks per UTC day (`DAILY_IMAGE_BUDGET` in `src/utils/imagemod.js`), separate from the chat AI cap.

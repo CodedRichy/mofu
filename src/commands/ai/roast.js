@@ -2,6 +2,7 @@ const { SlashCommandBuilder } = require('discord.js');
 const { colors } = require('../../utils/constants');
 const { response } = require('../../utils/embed');
 const { chat } = require('../../utils/ai');
+const { statusOf } = require('../../utils/presence');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -17,7 +18,7 @@ module.exports = {
 
     const member = interaction.guild?.members.cache.get(target.id);
     const displayName = member?.displayName || target.displayName;
-    const status = member?.presence?.status || 'offline';
+    const status = statusOf(member); // null: presence is not available to this bot, so do not claim anything
 
     const roast = await chat([
       {
@@ -26,7 +27,7 @@ module.exports = {
       },
       {
         role: 'user',
-        content: `Roast the Discord user named ${displayName} (username: ${target.username}). Their account was created ${target.createdAt.toLocaleDateString()}. They are ${status} in the server.`,
+        content: `Roast the Discord user named ${displayName} (username: ${target.username}). Their account was created ${target.createdAt.toLocaleDateString()}.${status ? ` They are ${status} in the server.` : ''}`,
       },
     ], { maxTokens: 150, temperature: 0.9, guildId: interaction.guildId });
 
