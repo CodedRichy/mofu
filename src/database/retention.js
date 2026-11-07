@@ -1,4 +1,4 @@
-// Data retention: when Sonder is removed from a server its data is kept for RETENTION_DAYS (in case the
+// Data retention: when mofu is removed from a server its data is kept for RETENTION_DAYS (in case the
 // removal was an accident), then deleted from every table that has a guild_id column. Re-adding the bot
 // inside the window cancels the deletion. This is what the privacy policy promises.
 const store = require('./store');

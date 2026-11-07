@@ -4,9 +4,9 @@
 // Accepted input:
 //   CSV (comma, semicolon or tab, detected like the warnings import) with a header line:
 //     user_id,xp      total XP per member (preferred)
-//     user_id,level   level per member; converted to the total XP Sonder needs for that level
+//     user_id,level   level per member; converted to the total XP mofu needs for that level
 //   JSON: an array of objects with the same keys, or an object holding such an array.
-// Sonder never logs in to another bot or reads its website: the owner brings the file.
+// mofu never logs in to another bot or reads its website: the owner brings the file.
 const { parseCsv } = require('./csvImport');
 
 const MAX_ROWS = 20000;
@@ -127,7 +127,7 @@ function parseLevelsFile(text) {
  * @param records   from parseLevelsFile
  * @param opts.isMember(id) -> boolean    member is in the server
  * @param opts.isBot(id) -> boolean
- * @param opts.currentTotal(id) -> number current Sonder total XP
+ * @param opts.currentTotal(id) -> number current mofu total XP
  * @param opts.totalXpForLevel(level) -> number
  * @param opts.maxXp  clamp for imported totals
  * @param opts.overwrite  replace instead of keeping the higher value

@@ -21,8 +21,8 @@ module.exports = {
     const executorId = entry.executor.id;
 
     if (antinuke.check(guild.id, executorId, 'channel_create')) {
-      const { banned, rolesStripped } = await punishExecutor(guild, executorId, '[sonder antinuke] Mass channel create detected');
-      const reverted = await channel.delete('[sonder antinuke] Reversed mass channel create').then(() => true, () => false);
+      const { banned, rolesStripped } = await punishExecutor(guild, executorId, '[mofu antinuke] Mass channel create detected');
+      const reverted = await channel.delete('[mofu antinuke] Reversed mass channel create').then(() => true, () => false);
 
       const modlogChannel = require('../database/store').getConfig(guild.id, 'modlog_channel');
       if (modlogChannel) {

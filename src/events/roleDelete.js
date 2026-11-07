@@ -18,7 +18,7 @@ module.exports = {
     const executorId = entry.executor.id;
 
     if (antinuke.check(guild.id, executorId, 'role_delete')) {
-      const { banned, rolesStripped } = await punishExecutor(guild, executorId, '[sonder antinuke] Mass role delete detected');
+      const { banned, rolesStripped } = await punishExecutor(guild, executorId, '[mofu antinuke] Mass role delete detected');
 
       // Restore deleted role (name, color, permissions, position; members are not re-added)
       const restored = await guild.roles.create({
@@ -26,7 +26,7 @@ module.exports = {
         color: role.color,
         permissions: role.permissions,
         position: role.position,
-        reason: '[sonder antinuke] Restored deleted role',
+        reason: '[mofu antinuke] Restored deleted role',
       }).then(() => true, () => false);
 
       const modlogChannel = require('../database/store').getConfig(guild.id, 'modlog_channel');

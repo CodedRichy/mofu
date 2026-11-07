@@ -1,5 +1,5 @@
-// Audit trail for actions requested through chat ("sonder mute kai"). One row per proposal, updated as it
-// resolves, so a server can answer "what did Sonder do, who asked, and what was refused?".
+// Audit trail for actions requested through chat ("mofu mute kai"). One row per proposal, updated as it
+// resolves, so a server can answer "what did mofu do, who asked, and what was refused?".
 // The guild_id column means the 30-day retention purge covers this table automatically.
 const { db } = require('./store');
 const log = require('../utils/logger');

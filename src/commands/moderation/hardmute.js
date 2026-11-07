@@ -65,7 +65,7 @@ module.exports = {
           name: 'Hardmuted',
           color: 0x2c2f33,
           permissions: [],
-          reason: '[sonder] Auto-created hardmute role',
+          reason: '[mofu] Auto-created hardmute role',
         });
       }
 
@@ -77,7 +77,7 @@ module.exports = {
         Connect: false,
         AttachFiles: false,
         EmbedLinks: false,
-      }, { reason: '[sonder] Hardmute role setup' });
+      }, { reason: '[mofu] Hardmute role setup' });
 
       if (!muteRole.editable) {
         return send(interaction, { embeds: [response({ client: interaction.client, description: "I can't assign the Hardmuted role (it is above my highest role).", color: colors.error })], ephemeral: true });

@@ -3,7 +3,7 @@ const { useQueue } = require('discord-player');
 const { colors } = require('../../utils/constants');
 const { response } = require('../../utils/embed');
 
-// Resume only ever resumes. `pause` is a toggle, so "sonder resume" used to pause a playing track.
+// Resume only ever resumes. `pause` is a toggle, so "mofu resume" used to pause a playing track.
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('resume')

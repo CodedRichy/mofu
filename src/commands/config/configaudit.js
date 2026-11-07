@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField, ComponentType } = require('discord.js');
-const { colors } = require('../../utils/constants');
+const { colors, LOG_CHANNEL } = require('../../utils/constants');
 const { base, response, footer } = require('../../utils/embed');
 const store = require('../../database/store');
 
@@ -22,7 +22,7 @@ const ROLE_KEYS = [
 ];
 
 const CHANNEL_NAME_MAP = {
-  log_channel: 'sonder-logs',
+  log_channel: LOG_CHANNEL,
   modlog_channel: 'modlog',
   audit_log_channel: 'audit-log',
   welcome_channel: 'welcome',

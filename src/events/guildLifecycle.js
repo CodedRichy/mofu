@@ -1,6 +1,7 @@
 const { Events, ChannelType, PermissionFlagsBits } = require('discord.js');
 const store = require('../database/store');
 const { base } = require('../utils/embed');
+const { BRAND } = require('../utils/constants');
 const retention = require('../database/retention');
 const log = require('../utils/logger');
 
@@ -11,11 +12,11 @@ async function sendWelcome(guild) {
     const hasQuick = !!client.commands?.has('quicksetup');
     const steps = [
       hasQuick ? '**`/quicksetup`**: pick sensible defaults for logs, welcome and moderation in one go.' : '**`/setup`**: configure logs, welcome and moderation.',
-      '**`/migrate scan`**: see which other bots and channels Sonder can reuse. It changes nothing.',
-      'Admins can say **`sonder what can you do`** in chat. Until you pick roles with `/airoles`, members with Manage Messages can too.',
+      `**\`/migrate scan\`**: see which other bots and channels ${BRAND} can reuse. It changes nothing.`,
+      `Admins can say **\`${BRAND} what can you do\`** in chat. Until you pick roles with \`/airoles\`, members with Manage Messages can too.`,
     ];
     const embed = base(client)
-      .setTitle('Thanks for adding Sonder')
+      .setTitle(`Thanks for adding ${BRAND}`)
       .setDescription('Three steps to get going:\n\n' + steps.map((t, i) => `**${i + 1}.** ${t}`).join('\n'));
     // Add a link button here once a real support-server invite or domain exists.
     const payload = { embeds: [embed] };

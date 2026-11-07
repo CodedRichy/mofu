@@ -47,7 +47,7 @@ module.exports = {
         rmuteRole = await interaction.guild.roles.create({
           name: 'Reaction Muted',
           permissions: [],
-          reason: '[sonder] Auto-created reaction mute role',
+          reason: '[mofu] Auto-created reaction mute role',
         });
       }
       if (member.roles.cache.has(rmuteRole.id)) {
@@ -55,7 +55,7 @@ module.exports = {
       }
 
       // Only channels still missing the overwrite are touched, so a partial failure last time is retried now.
-      const setup = await applyRoleOverwrites(interaction, rmuteRole, { AddReactions: false }, { reason: '[sonder] Reaction mute role setup' });
+      const setup = await applyRoleOverwrites(interaction, rmuteRole, { AddReactions: false }, { reason: '[mofu] Reaction mute role setup' });
 
       try {
         await member.roles.add(rmuteRole, `Reaction muted by ${interaction.user.tag}: ${reason}`);

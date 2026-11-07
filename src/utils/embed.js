@@ -1,17 +1,17 @@
 const { EmbedBuilder, PermissionsBitField } = require('discord.js');
-const { colors } = require('./constants');
+const { colors, BRAND } = require('./constants');
 
 function brand(client) {
   return {
-    text: 'sonder',
+    text: BRAND,
     iconURL: client?.user?.displayAvatarURL?.() || undefined,
   };
 }
 
-// A custom footer that keeps the brand: "text - sonder" with the bot icon. Use with .setFooter(footer(client, text)).
+// A custom footer that keeps the brand: "text - mofu" with the bot icon. Use with .setFooter(footer(client, text)).
 function footer(client, text) {
   const t = String(text ?? '').slice(0, 2000);
-  return { ...brand(client), text: t ? `${t} - sonder` : 'sonder' };
+  return { ...brand(client), text: t ? `${t} - ${BRAND}` : BRAND };
 }
 
 const clipText = (s, n) => { const t = String(s); return t.length > n ? `${t.slice(0, n - 3)}...` : t; };
@@ -65,7 +65,7 @@ function response({ client, description, color }) {
 function errorCard({ client, title, fix, ref }) {
   const embed = base(client, colors.error).setDescription(`**${title}**
 ${fix}`);
-  if (ref) embed.setFooter({ ...brand(client), text: `ref ${ref} - sonder` });
+  if (ref) embed.setFooter({ ...brand(client), text: `ref ${ref} - ${BRAND}` });
   return embed;
 }
 

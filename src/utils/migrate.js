@@ -21,9 +21,9 @@ function detectBots(botNames) {
   return found;
 }
 
-// Does Sonder's prefix collide with (or sit inside) another bot's default prefix?
-function prefixClash(sonderPrefix, bots) {
-  return bots.filter((b) => b.prefix === sonderPrefix);
+// Does mofu's prefix collide with (or sit inside) another bot's default prefix?
+function prefixClash(ourPrefix, bots) {
+  return bots.filter((b) => b.prefix === ourPrefix);
 }
 
 // Channel names that usually mean "this is the log / welcome channel" in existing servers.

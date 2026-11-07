@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sonder embed preview</title>
+<title>mofu embed preview</title>
 <style>
   :root {
     --bg: #313338; --embed: #2b2d31; --text: #dbdee1; --muted: #949ba4; --link: #00a8fc;
@@ -50,7 +50,7 @@
 </style>
 </head>
 <body>
-<header><h1>Sonder embed preview</h1><span>Real builders where exported, else labelled mocks. Re-run <code>node tools/embed-preview.js</code> to refresh.</span></header>
+<header><h1>mofu embed preview</h1><span>Real builders where exported, else labelled mocks. Re-run <code>node tools/embed-preview.js</code> to refresh.</span></header>
 <main id="root"></main>
 <script>
 const SCENES = /*SCENES*/[];
@@ -109,7 +109,7 @@ document.getElementById('root').innerHTML = SCENES.map((sc) => `
       const lints = [...new Set(m.embeds.flatMap(lint))];
       return `
       <div class="msg"><div class="av">S</div>
-        <div class="who">sonder<span class="app">APP</span><time>Today at 4:20 PM</time></div>
+        <div class="who">mofu<span class="app">APP</span><time>Today at 4:20 PM</time></div>
         ${m.embeds.map(embedHtml).join('')}${rowsHtml(m.components)}
         ${lints.length ? `<p class="lint">lint: ${lints.map(esc).join(' | ')}</p>` : ''}
       </div>`;

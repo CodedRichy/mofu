@@ -5,11 +5,11 @@ const audit = require('../../database/aiActions');
 
 const ICON = { executed: 'done', cancelled: 'cancelled', expired: 'expired', rejected: 'refused', failed: 'failed', proposed: 'waiting' };
 
-// Who asked Sonder to do what in this server, and what happened. Staff-only, shown just to the caller.
+// Who asked mofu to do what in this server, and what happened. Staff-only, shown just to the caller.
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('aiactions')
-    .setDescription('See what people asked Sonder to do in chat, and what happened')
+    .setDescription('See what people asked mofu to do in chat, and what happened')
     .addStringOption((o) =>
       o.setName('status').setDescription('Only show one outcome')
         .addChoices(
@@ -28,7 +28,7 @@ module.exports = {
     const reply = (description, color) =>
       interaction.reply({ embeds: [response({ client: interaction.client, description, color })], ephemeral: true, allowedMentions: { parse: [] } });
 
-    if (!rows.length) return reply(status ? 'Nothing with that outcome yet.' : 'Nobody has asked Sonder to do anything in chat yet.', colors.muted);
+    if (!rows.length) return reply(status ? 'Nothing with that outcome yet.' : 'Nobody has asked mofu to do anything in chat yet.', colors.muted);
 
     const lines = rows.map((r) => {
       const when = Math.floor(r.created_at / 1000);

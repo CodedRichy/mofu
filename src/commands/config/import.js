@@ -57,7 +57,7 @@ function previewText({ plan, parsed, overwrite, xpStore, expiresAt }) {
   }
 
   const l20 = xpStore.totalXpForLevel(20);
-  lines.push('', `**How levels are worked out.** Sonder stores total XP and computes the level from it (each level needs \`5 * level^2 + 50 * level + 100\` XP). MEE6 is reported to use the same formula, so MEE6 level 20 (${fmt(l20)} total XP) becomes Sonder level ${xpStore.levelFromTotal(l20).level}. Other bots use other curves, so their levels can differ here.`);
+  lines.push('', `**How levels are worked out.** mofu stores total XP and computes the level from it (each level needs \`5 * level^2 + 50 * level + 100\` XP). MEE6 is reported to use the same formula, so MEE6 level 20 (${fmt(l20)} total XP) becomes mofu level ${xpStore.levelFromTotal(l20).level}. Other bots use other curves, so their levels can differ here.`);
   if (parsed.mode === 'level') lines.push('This file has levels, not XP: each member gets the XP for the start of that level, so progress inside a level is not carried over.');
   lines.push(overwrite
     ? 'Mode **overwrite**: members get exactly the file\'s value, even if that is lower than what they have now.'

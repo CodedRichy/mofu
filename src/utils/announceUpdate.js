@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { base } = require('./embed');
-const { colors } = require('./constants');
+const { colors, BRAND } = require('./constants');
 const log = require('./logger');
 
 // Posts "what changed" to the owner's update channel (UPDATE_CHANNEL_ID) once per new version.
@@ -46,7 +46,7 @@ async function announceUpdate(client) {
     const pkg = require('../../package.json');
     const list = info.lines.length ? info.lines.map((l) => `- ${l.slice(0, 180)}`).join('\n') : 'Maintenance restart.';
     const embed = base(client, colors.primary)
-      .setAuthor({ name: `Sonder updated - v${pkg.version} (${info.head}${info.dirty ? '+local' : ''})` })
+      .setAuthor({ name: `${BRAND} updated - v${pkg.version} (${info.head}${info.dirty ? '+local' : ''})` })
       .setDescription(list.slice(0, 4000))
       .setTimestamp();
     await channel.send({ embeds: [embed] });

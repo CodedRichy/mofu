@@ -5,7 +5,7 @@ const log = require('../utils/logger');
 const { track } = require('../utils/commandTracker');
 const xpStore = require('../database/xp');
 const { response, errorCard, refId, permissionDenied } = require('../utils/embed');
-const { colors } = require('../utils/constants');
+const { colors, TRIGGER_ALT } = require('../utils/constants');
 const PrefixContext = require('../utils/prefixContext');
 const modlog = require('../utils/modlog');
 const { moderate, chatWithHistory } = require('../utils/ai');
@@ -13,7 +13,10 @@ const { parseMuteIntent, proposeMute, usageHint } = require('../ai/actions');
 const { parseMusicIntent } = require('../utils/musicIntent');
 const automod = require('../utils/automod');
 
-// conversational replies ("yo sonder ...", "@sonder ..."): per-user cooldown so nobody can burn the AI quota
+// The bot's name as a whole word: 'mofu' or the old name 'sonder' (TRIGGER_WORDS in src/utils/constants.js).
+const TRIGGER_RE = new RegExp(`\\b(?:${TRIGGER_ALT})\\b`, 'i');
+
+// conversational replies ("yo mofu ...", "@mofu ..."): per-user cooldown so nobody can burn the AI quota
 const CHAT_COOLDOWN_MS = 4000;
 const chatCooldown = new Map();
 setInterval(() => {
@@ -21,7 +24,7 @@ setInterval(() => {
   for (const [id, t] of chatCooldown) if (t < cutoff) chatCooldown.delete(id);
 }, 60000).unref();
 
-// What Sonder knows when it answers a plain message: who is talking, who they mentioned (name, join date,
+// What mofu knows when it answers a plain message: who is talking, who they mentioned (name, join date,
 // top roles: facts Discord already shows everyone), the time, and the last ~20 minutes of this channel.
 // Plain chat only. This text goes to the AI provider, so it is limited to 10 messages.
 async function buildChatContext(message, botId) {
@@ -56,7 +59,7 @@ async function buildChatContext(message, botId) {
   return { text: `${speaker}: ${message.cleanContent.slice(0, 1500)}`, history, context: lines.join('\n') };
 }
 
-// Who can invoke Sonder in plain text: administrators always; otherwise members holding a role set with
+// Who can invoke mofu in plain text: administrators always; otherwise members holding a role set with
 // /airoles; with no roles configured, staff who can Manage Messages. Anyone else gets no reply at all.
 function canInvokeAi(message) {
   const member = message.member;
@@ -254,13 +257,13 @@ module.exports = {
     // Prefix commands
     const prefix = store.getConfig(message.guild.id, 'prefix') || config.discord.defaultPrefix;
 
-    // Conversational reply: any message containing the word "sonder" (or @mentioning the bot),
+    // Conversational reply: any message containing the word "mofu" or "sonder" (or @mentioning the bot),
     // from someone allowed to invoke it. Plain chat only: no tools, no actions, no pings.
-    // "sonder play <song>" / "sonder skip" etc. are music commands, not chat: rewrite to the prefix form
+    // "mofu play <song>" / "mofu skip" etc. are music commands, not chat: rewrite to the prefix form
     // and let the normal command path run them (same permission checks, same output).
     if (!message.content.startsWith(prefix)) {
       // Strict matcher (src/utils/musicIntent.js) plus the same eligibility as the AI path, so ordinary
-      // sentences ("sonder stop being weird") and random members never trigger playback commands.
+      // sentences ("mofu stop being weird") and random members never trigger playback commands.
       const intent = parseMusicIntent(message.content, message.client.user.id);
       if (intent && canInvokeAi(message)) {
         message.content = `${prefix}${intent.verb} ${intent.args}`.trim();
@@ -270,7 +273,7 @@ module.exports = {
     if (!message.content.startsWith(prefix)) {
       const botId = message.client.user.id;
       const mentionRe = new RegExp(`<@!?${botId}>`, 'g');
-      const named = /\bsonder\b/i.test(message.content) || mentionRe.test(message.content);
+      const named = TRIGGER_RE.test(message.content) || mentionRe.test(message.content);
 
       if (named && canInvokeAi(message)) {
         const last = chatCooldown.get(message.author.id) || 0;

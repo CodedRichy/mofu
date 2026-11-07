@@ -18,9 +18,9 @@ module.exports = {
     if (executorId === guild.ownerId) return;
 
     if (antinuke.check(guild.id, executorId, 'ban')) {
-      const { banned, rolesStripped } = await punishExecutor(guild, executorId, '[sonder antinuke] Mass ban detected');
+      const { banned, rolesStripped } = await punishExecutor(guild, executorId, '[mofu antinuke] Mass ban detected');
 
-      const unbanned = await guild.members.unban(ban.user.id, '[sonder antinuke] Reversed mass ban').then(() => true, () => false);
+      const unbanned = await guild.members.unban(ban.user.id, '[mofu antinuke] Reversed mass ban').then(() => true, () => false);
 
       const modlogChannel = require('../database/store').getConfig(guild.id, 'modlog_channel');
       if (modlogChannel) {

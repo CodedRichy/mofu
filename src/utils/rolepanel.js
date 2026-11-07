@@ -198,7 +198,7 @@ function render(panel, entries, { client, resolveRole = () => undefined } = {}) 
     .setColor(0x6366f1)
     .setTitle(clipText(panel.title || 'Roles', LIMITS.title))
     .setDescription([desc, list, `*${hint}*`].filter(Boolean).join('\n\n'))
-    .setFooter({ text: `sonder - panel #${panel.panel_id}`, iconURL: client?.user?.displayAvatarURL?.() || undefined });
+    .setFooter({ text: `mofu - panel #${panel.panel_id}`, iconURL: client?.user?.displayAvatarURL?.() || undefined });
 
   const components = [];
   if (type === 'button' && entries.length) {

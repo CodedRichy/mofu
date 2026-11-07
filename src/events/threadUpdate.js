@@ -10,7 +10,7 @@ module.exports = {
     const watched = store.getConfig(newThread.guild.id, 'threadwatch');
     if (!Array.isArray(watched) || !watched.includes(newThread.id)) return;
     if (!newThread.unarchivable) return;
-    await newThread.setArchived(false, 'Sonder threadwatch: keep this thread open')
+    await newThread.setArchived(false, 'mofu threadwatch: keep this thread open')
       .catch((err) => log.warn(`[threadwatch] could not unarchive ${newThread.id}:`, err.message));
   },
 };

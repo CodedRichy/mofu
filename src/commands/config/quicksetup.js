@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits, ActionRowBuilder, StringSelectMenuBuilder, ChannelType } = require('discord.js');
-const { colors } = require('../../utils/constants');
+const { colors, LOG_CHANNEL, channelNames } = require('../../utils/constants');
 const { base, response } = require('../../utils/embed');
 const store = require('../../database/store');
 
@@ -8,7 +8,7 @@ const templates = {
     label: 'Gaming',
     emoji: '🎮',
     description: 'Logs, modlog, welcome, antispam, antilink, leveling',
-    channels: ['sonder-logs', 'modlog'],
+    channels: [LOG_CHANNEL, 'modlog'],
     config: { antispam: true, antilink: true, leveling: true },
     welcome: 'Welcome to {server}, {user}! 🎮 Check out the channels and have fun!',
   },
@@ -16,7 +16,7 @@ const templates = {
     label: 'Community',
     emoji: '🏘️',
     description: 'Gaming set plus antiraid, starboard, goodbye',
-    channels: ['sonder-logs', 'modlog', 'starboard'],
+    channels: [LOG_CHANNEL, 'modlog', 'starboard'],
     config: { antispam: true, antilink: true, antiraid: true, leveling: true, starboard_threshold: 3, starboard_emoji: '⭐' },
     welcome: 'Hey {user}, welcome to **{server}**! You\'re member #{membercount} 🎉',
     goodbye: '{user} left **{server}**. We\'ll miss you.',
@@ -25,7 +25,7 @@ const templates = {
     label: 'Study',
     emoji: '📚',
     description: 'Logs, welcome, antispam, leveling',
-    channels: ['sonder-logs'],
+    channels: [LOG_CHANNEL],
     config: { antispam: true, leveling: true },
     welcome: 'Welcome {user}! 📚 Stay focused and good luck with your studies.',
   },
@@ -33,13 +33,13 @@ const templates = {
     label: 'Minimal',
     emoji: '🔒',
     description: 'Logs and antispam only',
-    channels: ['sonder-logs'],
+    channels: [LOG_CHANNEL],
     config: { antispam: true },
   },
 };
 
 const channelKeyMap = {
-  'sonder-logs': 'log_channel',
+  [LOG_CHANNEL]: 'log_channel',
   'modlog': 'modlog_channel',
   'starboard': 'starboard_channel',
 };
@@ -94,7 +94,8 @@ module.exports = {
 
       // Find or create a text channel; returns its id or null (and notes why).
       const ensureChannel = async (name, isPrivate) => {
-        const existing = guild.channels.cache.find((c) => c.name === name && c.type === ChannelType.GuildText);
+        const names = channelNames(name); // a server set up before the rename keeps its old log channel
+        const existing = guild.channels.cache.find((c) => names.includes(c.name) && c.type === ChannelType.GuildText);
         if (existing) return existing.id;
         try {
           const ch = await guild.channels.create({

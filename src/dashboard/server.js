@@ -309,7 +309,7 @@ function createApp(client, deps = {}) {
     });
   });
 
-  // AI chat endpoint for web assistant. Spends Sonder's Groq key, so: caller must manage a server the bot
+  // AI chat endpoint for web assistant. Spends mofu's Groq key, so: caller must manage a server the bot
   // is in, history roles are forced to user/assistant (no client-supplied system prompt), and a per-user quota applies.
   app.post('/api/ai/chat', rateLimit(60000, 10), authMiddleware, userRateLimit(60000, 6, 'ai-min'), async (req, res) => {
     if (!(await managesAnyBotGuild(req.token))) return res.status(403).json({ error: 'No access' });

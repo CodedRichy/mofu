@@ -18,7 +18,7 @@ module.exports = {
     const executorId = entry.executor.id;
 
     if (antinuke.check(guild.id, executorId, 'channel_delete')) {
-      const { banned, rolesStripped } = await punishExecutor(guild, executorId, '[sonder antinuke] Mass channel delete detected');
+      const { banned, rolesStripped } = await punishExecutor(guild, executorId, '[mofu antinuke] Mass channel delete detected');
 
       // Restore deleted channel (name, type, category, position; not permissions or messages)
       const restored = await guild.channels.create({
@@ -26,7 +26,7 @@ module.exports = {
         type: channel.type,
         parent: channel.parentId,
         position: channel.position,
-        reason: '[sonder antinuke] Restored deleted channel',
+        reason: '[mofu antinuke] Restored deleted channel',
       }).then(() => true, () => false);
 
       const modlogChannel = require('../database/store').getConfig(guild.id, 'modlog_channel');

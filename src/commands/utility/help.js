@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
-const { colors } = require('../../utils/constants');
+const { colors, BRAND } = require('../../utils/constants');
 const { base, footer } = require('../../utils/embed');
 const { isSlash } = require('../../utils/invocation');
 const config = require('../../config');
@@ -65,7 +65,7 @@ function buildOverviewEmbed(client, categories, prefix) {
   const total = Object.values(categories).reduce((s, c) => s + c.length, 0);
 
   return base(client, colors.primary)
-    .setAuthor({ name: 'sonder — command list', iconURL: client.user.displayAvatarURL() })
+    .setAuthor({ name: `${BRAND} — command list`, iconURL: client.user.displayAvatarURL() })
     .setDescription(
       `${lines.join('\n\n')}\n\n` +
       `**${total}** commands total\n` +

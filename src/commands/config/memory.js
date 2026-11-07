@@ -3,7 +3,7 @@ const { colors } = require('../../utils/constants');
 const { response } = require('../../utils/embed');
 const store = require('../../database/store');
 
-// Per-server notes Sonder can use when people talk to it ("the mod team meets on fridays", "the owner's
+// Per-server notes mofu can use when people talk to it ("the mod team meets on fridays", "the owner's
 // birthday is in May"). Written only by admins; capped so the prompt stays small. Stored under config key `ai_notes`.
 const MAX_NOTES = 20;
 const MAX_LEN = 200;
@@ -11,12 +11,12 @@ const MAX_LEN = 200;
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('memory')
-    .setDescription('Teach Sonder facts about this server')
+    .setDescription('Teach mofu facts about this server')
     .addSubcommand((sub) =>
-      sub.setName('add').setDescription('Add a fact Sonder should know about this server')
+      sub.setName('add').setDescription('Add a fact mofu should know about this server')
         .addStringOption((o) => o.setName('fact').setDescription('e.g. "movie night is every friday at 8pm est"').setRequired(true).setMaxLength(MAX_LEN))
     )
-    .addSubcommand((sub) => sub.setName('list').setDescription('Show what Sonder knows about this server'))
+    .addSubcommand((sub) => sub.setName('list').setDescription('Show what mofu knows about this server'))
     .addSubcommand((sub) =>
       sub.setName('remove').setDescription('Forget one fact')
         .addIntegerOption((o) => o.setName('number').setDescription('Number from /memory list').setRequired(true).setMinValue(1).setMaxValue(MAX_NOTES))
@@ -43,7 +43,7 @@ module.exports = {
 
     if (sub === 'list') {
       if (!notes.length) return reply('Nothing saved yet. Add a fact with `/memory add`.', colors.muted, true);
-      return reply(`**What Sonder knows here**\n${notes.map((n, i) => `\`${i + 1}\` ${n}`).join('\n')}`, colors.primary, true);
+      return reply(`**What mofu knows here**\n${notes.map((n, i) => `\`${i + 1}\` ${n}`).join('\n')}`, colors.primary, true);
     }
 
     if (sub === 'remove') {
@@ -55,6 +55,6 @@ module.exports = {
     }
 
     store.setConfig(guild.id, 'ai_notes', null);
-    return reply('Cleared. Sonder knows nothing special about this server now.', colors.success);
+    return reply('Cleared. mofu knows nothing special about this server now.', colors.success);
   },
 };

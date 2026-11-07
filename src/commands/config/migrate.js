@@ -18,7 +18,7 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName('migrate')
     .setDescription('Switching from another bot? Find clashes and reuse your existing channels')
-    .addSubcommand((sub) => sub.setName('scan').setDescription('Check this server for other bots and channels Sonder can reuse (changes nothing)'))
+    .addSubcommand((sub) => sub.setName('scan').setDescription('Check this server for other bots and channels mofu can reuse (changes nothing)'))
     .addSubcommand((sub) => sub.setName('apply').setDescription('Link the matching channels for any setting that is still empty'))
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
@@ -53,16 +53,16 @@ module.exports = {
       out.push(`**Other bots here:** ${bots.map((b) => `${b.name} (default prefix \`${b.prefix}\`)`).join(', ')}`);
       const clash = prefixClash(prefix, bots);
       out.push(clash.length
-        ? `**Prefix clash:** Sonder uses \`${prefix}\`, the same as ${clash.map((b) => b.name).join(', ')}. Both would answer. Change it with \`/prefix\`.`
-        : `**Prefix:** Sonder uses \`${prefix}\`, so it will not collide with their defaults. If you changed their prefix, check it doesn't match.`);
-      out.push('Both bots can stay while you move over. Turn off a feature on the old bot once Sonder\'s version works, so nothing runs twice.');
+        ? `**Prefix clash:** mofu uses \`${prefix}\`, the same as ${clash.map((b) => b.name).join(', ')}. Both would answer. Change it with \`/prefix\`.`
+        : `**Prefix:** mofu uses \`${prefix}\`, so it will not collide with their defaults. If you changed their prefix, check it doesn't match.`);
+      out.push('Both bots can stay while you move over. Turn off a feature on the old bot once mofu\'s version works, so nothing runs twice.');
     } else {
       out.push('No other well-known bots found in this server.');
     }
 
     const found = Object.keys(suggestions);
     if (found.length) {
-      out.push('**Channels Sonder can reuse**\n' + found.map((k) => `${LABELS[k]}: <#${suggestions[k].id}> ${store.getConfig(guild.id, k) ? '(already set)' : '(not set)'}`).join('\n'));
+      out.push('**Channels mofu can reuse**\n' + found.map((k) => `${LABELS[k]}: <#${suggestions[k].id}> ${store.getConfig(guild.id, k) ? '(already set)' : '(not set)'}`).join('\n'));
       if (unset.length) out.push('Run `/migrate apply` to link the ones that are not set.');
     }
     out.push('**Warnings:** if your old bot can export them to a CSV, bring them over with `/import warnings`.\n**Not transferable:** levels and economy balances (other bots give servers no export), so those start fresh. Your server\'s bans, roles and Discord AutoMod rules are unaffected.');

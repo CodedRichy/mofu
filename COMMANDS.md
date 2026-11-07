@@ -1,6 +1,6 @@
 # Command Registration
 
-Discord limit: 100 slash commands per app. Sonder registers 84 as slash and keeps 85 prefix-only (169 total).
+Discord limit: 100 slash commands per app. mofu registers 84 as slash and keeps 85 prefix-only (169 total).
 Every command works via prefix (`;command`). Controlled by the `PREFIX_ONLY` set in `src/handlers/commandHandler.js`;
 `test/slashcap.test.js` checks the cap and validates every slash builder against Discord's limits. Keep about
 10 slots free. The most-used commands are slash so they keep working if MESSAGE_CONTENT is denied at review.
@@ -84,7 +84,7 @@ Commands with `create` subcommand — auto-creates the needed channel/role if mi
 |---------|---------|------------|
 | `/welcome create` | #welcome (public) | welcome_channel |
 | `/goodbye create` | #goodbye (public) | goodbye_channel |
-| `/logging create` | #sonder-logs (private) | log_channel |
+| `/logging create` | #mofu-logs (private; an existing #sonder-logs is reused) | log_channel |
 | `/modlog create` | #modlog (private) | modlog_channel |
 | `;auditlog create` | #audit-log (private) | audit_log_channel |
 | `;starboard create` | #starboard (public) | starboard_channel |

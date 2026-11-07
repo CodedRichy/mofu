@@ -47,7 +47,7 @@ module.exports = {
         imuteRole = await interaction.guild.roles.create({
           name: 'Image Muted',
           permissions: [],
-          reason: '[sonder] Auto-created image mute role',
+          reason: '[mofu] Auto-created image mute role',
         });
       }
       if (member.roles.cache.has(imuteRole.id)) {
@@ -55,7 +55,7 @@ module.exports = {
       }
 
       // Only channels still missing the overwrite are touched, so a partial failure last time is retried now.
-      const setup = await applyRoleOverwrites(interaction, imuteRole, { AttachFiles: false, EmbedLinks: false }, { reason: '[sonder] Image mute role setup' });
+      const setup = await applyRoleOverwrites(interaction, imuteRole, { AttachFiles: false, EmbedLinks: false }, { reason: '[mofu] Image mute role setup' });
 
       try {
         await member.roles.add(imuteRole, `Image muted by ${interaction.user.tag}: ${reason}`);

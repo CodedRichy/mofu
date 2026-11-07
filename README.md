@@ -1,11 +1,12 @@
-# Sonder
+# mofu
 
-A multipurpose Discord bot in Node.js with moderation, economy, leveling, music and AI commands, plus a web dashboard.
+mofu is a multipurpose Discord bot in Node.js with moderation, economy, leveling, music and AI commands, plus a web dashboard.
 
 ## What it does
 
 - Every command works as a slash command and as a prefix command (`;ban`).
 - Moderation, economy (daily, work, shop, blackjack, slots), leveling with rank cards, fun commands and trivia, and music playback through discord-player.
+- Chat: say "mofu" (the old name "sonder" still works for now) to talk to it or ask for a mute, unmute, warn or kick.
 - AI commands (`ask`, `persona`, `roast`, `sentiment`, `summarize`, `vibe`) call Groq's `llama-3.3-70b-versatile`. An OpenAI key is listed as an optional alternative in `.env.example`.
 - A React and Vite dashboard in `web/`, with an Express API that uses Discord OAuth.
 

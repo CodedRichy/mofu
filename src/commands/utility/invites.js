@@ -39,7 +39,7 @@ module.exports = {
       return interaction.reply({
         embeds: [response({
           client: interaction.client,
-          description: `**[Invite sonder to your server](${link})**`,
+          description: `**[Invite mofu to your server](${link})**`,
           color: colors.primary,
         })],
       });

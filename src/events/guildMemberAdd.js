@@ -16,9 +16,9 @@ module.exports = {
       // Track the result so the modlog only says Banned/Kicked when Discord accepted it.
       let ok = true;
       if (action === 'ban') {
-        await guild.members.ban(member.id, { reason: `[sonder antiraid] ${raid.reason} (${raid.count} joins)` }).catch(() => { ok = false; });
+        await guild.members.ban(member.id, { reason: `[mofu antiraid] ${raid.reason} (${raid.count} joins)` }).catch(() => { ok = false; });
       } else {
-        await member.kick(`[sonder antiraid] ${raid.reason} (${raid.count} joins)`).catch(() => { ok = false; });
+        await member.kick(`[mofu antiraid] ${raid.reason} (${raid.count} joins)`).catch(() => { ok = false; });
       }
       const outcome = ok
         ? (action === 'ban' ? 'Banned' : 'Kicked')

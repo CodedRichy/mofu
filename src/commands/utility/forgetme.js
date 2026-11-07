@@ -10,7 +10,7 @@ const { KEEP: BACKUP_COPIES } = require('../../utils/backup');
 const BACKUP_NOTE = `Deleted data can stay in the daily database backups until they rotate out (the newest ${BACKUP_COPIES} are kept, so about ${BACKUP_COPIES} more days). Giveaway entries, booster role and voice channel ownership are not part of this delete.`;
 
 function describeScope(scope, guild) {
-  return scope === 'everywhere' ? 'in **every server** Sonder shares with you' : `in **${guild.name.slice(0, 100)}**`;
+  return scope === 'everywhere' ? 'in **every server** mofu shares with you' : `in **${guild.name.slice(0, 100)}**`;
 }
 
 // Who may delete what: anyone for themself (this server or everywhere); a Manage Server admin for another
@@ -33,7 +33,7 @@ function summarize(result) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('forgetme')
-    .setDescription('Delete your personal data from Sonder (asks to confirm)')
+    .setDescription('Delete your personal data from mofu (asks to confirm)')
     .addStringOption((o) => o.setName('scope').setDescription('This server (default) or every server')
       .addChoices({ name: 'this server', value: 'server' }, { name: 'everywhere', value: 'everywhere' }))
     .addUserOption((o) => o.setName('user').setDescription('Admins only: delete this member\'s data for this server')),

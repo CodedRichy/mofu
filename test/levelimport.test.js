@@ -163,7 +163,7 @@ function fakeInteraction({ guildId, fileText, mode = null, canManage = true, mem
     memberCount: memberMap.size,
     members: { cache: memberMap, fetch: async () => memberMap },
     channels: { cache: new Map([['modlogchan', modlogChannel]]) },
-    client: { user: { username: 'Sonder', displayAvatarURL: () => null } },
+    client: { user: { username: 'mofu', displayAvatarURL: () => null } },
   };
   const user = { id: U1, tag: 'example_admin' };
   const perms = { has: (p) => p === PermissionFlagsBits.ManageGuild && canManage };
@@ -221,7 +221,7 @@ test('/import levels: dry run first, confirm writes, second run changes nothing'
     assert.match(preview, /Will update: \*\*1\*\* member/);
     assert.match(preview, /No longer in this server: 1/);
     assert.match(preview, /Bots: 1/);
-    assert.match(preview, /MEE6 level 20 \(.+ total XP\) becomes Sonder level 20/);
+    assert.match(preview, /MEE6 level 20 \(.+ total XP\) becomes mofu level 20/);
     assert.doesNotMatch(preview, /sonder\.gg/);
     assert.strictEqual(xp.getStats(G, U2).totalXp, 0, 'dry run writes nothing');
     assert.ok(importCmd._importing.has(G), 'lock held while the prompt is open');

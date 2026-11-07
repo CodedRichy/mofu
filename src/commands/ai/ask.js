@@ -6,7 +6,7 @@ const { generateResponse } = require('../../utils/ai');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('ask')
-    .setDescription('Ask Sonder AI a question')
+    .setDescription('Ask mofu AI a question')
     .addStringOption((o) => o.setName('question').setDescription('Your question').setRequired(true)),
 
   cooldown: 10,

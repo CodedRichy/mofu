@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, version } = require('discord.js');
-const { colors } = require('../../utils/constants');
+const { colors, BRAND } = require('../../utils/constants');
 const { base } = require('../../utils/embed');
 
 module.exports = {
@@ -13,7 +13,7 @@ module.exports = {
     const memUsage = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1);
 
     const embed = base(client, colors.primary)
-      .setAuthor({ name: 'sonder', iconURL: client.user.displayAvatarURL() })
+      .setAuthor({ name: BRAND, iconURL: client.user.displayAvatarURL() })
       .setThumbnail(client.user.displayAvatarURL({ size: 256 }))
       .addFields(
         { name: 'Servers', value: `${client.guilds.cache.size}`, inline: true },

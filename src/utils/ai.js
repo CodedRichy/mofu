@@ -1,6 +1,10 @@
 const config = require('../config');
 const log = require('./logger');
 const { createBudget } = require('./aiBudget');
+const { BRAND, TRIGGER_WORDS } = require('./constants');
+
+// old names people may still use for the bot ("sonder"); they mean the same bot
+const OLD_NAMES = TRIGGER_WORDS.filter((w) => w !== BRAND).join(', ');
 
 // One budget per process (see aiBudget.js). Every Groq request goes through it; denied = no AI, never a punishment.
 const budget = createBudget();
@@ -10,12 +14,12 @@ const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 // MODEL (gpt-oss-20b): smallest and cheapest on Groq, used for moderation and other classifiers. It reasons
 // before answering, so reasoning_effort stays 'low' (default effort can spend the whole max_tokens budget on
 // reasoning and return an empty reply).
-// CHAT_MODEL (qwen3.8-27b): the voice of Sonder in conversation. Noticeably more natural and ~3x faster than
+// CHAT_MODEL (qwen3.8-27b): the voice of mofu in conversation. Noticeably more natural and ~3x faster than
 // gpt-oss-20b in side-by-side tests. llama-3.3-70b-versatile returns 404 on this account.
 const MODEL = 'openai/gpt-oss-20b';
 const CHAT_MODEL = 'qwen/qwen3.8-27b';
 
-const SONDER_SYSTEM = `you're sonder, a bot that hangs out in this discord server. you text like a normal person: flat, short, a bit dry. you're not trying to be charming.
+const BOT_SYSTEM = `you're ${BRAND}, a bot that hangs out in this discord server. you text like a normal person: flat, short, a bit dry. you're not trying to be charming.${OLD_NAMES ? ` your name is always written lowercase: ${BRAND}. some people still call you by your old name (${OLD_NAMES}); that's you, answer normally, and when you name yourself say ${BRAND}.` : ''}
 
 rules:
 - say the answer and stop. usually one short sentence, often just a few words.
@@ -27,7 +31,7 @@ rules:
 - reply in the language the person wrote in (hinglish, spanish, whatever), same casual register. only switch if they ask you to. commands and the prefix stay as they are.
 - lowercase is fine. one emoji at most, and rarely. no bullet lists unless asked, code in a code block.
 - never invent commands or discord features. the prefix is ; and slash commands exist. for how-to questions say to check /help.
-- from chat you can mute, unmute, warn and kick people, and only for someone with the permission, with a confirm button: "sonder mute @someone 10m reason", "sonder unmute @someone", "sonder warn @someone reason", "sonder kick @someone reason". when you show the format, always write @someone, never a real name, and never answer a bare "kick"/"mute" by inventing a target. you can't ban or anything else from chat yet. if asked for that, say so plainly and point to /ban etc. never just say "can't" without saying why.
+- from chat you can mute, unmute, warn and kick people, and only for someone with the permission, with a confirm button: "${BRAND} mute @someone 10m reason", "${BRAND} unmute @someone", "${BRAND} warn @someone reason", "${BRAND} kick @someone reason". when you show the format, always write @someone, never a real name, and never answer a bare "kick"/"mute" by inventing a target. you can't ban or anything else from chat yet. if asked for that, say so plainly and point to /ban etc. never just say "can't" without saying why.
 
 this is the register, not lines to repeat:
 them: how's your day
@@ -141,7 +145,7 @@ async function analyzeSentiment(text, { guildId = null } = {}) {
 
 async function generateResponse(prompt, context = '', { guildId = null } = {}) {
   return chat([
-    { role: 'system', content: SONDER_SYSTEM },
+    { role: 'system', content: BOT_SYSTEM },
     ...(context ? [{ role: 'user', content: `Context: ${context}` }] : []),
     { role: 'user', content: prompt },
   ], { maxTokens: 300, temperature: 0.7, guildId });
@@ -151,7 +155,7 @@ async function generateResponse(prompt, context = '', { guildId = null } = {}) {
 async function chatWithHistory(message, history = [], context = null, { guildId = null } = {}) {
   if (!config.groq?.apiKey) return null;
   const messages = [
-    { role: 'system', content: SONDER_SYSTEM },
+    { role: 'system', content: BOT_SYSTEM },
     ...(context ? [{ role: 'system', content: `right now:\n${context.slice(0, 3500)}` }] : []),
     ...history.slice(-10).map((m) => ({ role: m.role, content: m.content.slice(0, 1000) })),
     { role: 'user', content: message.slice(0, 2000) },
@@ -163,4 +167,4 @@ async function chatWithHistory(message, history = [], context = null, { guildId 
     || request(messages, { maxTokens: 512, temperature: 0.8, model: MODEL });
 }
 
-module.exports = { chat, moderate, summarize, analyzeSentiment, generateResponse, chatWithHistory, parseModeration, budget, SONDER_SYSTEM };
+module.exports = { chat, moderate, summarize, analyzeSentiment, generateResponse, chatWithHistory, parseModeration, budget, BOT_SYSTEM };

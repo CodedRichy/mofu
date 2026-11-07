@@ -48,7 +48,7 @@ async function createRole(guild, preset) {
       permissions: config.permissions || [],
       hoist: config.hoist || false,
       mentionable: config.mentionable || false,
-      reason: 'Sonder role setup',
+      reason: 'mofu role setup',
     });
     log.info(`Created role @${config.name} in ${guild.name}`);
     return role;

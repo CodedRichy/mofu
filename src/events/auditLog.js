@@ -167,7 +167,7 @@ module.exports = [
 
       if (antinuke.check(guild.id, executorId, 'kick')) {
         // punishExecutor bans by id even when the executor is not cached, and reports each step.
-        const { banned, rolesStripped } = await punishExecutor(guild, executorId, '[sonder antinuke] Mass kick detected');
+        const { banned, rolesStripped } = await punishExecutor(guild, executorId, '[mofu antinuke] Mass kick detected');
 
         const modlogChannel = store.getConfig(guild.id, 'modlog_channel');
         if (modlogChannel) {

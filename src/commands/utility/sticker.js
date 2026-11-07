@@ -56,7 +56,7 @@ module.exports = {
       }
 
       try {
-        await interaction.guild.stickers.create({ file: stickerUrl, name, tags: 'sonder' });
+        await interaction.guild.stickers.create({ file: stickerUrl, name, tags: 'mofu' });
         await interaction.reply({ embeds: [response({ client: interaction.client, description: `Sticker **${name}** added.`, color: colors.success })] });
       } catch {
         await interaction.reply({ embeds: [response({ client: interaction.client, description: 'Failed to add sticker. Server may be at the sticker limit.', color: colors.error })], ephemeral: true });

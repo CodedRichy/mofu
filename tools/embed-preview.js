@@ -5,7 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const client = { user: { displayAvatarURL: () => 'https://cdn.discordapp.com/embed/avatars/0.png', tag: 'sonder#5242' } };
+const client = { user: { displayAvatarURL: () => 'https://cdn.discordapp.com/embed/avatars/0.png', tag: 'mofu#5242' } };
 const guild = { name: 'Example Server', id: '1', client };
 const user = (name) => ({ username: name, tag: `${name}#0001`, id: '9', displayAvatarURL: () => 'https://cdn.discordapp.com/embed/avatars/0.png' });
 

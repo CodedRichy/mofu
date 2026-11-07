@@ -1,4 +1,5 @@
-// Natural-language moderation actions ("yo sonder mute @user 10m spamming").
+// Natural-language moderation actions ("yo mofu mute @user 10m spamming"). The bot answers to every word in
+// TRIGGER_WORDS (src/utils/constants.js): the new name 'mofu' and the old name 'sonder'.
 //
 // Design rules (see the AI-native research in the session notes):
 //  - The request is parsed by code (regex), never by a model. A model cannot choose what runs.
@@ -6,10 +7,10 @@
 //  - Authority is the invoker's real Discord permissions + role hierarchy, checked when the card is
 //    shown AND again when the button is pressed. The bot's own permissions are never the gate.
 //  - Every action needs a confirmation button that only the invoker can press (60s expiry).
-//  - Every executed action is tagged "via Sonder AI" in the Discord audit log and the modlog.
+//  - Every executed action is tagged "via mofu AI" in the Discord audit log and the modlog.
 const crypto = require('crypto');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { colors } = require('../utils/constants');
+const { colors, BRAND, TRIGGER_WORDS, TRIGGER_ALT } = require('../utils/constants');
 const { base, modAction, dmNotice, response } = require('../utils/embed');
 const { parse, format } = require('../utils/duration');
 const modlog = require('../utils/modlog');
@@ -51,7 +52,7 @@ const NAME_STOP = new Set(['someone', 'somebody', 'anyone', 'everyone', 'everybo
   // pronouns, determiners, auxiliaries and prepositions: never a username in "mute <word>"
   'your', 'yours', 'my', 'mine', 'our', 'ours', 'their', 'theirs', 'its', 'whoever', 'whatever', 'whomever', 'all', 'both', 'each', 'every', 'none', 'nobody', 'here', 'there', 'is', 'was', 'are', 'were', 'be', 'been', 'being', 'am', 'will', 'shall', 'may', 'might', 'must', 'not', 'no', 'dont', 'do', 'to', 'of', 'in', 'on', 'at', 'by', 'with', 'from', 'about', 'if', 'then', 'so', 'but', 'or', 'as', 'too', 'very', 'just', 'also',
   // words that follow a verb in ordinary chat ("the mute button", "my timeout ends soon", "warn level high today")
-  'button', 'buttons', 'mic', 'ends', 'end', 'level', 'high', 'low', 'today', 'tomorrow', 'yesterday', 'tonight', 'soon', 'time', 'times', 'position', 'ass', 'asses', 'butt', 'rocks', 'rock', 'bucket', 'habit', 'tires', 'tire', 'chat', 'channel', 'server', 'bot', 'sonder', 'music', 'sound', 'volume', 'game', 'stream', 'event', 'gently', 'softly', 'slowly', 'quickly', 'harder', 'hard', 'already', 'forever', 'permanently', 'temporarily',
+  'button', 'buttons', 'mic', 'ends', 'end', 'level', 'high', 'low', 'today', 'tomorrow', 'yesterday', 'tonight', 'soon', 'time', 'times', 'position', 'ass', 'asses', 'butt', 'rocks', 'rock', 'bucket', 'habit', 'tires', 'tire', 'chat', 'channel', 'server', 'bot', ...TRIGGER_WORDS, 'music', 'sound', 'volume', 'game', 'stream', 'event', 'gently', 'softly', 'slowly', 'quickly', 'harder', 'hard', 'already', 'forever', 'permanently', 'temporarily',
   // filler, laughter and address terms
   'lol', 'lmao', 'lmfao', 'rofl', 'omg', 'idk', 'ok', 'okay', 'kk', 'plz', 'pleas', 'bro', 'bruh', 'dude', 'fam', 'man', 'guys', 'gang', 'yo', 'hey', 'hi', 'hello', 'xd', 'haha', 'hehe', 'nvm', 'tho', 'though', 'bhai', 'yaar', 'yar',
   // Hinglish / French / Spanish particles that follow a borrowed English verb
@@ -60,26 +61,37 @@ const NAME_STOP = new Set(['someone', 'somebody', 'anyone', 'everyone', 'everybo
 const looksLikeName = (n) => /^[\p{L}\p{N}_.-]+$/u.test(n) && !/^\d/.test(n) && !/^(?:l+o+l+|lm+a+o+|(?:ha){2,}h?|(?:he){2,}h?|x+d+|a+h+|o+h+|u+m+|h+m+|e+h+|y+e+s+|n+o+p?e?)$/i.test(n);
 
 // ---- is this message addressed to the bot as an imperative? ----
-// Everything between the bot's name and the verb must be polite filler ("yo sonder, can you please mute ...").
-// Anything else ("i will kick", "dont mute", "why did you kick", "he said mute", "the sonder mute button") is
+// Everything between the bot's name and the verb must be polite filler ("yo mofu, can you please mute ...").
+// Anything else ("i will kick", "dont mute", "why did you kick", "he said mute", "the mofu mute button") is
 // conversation, not a request.
-const PREFIX_FILLER = /^(?:(?:hey|yo|hi|hello|hiya|ok|okay|so|and|then|just|kindly|quickly|now|please|pls|plz|bot|sonder|ya|go ahead and|(?:can|could|would|will)\s+(?:you|u|ya)|you\s+(?:can|could|may)|(?:i\s+)?(?:want|need|wanna|would like|id like)\s+(?:you\s+)?to)(?:\s+|$))+/;
+const PREFIX_FILLER = new RegExp(`^(?:(?:hey|yo|hi|hello|hiya|ok|okay|so|and|then|just|kindly|quickly|now|please|pls|plz|bot|${TRIGGER_ALT}|ya|go ahead and|(?:can|could|would|will)\\s+(?:you|u|ya)|you\\s+(?:can|could|may)|(?:i\\s+)?(?:want|need|wanna|would like|id like)\\s+(?:you\\s+)?to)(?:\\s+|$))+`);
+
+// Last place a trigger word appears in `s` (lowercase), as { at, len }, or { at: -1 }. Substring match, like
+// the single-name lastIndexOf it replaced.
+function lastTrigger(s) {
+  let best = { at: -1, len: 0 };
+  for (const w of TRIGGER_WORDS) {
+    const at = s.lastIndexOf(w);
+    if (at > best.at) best = { at, len: w.length };
+  }
+  return best;
+}
 // first word after the verb that makes it a noun / statement ("mute button", "mute is cringe", "kick your ass")
 const FOLLOW_BLOCK = new Set(['your', 'yours', 'my', 'his', 'her', 'their', 'our', 'its', 'is', 'was', 'are', 'were', 'be', 'been', 'being', 'button', 'buttons', 'mic', 'the', 'a', 'an', 'to', 'of', 'in', 'on', 'at', 'with', 'if', 'but', 'because', 'when', 'how', 'why', 'what', 'who', 'not', 'dont', 'never']);
 const MAX_CONTENT = 4000;
 
 function inCommandPosition(content, botId, verbAt, verbLen) {
   let before = content.slice(0, verbAt);
-  if (botId) before = before.replace(new RegExp(`<@!?${botId}>`, 'g'), ' sonder ');
+  if (botId) before = before.replace(new RegExp(`<@!?${botId}>`, 'g'), ` ${BRAND} `);
   before = before.replace(/<@!?\d+>/g, ' @m ').toLowerCase();
-  // only what follows the bot's name counts: "lol sonder, mute x" is fine, "the sonder mute button" is judged by what follows the verb
-  const named = before.lastIndexOf('sonder');
-  // "@someone sonder mute @x": the line is addressed to someone else
+  // only what follows the bot's name counts: "lol mofu, mute x" is fine, "the mofu mute button" is judged by what follows the verb
+  const { at: named, len: namedLen } = lastTrigger(before);
+  // "@someone mofu mute @x": the line is addressed to someone else
   if (named >= 0 && /@m[\s,:]*$/.test(before.slice(0, named))) return false;
-  if (named >= 0) before = before.slice(named + 'sonder'.length);
+  if (named >= 0) before = before.slice(named + namedLen);
   before = before.replace(/[^a-z0-9@'\s]/g, ' ').replace(/'/g, '').replace(/\s+/g, ' ').trim();
   if (before) {
-    // a mention before the verb is only OK as "sonder @user mute" (named, exactly one)
+    // a mention before the verb is only OK as "mofu @user mute" (named, exactly one)
     let rest = before;
     for (let prev = null; prev !== rest;) { prev = rest; rest = rest.replace(PREFIX_FILLER, '').trim(); }
     if (named >= 0 && rest === '@m') rest = '';
@@ -158,15 +170,15 @@ function parseSimple(kind, content, botId) {
   return { kind, targetIds, targetName, duration: null, reason };
 }
 
-// A bare "sonder kick" (verb, no target) is clearly an attempt at an action. Answer it from code so the
+// A bare "mofu kick" (verb, no target) is clearly an attempt at an action. Answer it from code so the
 // chat model can never invent a target, and so the format shown is always the same.
-const HINT_FILLER = new Set(['sonder', 'yo', 'hey', 'hi', 'hello', 'please', 'pls', 'plz', 'can', 'you', 'could', 'now', 'just']);
+const HINT_FILLER = new Set([...TRIGGER_WORDS, 'yo', 'hey', 'hi', 'hello', 'please', 'pls', 'plz', 'can', 'you', 'could', 'now', 'just']);
 const HINTS = {
-  mute: 'mute who? `sonder mute @someone 10m reason`',
-  timeout: 'timeout who? `sonder mute @someone 10m reason`',
-  unmute: 'unmute who? `sonder unmute @someone`',
-  warn: 'warn who? `sonder warn @someone reason`',
-  kick: 'kick who? `sonder kick @someone reason`',
+  mute: `mute who? \`${BRAND} mute @someone 10m reason\``,
+  timeout: `timeout who? \`${BRAND} mute @someone 10m reason\``,
+  unmute: `unmute who? \`${BRAND} unmute @someone\``,
+  warn: `warn who? \`${BRAND} warn @someone reason\``,
+  kick: `kick who? \`${BRAND} kick @someone reason\``,
 };
 function usageHint(content, botId = null) {
   // only the bot's own mention is noise; any other @mention means a target was given, so this is not a bare verb
@@ -284,7 +296,7 @@ function proposalCard({ client, kind, target, dur, reason, invokerId, expiresAt 
     );
 }
 
-// Compact result card: action, target, duration, "via Sonder AI".
+// Compact result card: action, target, duration, "via mofu AI".
 function resultCard({ client, title, kind, targetId, dur, note, color }) {
   const lines = [`**Action** ${kind}`];
   if (targetId) lines.push(`**Target** <@${targetId}>`);
@@ -293,7 +305,7 @@ function resultCard({ client, title, kind, targetId, dur, note, color }) {
   return base(client, color)
     .setAuthor({ name: title })
     .setDescription(lines.join('\n'))
-    .setFooter({ text: 'via Sonder AI', iconURL: client?.user?.displayAvatarURL?.() || undefined });
+    .setFooter({ text: `via ${BRAND} AI`, iconURL: client?.user?.displayAvatarURL?.() || undefined });
 }
 
 async function proposeMute(message, intent) {
@@ -411,7 +423,7 @@ async function handleButton(interaction) {
     return show({ embeds: [resultCard({ client: interaction.client, title: 'NOT DONE', kind: p.kind, targetId: p.targetId, dur: p.dur, note: v.error, color: colors.error })] });
   }
 
-  const reason = `${p.reason} (via Sonder AI, confirmed by ${interaction.user.tag})`;
+  const reason = `${p.reason} (via ${BRAND} AI, confirmed by ${interaction.user.tag})`;
   const dm = (action, color, extra = {}) =>
     v.target.user.send({ embeds: [dmNotice({ guild, action, reason: p.reason, color, ...extra })] }).catch(() => {});
   let extra;
@@ -421,7 +433,7 @@ async function handleButton(interaction) {
       await v.target.timeout(null, reason.slice(0, 512));
       await dm('unmuted', colors.success); // only after it worked
     } else if (p.kind === 'warn') {
-      store.addWarning(guild.id, v.target.id, { reason: `${p.reason} (via Sonder AI)`, moderator: p.invokerId });
+      store.addWarning(guild.id, v.target.id, { reason: `${p.reason} (via ${BRAND} AI)`, moderator: p.invokerId });
       const total = store.getWarnings(guild.id, v.target.id).length;
       extra = `Warning #${total}`;
       await dm('warned', colors.warning);

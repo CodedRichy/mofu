@@ -11,7 +11,7 @@ const {
   ComponentType,
 } = require('discord.js');
 const { cmdRef } = require('../../utils/invocation');
-const { colors } = require('../../utils/constants');
+const { colors, BRAND, LOG_CHANNEL } = require('../../utils/constants');
 const { base, response } = require('../../utils/embed');
 const store = require('../../database/store');
 
@@ -100,7 +100,7 @@ async function createChannelForSetup(interaction, guildId, name, isPrivate) {
 function overviewEmbed(client) {
   return base(client, colors.primary)
     .setTitle('Server Setup')
-    .setDescription('Welcome to Sonder setup! Pick a category to configure.\n\n' +
+    .setDescription(`Welcome to ${BRAND} setup! Pick a category to configure.\n\n` +
       CATEGORIES.map((c) => `${c.emoji} **${c.label}** ${colors.muted !== undefined ? '' : ''}${c.description}`).join('\n'));
 }
 
@@ -315,7 +315,7 @@ module.exports = {
             wizardStep = 'logging_log';
             return await i.update({
               embeds: [loggingEmbed(client, guildId, 'log')],
-              components: [channelSelectRow('setup_log_channel'), createChannelRow('setup_create_logs', 'Create #sonder-logs')],
+              components: [channelSelectRow('setup_log_channel'), createChannelRow('setup_create_logs', `Create #${LOG_CHANNEL}`)],
             });
           }
 
@@ -381,7 +381,7 @@ module.exports = {
 
         if (i.customId === 'setup_create_logs') {
           await i.deferUpdate();
-          const ch = await createChannelForSetup(i, guildId, 'sonder-logs', true);
+          const ch = await createChannelForSetup(i, guildId, LOG_CHANNEL, true);
           if (!ch) return;
           store.setConfig(guildId, 'log_channel', ch.id);
           wizardStep = 'logging_modlog';

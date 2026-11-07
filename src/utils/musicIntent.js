@@ -1,7 +1,8 @@
-// Natural-language music commands: "sonder skip", "yo sonder play despacito".
+// Natural-language music commands: "mofu skip", "yo mofu play despacito" (any word in TRIGGER_WORDS works).
 // Pure matcher: returns { verb, args } for the prefix command to run, or null when the sentence is
 // ordinary conversation. It is deliberately strict: a wrong "no" costs one retyped command, a wrong
 // "yes" stops the music for a whole voice channel.
+const { TRIGGER_ALT } = require('./constants');
 
 const BARE_VERBS = new Set(['stop', 'skip', 'pause', 'resume', 'shuffle', 'queue', 'nowplaying']);
 const LOOP_MODES = new Set(['off', 'track', 'queue', 'autoplay', 'song', 'none']);
@@ -49,7 +50,7 @@ function norm(word) {
 function parseMusicIntent(content, botId) {
   if (typeof content !== 'string' || !content || content.length > 300) return null;
   const mention = botId ? `<@!?${botId}>` : '(?!)';
-  const re = new RegExp(`^\\s*(?:(?:hey|yo)\\s+)?(?:sonder|${mention})[,:]?\\s+(play|skip|pause|resume|stop|queue|shuffle|loop|volume|nowplaying)\\b(.*)$`, 'is');
+  const re = new RegExp(`^\\s*(?:(?:hey|yo)\\s+)?(?:${TRIGGER_ALT}|${mention})[,:]?\\s+(play|skip|pause|resume|stop|queue|shuffle|loop|volume|nowplaying)\\b(.*)$`, 'is');
   const m = content.match(re);
   if (!m) return null;
 

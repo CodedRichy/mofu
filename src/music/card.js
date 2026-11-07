@@ -1,7 +1,7 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { QueueRepeatMode, useQueue } = require('discord-player');
 const { base, response } = require('../utils/embed');
-const { colors } = require('../utils/constants');
+const { colors, BRAND } = require('../utils/constants');
 const log = require('../utils/logger');
 
 // One live "record player" card per guild. It is edited every TICK_MS while a track plays and not at all while
@@ -54,7 +54,7 @@ function buildCard(client, queue, frame = 0) {
       { name: 'Up next', value: next ? (String(next.title).length > 60 ? `${String(next.title).slice(0, 57)}...` : `${next.title}`) + (queue.tracks.size > 1 ? ` (+${queue.tracks.size - 1})` : '') : 'nothing queued', inline: true },
     );
   if (track.thumbnail) embed.setThumbnail(track.thumbnail);
-  if (track.requestedBy) embed.setFooter({ text: `requested by ${track.requestedBy.globalName || track.requestedBy.username} - sonder`, iconURL: client.user.displayAvatarURL() });
+  if (track.requestedBy) embed.setFooter({ text: `requested by ${track.requestedBy.globalName || track.requestedBy.username} - ${BRAND}`, iconURL: client.user.displayAvatarURL() });
 
   const btn = (id, label, style = ButtonStyle.Secondary) => new ButtonBuilder().setCustomId(`mp:${id}`).setLabel(label).setStyle(style);
   const row1 = new ActionRowBuilder().addComponents(

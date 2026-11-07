@@ -65,7 +65,7 @@ module.exports = {
           name: 'Jailed',
           color: 0x2c2f33,
           permissions: [],
-          reason: '[sonder] Auto-created jail role',
+          reason: '[mofu] Auto-created jail role',
         });
       }
 
@@ -73,7 +73,7 @@ module.exports = {
       // touched, so a partial failure last time is retried now, and failures are reported below.
       const setup = await applyRoleOverwrites(interaction, jailRole, { ViewChannel: false, SendMessages: false, Connect: false }, {
         filter: (c) => (c.type === ChannelType.GuildText || c.type === ChannelType.GuildVoice) && c.name !== 'jail',
-        reason: '[sonder] Jail role setup',
+        reason: '[mofu] Jail role setup',
       });
 
       let jailChannel = interaction.guild.channels.cache.find((c) => c.name === 'jail');
@@ -85,7 +85,7 @@ module.exports = {
             { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
             { id: jailRole.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages], deny: [PermissionFlagsBits.AttachFiles, PermissionFlagsBits.EmbedLinks] },
           ],
-          reason: '[sonder] Auto-created jail channel',
+          reason: '[mofu] Auto-created jail channel',
         });
       } else if (!jailChannel.permissionOverwrites?.cache.has(jailRole.id)) {
         // an existing #jail must let jailed members in, or they would see nothing at all

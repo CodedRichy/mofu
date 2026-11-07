@@ -1,4 +1,4 @@
-# Deploying Sonder
+# Deploying mofu
 
 One small VPS runs everything: the bot, its SQLite database and the dashboard API. A 2 vCPU / 2 GB machine
 (Hetzner CX22 or similar, about 4-5 EUR a month) is plenty until you are well into thousands of servers.
@@ -49,11 +49,11 @@ If the build fails on `better-sqlite3`, the image already installs `python3 make
 
 ```bash
 sudo apt install -y caddy
-printf 'api.sonder.gg {\n  reverse_proxy 127.0.0.1:3001\n}\n' | sudo tee /etc/caddy/Caddyfile
+printf 'api.example.com {\n  reverse_proxy 127.0.0.1:3001\n}\n' | sudo tee /etc/caddy/Caddyfile
 sudo systemctl reload caddy
 ```
 
-Point an `A` record for `api.sonder.gg` at the VPS first. Set `DASHBOARD_URL` to wherever the web app is hosted.
+Point an `A` record for `api.example.com` at the VPS first. Set `DASHBOARD_URL` to wherever the web app is hosted.
 The web app itself (`cd web && npm ci && npm run build`) is static: put `web/dist` on Cloudflare Pages.
 
 ## 5. Backups (do this before inviting anyone)
@@ -84,7 +84,7 @@ Pending confirmation cards (chat mute/kick) are held in memory, so they expire o
 
 - Discord asks for bot verification at 75 servers. Prepare: the privacy policy and terms URLs
   (`/privacy`, `/terms` on the site), a description of why each privileged intent is needed
-  (Message Content: prefix commands, "sonder" chat, AutoMod; Server Members: welcome, autorole, moderation),
+  (Message Content: prefix commands, "mofu" (or old "sonder") chat, AutoMod; Server Members: welcome, autorole, moderation),
   and a support server link.
 - Past about 2,500 servers Discord requires sharding. `shard.js` is already there: change the compose command to
   `node shard.js`.

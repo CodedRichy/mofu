@@ -5,7 +5,24 @@ const { hasBlockedLink, isUrlWhitelisted } = require('../src/utils/linkfilter');
 const { setLongTimeout, MAX_DELAY } = require('../src/utils/longTimeout');
 
 const BOT = '123456789012345678';
-const hit = (s) => parseMusicIntent(s, BOT);
+// The bot answers to 'mofu' and its old name 'sonder'. Every case below is written with 'sonder' and is
+// also run with 'mofu' in its place: both names must give exactly the same result.
+const asMofu = (s) => s.replace(/sonder/g, 'mofu').replace(/Sonder/g, 'Mofu').replace(/SONDER/g, 'MOFU');
+const hit = (s) => {
+  const r = parseMusicIntent(s, BOT);
+  assert.deepStrictEqual(parseMusicIntent(asMofu(s), BOT), r, `same result for: ${asMofu(s)}`);
+  return r;
+};
+
+test('both names work, and only as the first word', () => {
+  assert.deepStrictEqual(parseMusicIntent('mofu skip', BOT), { verb: 'skip', args: '' });
+  assert.deepStrictEqual(parseMusicIntent('yo mofu, play despacito', BOT), { verb: 'play', args: 'despacito' });
+  assert.deepStrictEqual(parseMusicIntent('MOFU STOP', BOT), { verb: 'stop', args: '' });
+  assert.deepStrictEqual(parseMusicIntent('sonder skip', BOT), { verb: 'skip', args: '' });
+  for (const s of ['i told mofu to stop', 'mofus stop', 'mofu stop being weird', 'mofu play it cool', 'mofu, play it cool', 'mofuu skip', 'mmofu skip']) {
+    assert.strictEqual(parseMusicIntent(s, BOT), null, s);
+  }
+});
 
 test('bare verbs match', () => {
   assert.deepStrictEqual(hit('sonder stop'), { verb: 'stop', args: '' });
@@ -81,6 +98,7 @@ test('ordinary conversation never matches', () => {
 test('mention of another user does not count', () => {
   assert.strictEqual(hit('<@999999999999999999> skip'), null);
   assert.strictEqual(parseMusicIntent('sonder skip', undefined) !== null, true);
+  assert.strictEqual(parseMusicIntent('mofu skip', undefined) !== null, true);
 });
 
 test('antilink compares hostnames, not substrings', () => {

@@ -1,9 +1,11 @@
 const { ChannelType, PermissionFlagsBits } = require('discord.js');
 const log = require('./logger');
+const { LOG_CHANNEL, channelNames } = require('./constants');
 
 async function createConfigChannel(guild, { name, isPrivate = true, client }) {
+  const names = channelNames(name);
   const existing = guild.channels.cache.find(
-    (c) => c.name === name && c.type === ChannelType.GuildText
+    (c) => names.includes(c.name) && c.type === ChannelType.GuildText
   );
   if (existing) return existing;
 
@@ -31,7 +33,7 @@ async function createConfigChannel(guild, { name, isPrivate = true, client }) {
 const CHANNEL_DEFAULTS = {
   welcome_channel: { name: 'welcome', isPrivate: false },
   goodbye_channel: { name: 'goodbye', isPrivate: false },
-  log_channel: { name: 'sonder-logs', isPrivate: true },
+  log_channel: { name: LOG_CHANNEL, isPrivate: true },
   modlog_channel: { name: 'modlog', isPrivate: true },
   audit_log_channel: { name: 'audit-log', isPrivate: true },
   starboard_channel: { name: 'starboard', isPrivate: false },

@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
-const { colors } = require('../../utils/constants');
+const { colors, LOG_CHANNEL } = require('../../utils/constants');
 const { response } = require('../../utils/embed');
 const store = require('../../database/store');
 const { createConfigChannel, CHANNEL_DEFAULTS } = require('../../utils/channelCreate');
@@ -24,7 +24,7 @@ module.exports = {
         )
         .addBooleanOption((o) => o.setName('enabled').setDescription('Enable or disable').setRequired(true))
     )
-    .addSubcommand((sub) => sub.setName('create').setDescription('Create a private #sonder-logs channel'))
+    .addSubcommand((sub) => sub.setName('create').setDescription(`Create a private #${LOG_CHANNEL} channel`))
     .addSubcommand((sub) => sub.setName('disable').setDescription('Disable all logging'))
     .addSubcommand((sub) => sub.setName('settings').setDescription('View logging settings'))
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),

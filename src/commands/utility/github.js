@@ -18,7 +18,7 @@ module.exports = {
 
     try {
       const res = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}`, {
-        headers: { 'User-Agent': 'Sonder-Bot' },
+        headers: { 'User-Agent': 'mofu-bot' },
       });
       if (!res.ok) throw new Error();
       const u = await res.json();

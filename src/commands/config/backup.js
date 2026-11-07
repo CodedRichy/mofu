@@ -58,7 +58,7 @@ module.exports = {
 
       const keyCount = Object.keys(config).length;
       const file = new AttachmentBuilder(Buffer.from(JSON.stringify(data, null, 2)), {
-        name: `sonder-backup-${guild.id}.json`,
+        name: `mofu-backup-${guild.id}.json`,
       });
 
       return interaction.reply({
@@ -96,14 +96,14 @@ module.exports = {
         data = await res.json();
       } catch {
         return interaction.reply({
-          embeds: [response({ client: interaction.client, description: "Couldn't read file — make sure it's a valid JSON backup from Sonder.", color: colors.error })],
+          embeds: [response({ client: interaction.client, description: "Couldn't read file — make sure it's a valid JSON backup from mofu.", color: colors.error })],
           ephemeral: true,
         });
       }
 
       if (!data._meta || !data.config || typeof data.config !== 'object' || data._meta.version !== 1) {
         return interaction.reply({
-          embeds: [response({ client: interaction.client, description: `This doesn't look like a Sonder backup. Use ${cmdRef(interaction.guild.id, 'backup export')} to create one.`, color: colors.error })],
+          embeds: [response({ client: interaction.client, description: `This doesn't look like a mofu backup. Use ${cmdRef(interaction.guild.id, 'backup export')} to create one.`, color: colors.error })],
           ephemeral: true,
         });
       }

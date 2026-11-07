@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { useQueue } = require('discord-player');
-const { colors } = require('../../utils/constants');
+const { colors, BRAND } = require('../../utils/constants');
 const { base, response } = require('../../utils/embed');
 
 const PAGE_SIZE = 10;
@@ -29,7 +29,7 @@ function buildPage(client, guild, queue, wanted) {
   const embed = base(client, colors.primary)
     .setAuthor({ name: `Queue - ${guild.name}` })
     .setDescription(desc.slice(0, 4000))
-    .setFooter({ text: `Page ${page + 1}/${pages} - ${tracks.length} tracks${tracks.length ? ` - ${fmtMs(total)} to go` : ''} - sonder` });
+    .setFooter({ text: `Page ${page + 1}/${pages} - ${tracks.length} tracks${tracks.length ? ` - ${fmtMs(total)} to go` : ''} - ${BRAND}` });
 
   const b = (id, label, to, disabled) => new ButtonBuilder().setCustomId(`mq:${to}:${id}`).setLabel(label).setStyle(ButtonStyle.Secondary).setDisabled(disabled);
   const first = page === 0, last = page >= pages - 1;
