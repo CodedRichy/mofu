@@ -3,7 +3,28 @@ const { colors } = require('../../utils/constants');
 const { response } = require('../../utils/embed');
 const store = require('../../database/store');
 
+// "#ff0000", "ff0000" or "f00" -> "ff0000"; anything else -> null. (parseInt alone accepts "ff0000zz" and overflows.)
+function normalizeHex(input) {
+  const h = String(input || '').trim().replace(/^#/, '');
+  if (/^[0-9a-f]{3}$/i.test(h)) return h.split('').map((c) => c + c).join('').toLowerCase();
+  return /^[0-9a-f]{6}$/i.test(h) ? h.toLowerCase() : null;
+}
+
+// no control characters, collapsed whitespace
+function cleanName(input) {
+  return String(input || '').replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 32);
+}
+
+// A booster role must not impersonate an existing role (Moderator, Admin, ...). Returns an error string or null.
+function nameClash(guild, name, ownRoleId) {
+  if (!name) return 'Pick a name with at least one character.';
+  const lower = name.toLowerCase();
+  const clash = guild.roles.cache.find((r) => r.id !== ownRoleId && r.name.toLowerCase() === lower);
+  return clash ? 'A role with that name already exists. Pick a different one.' : null;
+}
+
 module.exports = {
+  normalizeHex, cleanName, nameClash,
   data: new SlashCommandBuilder()
     .setName('boosterrole')
     .setDescription('Create or manage your custom booster role')
@@ -36,9 +57,11 @@ module.exports = {
         return interaction.reply({ embeds: [response({ client: interaction.client, description: 'You already have a custom role. Use `/boosterrole color` or `/boosterrole name` to edit.', color: colors.error })], ephemeral: true });
       }
 
-      const name = interaction.options.getString('name');
-      const colorStr = interaction.options.getString('color').replace('#', '');
-      const color = parseInt(colorStr, 16);
+      const name = cleanName(interaction.options.getString('name'));
+      const nameProblem = nameClash(guild, name, null);
+      if (nameProblem) return interaction.reply({ embeds: [response({ client: interaction.client, description: nameProblem, color: colors.error })], ephemeral: true });
+      const colorStr = normalizeHex(interaction.options.getString('color'));
+      const color = colorStr ? parseInt(colorStr, 16) : NaN;
       if (isNaN(color)) return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Invalid hex color.', color: colors.error })], ephemeral: true });
 
       let role;
@@ -57,8 +80,8 @@ module.exports = {
       const role = roleId && guild.roles.cache.get(roleId);
       if (!role) return interaction.reply({ embeds: [response({ client: interaction.client, description: 'No custom role found. Use `/boosterrole create`.', color: colors.error })], ephemeral: true });
 
-      const colorStr = interaction.options.getString('color').replace('#', '');
-      const color = parseInt(colorStr, 16);
+      const colorStr = normalizeHex(interaction.options.getString('color'));
+      const color = colorStr ? parseInt(colorStr, 16) : NaN;
       if (isNaN(color)) return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Invalid hex color.', color: colors.error })], ephemeral: true });
 
       try { await role.setColor(color); } catch { return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Failed to update color.', color: colors.error })], ephemeral: true }); }
@@ -69,7 +92,9 @@ module.exports = {
       const role = roleId && guild.roles.cache.get(roleId);
       if (!role) return interaction.reply({ embeds: [response({ client: interaction.client, description: 'No custom role found.', color: colors.error })], ephemeral: true });
 
-      const name = interaction.options.getString('name');
+      const name = cleanName(interaction.options.getString('name'));
+      const nameProblem = nameClash(guild, name, role.id);
+      if (nameProblem) return interaction.reply({ embeds: [response({ client: interaction.client, description: nameProblem, color: colors.error })], ephemeral: true });
       try { await role.setName(name); } catch { return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Failed to update name.', color: colors.error })], ephemeral: true }); }
       await interaction.reply({ embeds: [response({ client: interaction.client, description: `Role renamed to **${name}**`, color: colors.success })] });
 

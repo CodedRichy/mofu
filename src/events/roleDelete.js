@@ -1,4 +1,5 @@
 const antinuke = require('../database/antinuke');
+const { findAuditEntry, punishExecutor } = require('../utils/auditEntry');
 const { response } = require('../utils/embed');
 const { colors } = require('../utils/constants');
 const log = require('../utils/logger');
@@ -9,22 +10,15 @@ module.exports = {
     const { guild } = role;
     if (!antinuke.isEnabled(guild.id)) return;
 
-    const auditLogs = await guild.fetchAuditLogs({ type: 32, limit: 1 }).catch(() => null);
-    if (!auditLogs) return;
-
-    const entry = auditLogs.entries.first();
-    if (!entry || Date.now() - entry.createdTimestamp > 5000) return;
+    const entry = await findAuditEntry(guild, 32, role.id);
+    if (!entry) return;
     if (entry.executor.id === guild.client.user.id) return;
     if (entry.executor.id === guild.ownerId) return;
 
     const executorId = entry.executor.id;
 
     if (antinuke.check(guild.id, executorId, 'role_delete')) {
-      const member = guild.members.cache.get(executorId);
-      if (member) {
-        await member.roles.set([]).catch(() => {});
-        await guild.members.ban(executorId, { reason: '[sonder antinuke] Mass role delete detected' }).catch(() => {});
-      }
+      await punishExecutor(guild, executorId, '[sonder antinuke] Mass role delete detected');
 
       // Restore deleted role
       await guild.roles.create({

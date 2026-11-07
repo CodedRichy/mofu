@@ -1,5 +1,33 @@
 const { ApplicationCommandOptionType } = require('discord.js');
 
+// Slash commands get min/max/length/choices enforced by Discord; prefix input is free text, so enforce the same
+// limits here. Returns { error } for a bad value, { value } for a normalized one, or null when it is fine.
+function validateOption(opt, val) {
+  if (val === null || val === undefined) {
+    // an Integer/Number that was supplied but did not parse
+    if (opt.type === ApplicationCommandOptionType.Integer || opt.type === ApplicationCommandOptionType.Number) {
+      return { error: `\`${opt.name}\` must be a number.` };
+    }
+    return null;
+  }
+  const isNum = opt.type === ApplicationCommandOptionType.Integer || opt.type === ApplicationCommandOptionType.Number;
+  if (isNum) {
+    if (opt.min_value !== undefined && val < opt.min_value) return { error: `\`${opt.name}\` must be at least ${opt.min_value}.` };
+    if (opt.max_value !== undefined && val > opt.max_value) return { error: `\`${opt.name}\` must be at most ${opt.max_value}.` };
+  }
+  if (opt.type === ApplicationCommandOptionType.String && typeof val === 'string') {
+    if (opt.min_length !== undefined && val.length < opt.min_length) return { error: `\`${opt.name}\` must be at least ${opt.min_length} characters.` };
+    if (opt.max_length !== undefined && val.length > opt.max_length) return { error: `\`${opt.name}\` must be at most ${opt.max_length} characters.` };
+  }
+  if (Array.isArray(opt.choices) && opt.choices.length && (isNum || opt.type === ApplicationCommandOptionType.String)) {
+    const lower = (x) => String(x).toLowerCase();
+    const hit = opt.choices.find((c) => lower(c.value) === lower(val) || lower(c.name) === lower(val));
+    if (!hit) return { error: `\`${opt.name}\` must be one of: ${opt.choices.map((c) => `\`${c.value}\``).join(', ')}.` };
+    if (hit.value !== val) return { value: hit.value };
+  }
+  return null;
+}
+
 const DEFER_MESSAGES = [
   'listening..',
   'reading the room..',
@@ -31,6 +59,7 @@ class PrefixContext {
     this._parsed = {};
     this._subcommand = null;
     this._missingArgs = [];
+    this._invalid = []; // human-readable problems with supplied values (out of range, not a choice, ...)
     this._parseArgs(args, command.data.toJSON());
   }
 
@@ -108,6 +137,14 @@ class PrefixContext {
         }
         default:
           this._parsed[opt.name] = args.shift();
+      }
+
+      const check = validateOption(opt, this._parsed[opt.name]);
+      if (check?.error) {
+        this._invalid.push(check.error);
+        delete this._parsed[opt.name];
+      } else if (check && 'value' in check) {
+        this._parsed[opt.name] = check.value;
       }
     }
   }

@@ -26,7 +26,7 @@ function startDashboard(client) {
 
   function rateLimit(windowMs = 60000, max = 60) {
     return (req, res, next) => {
-      const key = req.headers.authorization || req.ip;
+      const key = `${windowMs}:${max}:${req.ip}`; // never the token: callers could rotate fake tokens to dodge the limit
       const now = Date.now();
       const entry = rateLimits.get(key) || { count: 0, resetAt: now + windowMs };
       if (now > entry.resetAt) { entry.count = 0; entry.resetAt = now + windowMs; }
@@ -37,14 +37,38 @@ function startDashboard(client) {
     };
   }
 
+  // Liveness probe for Docker/uptime monitors. Reports only whether the gateway connection is up; no data.
+  app.get('/healthz', (req, res) => {
+    const ready = client.isReady();
+    res.status(ready ? 200 : 503).json({ ok: ready });
+  });
+
   // Apply rate limits — stricter for write endpoints, relaxed for reads
   app.use('/api', rateLimit(60000, 60));
 
   // API auth middleware — checks Discord OAuth token
-  function authMiddleware(req, res, next) {
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    if (!token) return res.status(401).json({ error: 'No token' });
+  // The token must be a real, live Discord OAuth token: it is verified against Discord (result cached for 60s)
+  // so a made-up "Bearer x" can never reach a route. Routes that touch a guild additionally check Manage Server.
+  const tokenCache = new Map(); // token -> { user, expiresAt }
+  setInterval(() => {
+    const now = Date.now();
+    for (const [t, e] of tokenCache) if (now > e.expiresAt) tokenCache.delete(t);
+  }, 60000).unref();
+
+  async function authMiddleware(req, res, next) {
+    const header = req.headers.authorization || '';
+    const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+    if (!token || token.length > 256) return res.status(401).json({ error: 'No token' });
+
+    let entry = tokenCache.get(token);
+    if (!entry || Date.now() > entry.expiresAt) {
+      const user = await fetchUser(token).catch(() => null);
+      if (!user?.id) { tokenCache.delete(token); return res.status(401).json({ error: 'Invalid token' }); }
+      entry = { user, expiresAt: Date.now() + 60000 };
+      tokenCache.set(token, entry);
+    }
     req.token = token;
+    req.user = entry.user;
     next();
   }
 
@@ -182,7 +206,7 @@ function startDashboard(client) {
   });
 
   // AI chat endpoint for web assistant
-  app.post('/api/ai/chat', authMiddleware, async (req, res) => {
+  app.post('/api/ai/chat', rateLimit(60000, 10), authMiddleware, async (req, res) => {
     const { chatWithHistory } = require('../utils/ai');
     const { message, history } = req.body;
     if (!message) return res.status(400).json({ error: 'No message' });

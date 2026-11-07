@@ -1,4 +1,5 @@
 const antinuke = require('../database/antinuke');
+const { findAuditEntry, punishExecutor } = require('../utils/auditEntry');
 const { response } = require('../utils/embed');
 const { colors } = require('../utils/constants');
 const log = require('../utils/logger');
@@ -9,22 +10,15 @@ module.exports = {
     const { guild } = ban;
     if (!antinuke.isEnabled(guild.id)) return;
 
-    const auditLogs = await guild.fetchAuditLogs({ type: 22, limit: 1 }).catch(() => null);
-    if (!auditLogs) return;
-
-    const entry = auditLogs.entries.first();
-    if (!entry || !entry.executor) return;
+    const entry = await findAuditEntry(guild, 22, ban.user.id);
+    if (!entry) return;
     if (entry.executor.bot && entry.executor.id === guild.client.user.id) return;
 
     const executorId = entry.executor.id;
     if (executorId === guild.ownerId) return;
 
     if (antinuke.check(guild.id, executorId, 'ban')) {
-      const member = guild.members.cache.get(executorId);
-      if (member) {
-        await member.roles.set([]).catch(() => {});
-        await guild.members.ban(executorId, { reason: '[sonder antinuke] Mass ban detected' }).catch(() => {});
-      }
+      await punishExecutor(guild, executorId, '[sonder antinuke] Mass ban detected');
 
       await guild.members.unban(ban.user.id, '[sonder antinuke] Reversed mass ban').catch(() => {});
 
