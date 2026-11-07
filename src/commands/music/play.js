@@ -1,5 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { useMainPlayer } = require('discord-player');
+const { YoutubeExtractor } = require('discord-player-youtubei');
 const { colors } = require('../../utils/constants');
 const { response, base } = require('../../utils/embed');
 const log = require('../../utils/logger');
@@ -38,6 +39,9 @@ module.exports = {
           leaveOnEndCooldown: 300000,
         },
         requestedBy: interaction.user,
+        // Plain-text searches go to YouTube (the official upload). 'auto' picked SoundCloud reposts first.
+        // Pasted links still resolve to whichever service they belong to.
+        ...(/^https?:\/\//i.test(query) ? {} : { searchEngine: `ext:${YoutubeExtractor.identifier}` }),
       });
 
       const embed = base(interaction.client, colors.success)

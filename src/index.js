@@ -9,7 +9,7 @@ const { loadCommands } = require('./handlers/commandHandler');
 const { startDashboard } = require('./dashboard/server');
 const { Player } = require('discord-player');
 const { DefaultExtractors } = require('@discord-player/extractor');
-const { YoutubeiExtractor } = require('discord-player-youtubei');
+const { YoutubeExtractor } = require('discord-player-youtubei');
 
 const client = new Client({
   intents: [
@@ -62,7 +62,7 @@ const player = new Player(client, {
   skipFFmpeg: false,
 });
 player.extractors.loadMulti(DefaultExtractors).catch((err) => log.warn('Music extractors failed:', err.message));
-player.extractors.register(YoutubeiExtractor, {}).catch((err) => log.warn('YouTube extractor failed:', err.message));
+player.extractors.register(YoutubeExtractor, {}).catch((err) => log.warn('YouTube extractor failed:', err.message));
 
 player.events.on('error', (queue, err) => log.error(`Player error [${queue.guild.name}]:`, err.message));
 player.events.on('playerError', (queue, err) => log.error(`Track error [${queue.guild.name}]:`, err.message));
