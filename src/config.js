@@ -1,6 +1,16 @@
 const dotenv = require('dotenv');
 dotenv.config();
 
+// Never fall back to a well-known secret in production.
+function sessionSecret() {
+  if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('SESSION_SECRET must be set when NODE_ENV=production (generate one with: openssl rand -hex 32)');
+  }
+  console.warn('[config] SESSION_SECRET is not set; using an insecure development default. Set it before deploying.');
+  return 'sonder-dev-secret';
+}
+
 module.exports = {
   discord: {
     token: process.env.DISCORD_TOKEN,
@@ -24,7 +34,7 @@ module.exports = {
   },
   dashboard: {
     port: parseInt(process.env.DASHBOARD_PORT) || 3001,
-    secret: process.env.SESSION_SECRET || 'sonder-dev-secret',
+    secret: sessionSecret(),
     callbackUrl: process.env.DASHBOARD_CALLBACK_URL || 'http://localhost:3000/auth/callback',
   },
 };

@@ -2,16 +2,21 @@ const express = require('express');
 const cors = require('cors');
 const config = require('../config');
 const log = require('../utils/logger');
-const store = require('../database/store');
-const { db } = store;
+const V = require('./validate');
 
-function startDashboard(client) {
+// deps.store is injectable so tests never open the live SQLite file.
+function createApp(client, deps = {}) {
+  const store = deps.store || require('../database/store');
+  const db = deps.db || store.db;
   const app = express();
+  app.disable('x-powered-by');
+  // Behind Caddy/nginx every request would otherwise share the proxy's IP (one rate-limit bucket for everyone).
+  app.set('trust proxy', V.parseTrustProxy(process.env.TRUST_PROXY));
   app.use(cors({
     origin: process.env.DASHBOARD_URL || 'http://localhost:5173',
     credentials: true,
   }));
-  app.use(express.json());
+  app.use(express.json({ limit: '100kb' }));
 
   // In-memory rate limiter
   const rateLimits = new Map();
@@ -24,15 +29,29 @@ function startDashboard(client) {
     }
   }, 60000).unref();
 
+  // Returns true while under the limit. `key` must never contain a raw token (callers could rotate fake ones).
+  function hit(key, windowMs, max) {
+    const now = Date.now();
+    const entry = rateLimits.get(key) || { count: 0, resetAt: now + windowMs };
+    if (now > entry.resetAt) { entry.count = 0; entry.resetAt = now + windowMs; }
+    entry.count++;
+    rateLimits.set(key, entry);
+    return entry.count <= max;
+  }
+
+  // Per-IP limiter (runs before auth, so it only knows the IP).
   function rateLimit(windowMs = 60000, max = 60) {
     return (req, res, next) => {
-      const key = `${windowMs}:${max}:${req.ip}`; // never the token: callers could rotate fake tokens to dodge the limit
-      const now = Date.now();
-      const entry = rateLimits.get(key) || { count: 0, resetAt: now + windowMs };
-      if (now > entry.resetAt) { entry.count = 0; entry.resetAt = now + windowMs; }
-      entry.count++;
-      rateLimits.set(key, entry);
-      if (entry.count > max) return res.status(429).json({ error: 'Rate limited' });
+      if (!hit(`ip:${windowMs}:${max}:${req.ip}`, windowMs, max)) return res.status(429).json({ error: 'Rate limited' });
+      next();
+    };
+  }
+
+  // Per-user limiter (runs after auth): one user behind a shared IP cannot starve others, and one user
+  // cannot dodge limits by switching IPs.
+  function userRateLimit(windowMs, max, name) {
+    return (req, res, next) => {
+      if (!hit(`user:${name}:${req.user.id}`, windowMs, max)) return res.status(429).json({ error: 'Rate limited' });
       next();
     };
   }
@@ -83,6 +102,7 @@ function startDashboard(client) {
     }
     req.token = token;
     req.user = entry.user;
+    if (!hit(`user:api:${entry.user.id}`, 60000, 120)) return res.status(429).json({ error: 'Rate limited' });
     next();
   }
 
@@ -96,12 +116,29 @@ function startDashboard(client) {
   }
 
   // Get user's guilds
+  const guildCache = new Map(); // token -> { guilds, expiresAt } (short TTL so Discord is not hit on every call)
+  setInterval(() => {
+    const now = Date.now();
+    for (const [t, e] of guildCache) if (now > e.expiresAt) guildCache.delete(t);
+  }, 60000).unref();
+
   async function fetchGuilds(token) {
+    const cached = guildCache.get(token);
+    if (cached && Date.now() < cached.expiresAt) return cached.guilds;
     const res = await fetch('https://discord.com/api/v10/users/@me/guilds', {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) return [];
-    return res.json();
+    const guilds = await res.json();
+    if (!Array.isArray(guilds)) return [];
+    guildCache.set(token, { guilds, expiresAt: Date.now() + 15000 });
+    return guilds;
+  }
+
+  // Manage Server (or Administrator/owner) in at least one guild the bot is in.
+  async function managesAnyBotGuild(token) {
+    const guilds = await fetchGuilds(token);
+    return guilds.some((g) => client.guilds.cache.has(g.id) && V.canManageGuild(g));
   }
 
   // OAuth callback info
@@ -114,8 +151,8 @@ function startDashboard(client) {
 
   // Exchange code for token
   app.post('/api/auth/callback', async (req, res) => {
-    const { code } = req.body;
-    if (!code) return res.status(400).json({ error: 'No code' });
+    const code = req.body?.code;
+    if (!code || typeof code !== 'string' || code.length > 512) return res.status(400).json({ error: 'No code' });
 
     try {
       const tokenRes = await fetch('https://discord.com/api/v10/oauth2/token', {
@@ -133,45 +170,56 @@ function startDashboard(client) {
       if (!tokenRes.ok) return res.status(400).json({ error: 'Token exchange failed' });
       const data = await tokenRes.json();
       res.json({ access_token: data.access_token });
-    } catch {
+    } catch (err) {
+      log.error('dashboard auth callback failed', err);
       res.status(500).json({ error: 'Auth failed' });
     }
   });
 
   // Get current user
   app.get('/api/user', authMiddleware, async (req, res) => {
-    const user = await fetchUser(req.token);
-    if (!user) return res.status(401).json({ error: 'Invalid token' });
-    res.json(user);
+    res.json(req.user);
   });
 
   // Get guilds where user has Manage Guild + bot is present
   app.get('/api/guilds', authMiddleware, async (req, res) => {
     const guilds = await fetchGuilds(req.token);
-    const manageable = guilds.filter((g) => (g.permissions & 0x20) === 0x20);
+    const manageable = guilds.filter(V.canManageGuild);
     const botGuilds = client.guilds.cache;
     const mutual = manageable.filter((g) => botGuilds.has(g.id));
     res.json(mutual.map((g) => ({ id: g.id, name: g.name, icon: g.icon })));
   });
 
+  // Helper: verify the caller manages this guild (and the bot is in it). Responds + returns null on failure.
+  async function verifyGuildAccess(req, res) {
+    if (!V.isSnowflake(req.params.id)) { res.status(400).json({ error: 'Invalid guild id' }); return null; }
+    const guild = client.guilds.cache.get(req.params.id);
+    if (!guild) { res.status(404).json({ error: 'Guild not found' }); return null; }
+    const guilds = await fetchGuilds(req.token);
+    const hasAccess = guilds.some((g) => g.id === req.params.id && V.canManageGuild(g));
+    if (!hasAccess) { res.status(403).json({ error: 'No access' }); return null; }
+    return guild;
+  }
+
+  function badRequest(res, msg) { return res.status(400).json({ error: msg }); }
+  function badUserId(req, res) {
+    if (V.isSnowflake(req.params.userId)) return false;
+    badRequest(res, 'Invalid user id');
+    return true;
+  }
+  function badRowId(value, res) {
+    if (/^\d{1,15}$/.test(String(value))) return false;
+    badRequest(res, 'Invalid id');
+    return true;
+  }
+
   // Get guild config
   app.get('/api/guilds/:id/config', authMiddleware, async (req, res) => {
-    const guild = client.guilds.cache.get(req.params.id);
-    if (!guild) return res.status(404).json({ error: 'Guild not found' });
-
-    const guilds = await fetchGuilds(req.token);
-    const hasAccess = guilds.some((g) => g.id === req.params.id && (g.permissions & 0x20) === 0x20);
-    if (!hasAccess) return res.status(403).json({ error: 'No access' });
-
-    const keys = [
-      'prefix', 'welcome_channel', 'welcome_message', 'welcome_card',
-      'goodbye_channel', 'goodbye_message', 'goodbye_card',
-      'modlog_channel', 'logging_channel', 'levelup_channel',
-      'leveling', 'antispam', 'antilink', 'ai_automod', 'word_filter',
-    ];
+    const guild = await verifyGuildAccess(req, res);
+    if (!guild) return;
 
     const cfg = {};
-    for (const key of keys) {
+    for (const key of V.ROUTE_KEYS.config) {
       cfg[key] = store.getConfig(req.params.id, key);
     }
     cfg.name = guild.name;
@@ -183,24 +231,17 @@ function startDashboard(client) {
 
   // Update guild config
   app.patch('/api/guilds/:id/config', authMiddleware, async (req, res) => {
-    const guild = client.guilds.cache.get(req.params.id);
-    if (!guild) return res.status(404).json({ error: 'Guild not found' });
+    const guild = await verifyGuildAccess(req, res);
+    if (!guild) return;
 
-    const guilds = await fetchGuilds(req.token);
-    const hasAccess = guilds.some((g) => g.id === req.params.id && (g.permissions & 0x20) === 0x20);
-    if (!hasAccess) return res.status(403).json({ error: 'No access' });
-
-    const allowed = [
-      'prefix', 'welcome_channel', 'welcome_message', 'welcome_card',
-      'goodbye_channel', 'goodbye_message', 'goodbye_card',
-      'modlog_channel', 'logging_channel', 'levelup_channel',
-      'leveling', 'antispam', 'antilink', 'ai_automod', 'word_filter',
-    ];
-
-    for (const [key, value] of Object.entries(req.body)) {
-      if (allowed.includes(key)) {
-        store.setConfig(req.params.id, key, value);
-      }
+    const r = V.validateConfigPatch(req.body, 'config');
+    if (!r.ok) return badRequest(res, r.error);
+    for (const [key, value] of Object.entries(r.values)) {
+      store.setConfig(req.params.id, key, value);
+      // Two readers exist for the "log channel": messageDelete/Update/voice read log_channel, auditLog.js
+      // reads logging_channel. Keep both in step so either dashboard field works.
+      if (key === 'logging_channel') store.setConfig(req.params.id, 'log_channel', value);
+      if (key === 'log_channel') store.setConfig(req.params.id, 'logging_channel', value);
     }
 
     res.json({ success: true });
@@ -208,8 +249,8 @@ function startDashboard(client) {
 
   // Guild stats
   app.get('/api/guilds/:id/stats', authMiddleware, async (req, res) => {
-    const guild = client.guilds.cache.get(req.params.id);
-    if (!guild) return res.status(404).json({ error: 'Guild not found' });
+    const guild = await verifyGuildAccess(req, res);
+    if (!guild) return;
 
     res.json({
       members: guild.memberCount,
@@ -219,25 +260,25 @@ function startDashboard(client) {
     });
   });
 
-  // AI chat endpoint for web assistant
-  app.post('/api/ai/chat', rateLimit(60000, 10), authMiddleware, async (req, res) => {
-    const { chatWithHistory } = require('../utils/ai');
-    const { message, history } = req.body;
-    if (!message) return res.status(400).json({ error: 'No message' });
+  // AI chat endpoint for web assistant. Spends Sonder's Groq key, so: caller must manage a server the bot
+  // is in, history roles are forced to user/assistant (no client-supplied system prompt), and a per-user quota applies.
+  app.post('/api/ai/chat', rateLimit(60000, 10), authMiddleware, userRateLimit(60000, 6, 'ai-min'), async (req, res) => {
+    if (!(await managesAnyBotGuild(req.token))) return res.status(403).json({ error: 'No access' });
+    if (!hit(`user:ai-day:${req.user.id}`, 86400000, 100)) return res.status(429).json({ error: 'Daily AI limit reached' });
 
-    const response = await chatWithHistory(message, history || []);
-    if (!response) return res.status(503).json({ error: 'AI unavailable', response: 'AI service is currently unavailable. Make sure GROQ_API_KEY is configured.' });
+    const v = V.validateAiChat(req.body);
+    if (!v.ok) return badRequest(res, v.error);
+
+    const { chatWithHistory } = deps.ai || require('../utils/ai');
+    const response = await chatWithHistory(v.values.message, v.values.history);
+    if (!response) return res.status(503).json({ error: 'AI unavailable', response: 'AI service is currently unavailable.' });
     res.json({ response });
   });
 
   // Get all warnings for guild
   app.get('/api/guilds/:id/warnings', authMiddleware, async (req, res) => {
-    const guild = client.guilds.cache.get(req.params.id);
-    if (!guild) return res.status(404).json({ error: 'Guild not found' });
-
-    const guilds = await fetchGuilds(req.token);
-    const hasAccess = guilds.some((g) => g.id === req.params.id && (g.permissions & 0x20) === 0x20);
-    if (!hasAccess) return res.status(403).json({ error: 'No access' });
+    const guild = await verifyGuildAccess(req, res);
+    if (!guild) return;
 
     try {
       const rows = db.prepare('SELECT * FROM warnings WHERE guild_id = ? ORDER BY id DESC').all(req.params.id);
@@ -258,36 +299,31 @@ function startDashboard(client) {
       });
       res.json(warnings);
     } catch (err) {
+      log.error('dashboard route failed', err);
       res.status(500).json({ error: 'Failed to fetch warnings' });
     }
   });
 
   // Delete a warning
   app.delete('/api/guilds/:id/warnings/:wid', authMiddleware, async (req, res) => {
-    const guild = client.guilds.cache.get(req.params.id);
-    if (!guild) return res.status(404).json({ error: 'Guild not found' });
-
-    const guilds = await fetchGuilds(req.token);
-    const hasAccess = guilds.some((g) => g.id === req.params.id && (g.permissions & 0x20) === 0x20);
-    if (!hasAccess) return res.status(403).json({ error: 'No access' });
+    const guild = await verifyGuildAccess(req, res);
+    if (!guild) return;
+    if (badRowId(req.params.wid, res)) return;
 
     try {
       const info = db.prepare('DELETE FROM warnings WHERE id = ? AND guild_id = ?').run(req.params.wid, req.params.id);
       if (info.changes === 0) return res.status(404).json({ error: 'Warning not found' });
       res.json({ success: true });
     } catch (err) {
+      log.error('dashboard route failed', err);
       res.status(500).json({ error: 'Failed to delete warning' });
     }
   });
 
   // Get all notes for guild
   app.get('/api/guilds/:id/notes', authMiddleware, async (req, res) => {
-    const guild = client.guilds.cache.get(req.params.id);
-    if (!guild) return res.status(404).json({ error: 'Guild not found' });
-
-    const guilds = await fetchGuilds(req.token);
-    const hasAccess = guilds.some((g) => g.id === req.params.id && (g.permissions & 0x20) === 0x20);
-    if (!hasAccess) return res.status(403).json({ error: 'No access' });
+    const guild = await verifyGuildAccess(req, res);
+    if (!guild) return;
 
     try {
       const rows = db.prepare('SELECT * FROM notes WHERE guild_id = ? ORDER BY id DESC').all(req.params.id);
@@ -308,36 +344,31 @@ function startDashboard(client) {
       });
       res.json(notes);
     } catch (err) {
+      log.error('dashboard route failed', err);
       res.status(500).json({ error: 'Failed to fetch notes' });
     }
   });
 
   // Delete a note
   app.delete('/api/guilds/:id/notes/:nid', authMiddleware, async (req, res) => {
-    const guild = client.guilds.cache.get(req.params.id);
-    if (!guild) return res.status(404).json({ error: 'Guild not found' });
-
-    const guilds = await fetchGuilds(req.token);
-    const hasAccess = guilds.some((g) => g.id === req.params.id && (g.permissions & 0x20) === 0x20);
-    if (!hasAccess) return res.status(403).json({ error: 'No access' });
+    const guild = await verifyGuildAccess(req, res);
+    if (!guild) return;
+    if (badRowId(req.params.nid, res)) return;
 
     try {
       const info = db.prepare('DELETE FROM notes WHERE id = ? AND guild_id = ?').run(req.params.nid, req.params.id);
       if (info.changes === 0) return res.status(404).json({ error: 'Note not found' });
       res.json({ success: true });
     } catch (err) {
+      log.error('dashboard route failed', err);
       res.status(500).json({ error: 'Failed to delete note' });
     }
   });
 
   // Mod stats — count of warns/bans/notes per moderator
   app.get('/api/guilds/:id/modstats', authMiddleware, async (req, res) => {
-    const guild = client.guilds.cache.get(req.params.id);
-    if (!guild) return res.status(404).json({ error: 'Guild not found' });
-
-    const guilds = await fetchGuilds(req.token);
-    const hasAccess = guilds.some((g) => g.id === req.params.id && (g.permissions & 0x20) === 0x20);
-    if (!hasAccess) return res.status(403).json({ error: 'No access' });
+    const guild = await verifyGuildAccess(req, res);
+    if (!guild) return;
 
     try {
       const warnStats = db.prepare(
@@ -373,19 +404,10 @@ function startDashboard(client) {
 
       res.json(stats);
     } catch (err) {
+      log.error('dashboard route failed', err);
       res.status(500).json({ error: 'Failed to fetch mod stats' });
     }
   });
-
-  // Helper: verify guild access
-  async function verifyGuildAccess(req, res) {
-    const guild = client.guilds.cache.get(req.params.id);
-    if (!guild) { res.status(404).json({ error: 'Guild not found' }); return null; }
-    const guilds = await fetchGuilds(req.token);
-    const hasAccess = guilds.some((g) => g.id === req.params.id && (g.permissions & 0x20) === 0x20);
-    if (!hasAccess) { res.status(403).json({ error: 'No access' }); return null; }
-    return guild;
-  }
 
   // XP leaderboard (top 50)
   app.get('/api/guilds/:id/leaderboard', authMiddleware, async (req, res) => {
@@ -419,17 +441,14 @@ function startDashboard(client) {
     const guild = await verifyGuildAccess(req, res);
     if (!guild) return;
 
-    const xpDb = require('../database/xp');
-    const { xp, level } = req.body;
+    if (badUserId(req, res)) return;
+    const r = V.validateXpPatch(req.body);
+    if (!r.ok) return badRequest(res, r.error);
 
-    let result;
-    if (level !== undefined) {
-      result = xpDb.setLevel(req.params.id, req.params.userId, level);
-    } else if (xp !== undefined) {
-      result = xpDb.setXp(req.params.id, req.params.userId, xp);
-    } else {
-      return res.status(400).json({ error: 'Provide xp or level' });
-    }
+    const xpDb = deps.xpDb || require('../database/xp');
+    const result = r.values.level !== undefined
+      ? xpDb.setLevel(req.params.id, req.params.userId, r.values.level)
+      : xpDb.setXp(req.params.id, req.params.userId, r.values.xp);
     res.json(result);
   });
 
@@ -453,15 +472,9 @@ function startDashboard(client) {
     const guild = await verifyGuildAccess(req, res);
     if (!guild) return;
 
-    const allowed = ['enabled', 'levelup_channel', 'xp_multiplier', 'level_roles', 'no_xp_channels', 'no_xp_roles'];
-    for (const [key, value] of Object.entries(req.body)) {
-      if (!allowed.includes(key)) continue;
-      if (key === 'enabled') {
-        store.setConfig(req.params.id, 'leveling', value);
-      } else {
-        store.setConfig(req.params.id, key, value);
-      }
-    }
+    const r = V.validateConfigPatch(req.body, 'leveling');
+    if (!r.ok) return badRequest(res, r.error);
+    for (const [key, value] of Object.entries(r.values)) store.setConfig(req.params.id, key, value);
     res.json({ success: true });
   });
 
@@ -473,6 +486,7 @@ function startDashboard(client) {
       const cmds = store.listCustomCommands(req.params.id);
       res.json(cmds.map(([name, data]) => ({ name, response: data.response, embed: data.embed })));
     } catch (err) {
+      log.error('dashboard route failed', err);
       res.status(500).json({ error: 'Failed to fetch custom commands' });
     }
   });
@@ -481,14 +495,13 @@ function startDashboard(client) {
   app.post('/api/guilds/:id/custom-commands', authMiddleware, async (req, res) => {
     const guild = await verifyGuildAccess(req, res);
     if (!guild) return;
-    const { name, response } = req.body;
-    if (!name || !response) return res.status(400).json({ error: 'Name and response are required' });
-    if (name.length > 32) return res.status(400).json({ error: 'Name must be 32 characters or less' });
-    if (response.length > 2000) return res.status(400).json({ error: 'Response must be 2000 characters or less' });
+    const r = V.validateCustomCommand(req.body);
+    if (!r.ok) return badRequest(res, r.error);
     try {
-      store.addCustomCommand(req.params.id, name, { response, embed: false });
+      store.addCustomCommand(req.params.id, r.values.name, { response: r.values.response, embed: false });
       res.json({ success: true });
     } catch (err) {
+      log.error('dashboard route failed', err);
       res.status(500).json({ error: 'Failed to create custom command' });
     }
   });
@@ -498,10 +511,11 @@ function startDashboard(client) {
     const guild = await verifyGuildAccess(req, res);
     if (!guild) return;
     try {
-      const removed = store.removeCustomCommand(req.params.id, req.params.name);
+      const removed = store.removeCustomCommand(req.params.id, String(req.params.name).slice(0, 64));
       if (!removed) return res.status(404).json({ error: 'Command not found' });
       res.json({ success: true });
     } catch (err) {
+      log.error('dashboard route failed', err);
       res.status(500).json({ error: 'Failed to delete custom command' });
     }
   });
@@ -510,13 +524,8 @@ function startDashboard(client) {
   app.get('/api/guilds/:id/automod-config', authMiddleware, async (req, res) => {
     const guild = await verifyGuildAccess(req, res);
     if (!guild) return;
-    const automodKeys = [
-      'antispam', 'antispam_threshold', 'antispam_action', 'antispam_duration',
-      'antilink', 'antilink_whitelist',
-      'word_filter', 'word_filter_list',
-    ];
     const cfg = {};
-    for (const key of automodKeys) {
+    for (const key of V.ROUTE_KEYS.automod) {
       cfg[key] = store.getConfig(req.params.id, key);
     }
     res.json(cfg);
@@ -526,16 +535,9 @@ function startDashboard(client) {
   app.patch('/api/guilds/:id/automod-config', authMiddleware, async (req, res) => {
     const guild = await verifyGuildAccess(req, res);
     if (!guild) return;
-    const allowed = [
-      'antispam', 'antispam_threshold', 'antispam_action', 'antispam_duration',
-      'antilink', 'antilink_whitelist',
-      'word_filter', 'word_filter_list',
-    ];
-    for (const [key, value] of Object.entries(req.body)) {
-      if (allowed.includes(key)) {
-        store.setConfig(req.params.id, key, value);
-      }
-    }
+    const r = V.validateConfigPatch(req.body, 'automod');
+    if (!r.ok) return badRequest(res, r.error);
+    for (const [key, value] of Object.entries(r.values)) store.setConfig(req.params.id, key, value);
     res.json({ success: true });
   });
 
@@ -559,6 +561,7 @@ function startDashboard(client) {
     const guild = await verifyGuildAccess(req, res);
     if (!guild) return;
 
+    if (badUserId(req, res)) return;
     const data = store.getBalance(req.params.id, req.params.userId);
     res.json(data);
   });
@@ -568,11 +571,13 @@ function startDashboard(client) {
     const guild = await verifyGuildAccess(req, res);
     if (!guild) return;
 
-    const { wallet, bank } = req.body;
+    if (badUserId(req, res)) return;
+    const r = V.validateEconomyPatch(req.body);
+    if (!r.ok) return badRequest(res, r.error);
     const current = store.getBalance(req.params.id, req.params.userId);
 
-    const newWallet = typeof wallet === 'number' ? wallet : current.wallet;
-    const newBank = typeof bank === 'number' ? bank : current.bank;
+    const newWallet = r.values.wallet ?? current.wallet;
+    const newBank = r.values.bank ?? current.bank;
 
     // Adjust wallet and bank to desired values
     const e = store.getBalance(req.params.id, req.params.userId);
@@ -610,9 +615,25 @@ function startDashboard(client) {
     });
   });
 
+  // Consistent JSON errors; never leak stacks or internals.
+  app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
+  // eslint-disable-next-line no-unused-vars
+  app.use((err, req, res, next) => {
+    if (err?.type === 'entity.parse.failed') return res.status(400).json({ error: 'Invalid JSON' });
+    if (err?.type === 'entity.too.large') return res.status(413).json({ error: 'Request too large' });
+    log.error('dashboard unhandled error', err);
+    if (res.headersSent) return;
+    res.status(500).json({ error: 'Internal error' });
+  });
+
+  return app;
+}
+
+function startDashboard(client) {
+  const app = createApp(client);
   const port = config.dashboard.port;
   app.listen(port, () => log.info(`API server running on port ${port}`));
   return app;
 }
 
-module.exports = { startDashboard };
+module.exports = { startDashboard, createApp };

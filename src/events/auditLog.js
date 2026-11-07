@@ -6,7 +6,8 @@ const { colors } = require('../utils/constants');
 const log = require('../utils/logger');
 
 function getLogChannel(guild, client) {
-  const channelId = store.getConfig(guild.id, 'logging_channel');
+  // The dashboard and /logging historically used different keys; honour either so the setting always works.
+  const channelId = store.getConfig(guild.id, 'logging_channel') || store.getConfig(guild.id, 'log_channel');
   if (!channelId) return null;
   return guild.channels.cache.get(channelId) || null;
 }

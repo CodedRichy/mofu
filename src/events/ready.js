@@ -51,11 +51,13 @@ function restoreGiveaways(client) {
 }
 
 async function endGiveaway(client, gw) {
-  const ended = giveawayDb.end(gw.guildId, gw.messageId);
-  if (!ended) return;
-
+  // Check the guild first: ending marks the giveaway done, so a giveaway whose guild is not cached yet would be
+  // silently lost. Leave it active and it is picked up again on the next start.
   const guild = client.guilds.cache.get(gw.guildId);
   if (!guild) return;
+
+  const ended = giveawayDb.end(gw.guildId, gw.messageId);
+  if (!ended) return;
 
   const channel = guild.channels.cache.get(gw.channelId);
   if (!channel) return;
