@@ -11,10 +11,12 @@ const modlog = require('../utils/modlog');
 const { moderate, chatWithHistory } = require('../utils/ai');
 const { parseMuteIntent, proposeMute, usageHint } = require('../ai/actions');
 const { parseMusicIntent } = require('../utils/musicIntent');
+const { parseTimezoneIntent } = require('../utils/tzIntent');
 const automod = require('../utils/automod');
 
 // The bot's name as a whole word: 'mofu' or the old name 'sonder' (TRIGGER_WORDS in src/utils/constants.js).
-const TRIGGER_RE = new RegExp(`\\b(?:${TRIGGER_ALT})\\b`, 'i');
+// Chat only: a stretched "mofuuu" still counts as saying the name. Actions use their own stricter parsers.
+const TRIGGER_RE = new RegExp(`\\b(?:${TRIGGER_ALT.replace('mofu', 'mofu+')})\\b`, 'i');
 
 // conversational replies ("yo mofu ...", "@mofu ..."): per-user cooldown so nobody can burn the AI quota
 const CHAT_COOLDOWN_MS = 4000;
@@ -264,7 +266,8 @@ module.exports = {
     if (!message.content.startsWith(prefix)) {
       // Strict matcher (src/utils/musicIntent.js) plus the same eligibility as the AI path, so ordinary
       // sentences ("mofu stop being weird") and random members never trigger playback commands.
-      const intent = parseMusicIntent(message.content, message.client.user.id);
+      const intent = parseMusicIntent(message.content, message.client.user.id)
+        || parseTimezoneIntent(message.content, message.client.user.id);
       if (intent && canInvokeAi(message)) {
         message.content = `${prefix}${intent.verb} ${intent.args}`.trim();
       }
@@ -273,7 +276,15 @@ module.exports = {
     if (!message.content.startsWith(prefix)) {
       const botId = message.client.user.id;
       const mentionRe = new RegExp(`<@!?${botId}>`, 'g');
-      const named = TRIGGER_RE.test(message.content) || mentionRe.test(message.content);
+      let named = TRIGGER_RE.test(message.content) || mentionRe.test(message.content);
+      // Replying to one of the bot's own messages is talking to it, no name needed. Only chat is eligible
+      // (a reply never becomes a mute/music action: those parsers still need the name in the text).
+      if (!named && message.reference?.messageId && canInvokeAi(message)) {
+        const ref = message.channel.messages.cache.get(message.reference.messageId)
+          || await message.fetchReference().catch(() => null);
+        // Plain-text bot messages only (its chat replies), not command embeds or confirm cards.
+        named = ref?.author?.id === botId && !!ref.content && !ref.embeds?.length && !ref.components?.length;
+      }
 
       if (named && canInvokeAi(message)) {
         const last = chatCooldown.get(message.author.id) || 0;
