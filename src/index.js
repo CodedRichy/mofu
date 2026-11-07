@@ -68,6 +68,11 @@ player.events.on('error', (queue, err) => log.error(`Player error [${queue.guild
 player.events.on('playerError', (queue, err) => log.error(`Track error [${queue.guild.name}]:`, err.message));
 player.events.on('disconnect', (queue) => queue.delete());
 player.events.on('emptyChannel', (queue) => queue.delete());
+const musicCard = require('./music/card');
+player.events.on('playerStart', (queue) => musicCard.start(queue));
+player.events.on('emptyQueue', (queue) => musicCard.clear(queue.guild.id, 'Record stopped. Queue finished.', client));
+player.events.on('disconnect', (queue) => musicCard.clear(queue.guild.id, 'Record stopped.', client));
+player.events.on('emptyChannel', (queue) => musicCard.clear(queue.guild.id, 'Record stopped.', client));
 
 // Start
 async function start() {

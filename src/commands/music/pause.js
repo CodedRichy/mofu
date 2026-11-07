@@ -24,7 +24,7 @@ module.exports = {
       return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Nothing is playing.', color: colors.error })], ephemeral: true });
     }
 
-    queue.node.setPaused(!queue.node.isPaused());
+    queue.node.setPaused(!queue.node.isPaused()); require('../../music/card').refresh(queue);
     const state = queue.node.isPaused() ? 'Paused' : 'Resumed';
 
     await interaction.reply({ embeds: [response({ client: interaction.client, description: `${state} playback.`, color: colors.success })] });

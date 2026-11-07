@@ -95,6 +95,7 @@ module.exports = {
 async function handleButton(interaction) {
   const { guild, user, customId } = interaction;
 
+  if (customId.startsWith('mp:')) return require('../music/card').handleButton(interaction);
   if (customId.startsWith('aiact:')) return require('../ai/actions').handleButton(interaction);
 
   if (customId === 'ticket_open') {

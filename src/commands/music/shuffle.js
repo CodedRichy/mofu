@@ -24,7 +24,7 @@ module.exports = {
       return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Queue is empty.', color: colors.error })], ephemeral: true });
     }
 
-    queue.tracks.shuffle();
+    queue.tracks.shuffle(); require('../../music/card').refresh(queue);
     await interaction.reply({ embeds: [response({ client: interaction.client, description: `Shuffled **${queue.tracks.size}** tracks.`, color: colors.success })] });
   },
 };

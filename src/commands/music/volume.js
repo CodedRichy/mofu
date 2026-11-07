@@ -26,7 +26,7 @@ module.exports = {
     }
 
     const vol = interaction.options.getInteger('level');
-    queue.node.setVolume(vol);
+    queue.node.setVolume(vol); require('../../music/card').refresh(queue);
 
     await interaction.reply({ embeds: [response({ client: interaction.client, description: `Volume set to **${vol}%**`, color: colors.success })] });
   },

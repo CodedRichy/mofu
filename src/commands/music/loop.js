@@ -41,7 +41,7 @@ module.exports = {
     }
 
     const mode = interaction.options.getString('mode');
-    queue.setRepeatMode(MODES[mode]);
+    queue.setRepeatMode(MODES[mode]); require('../../music/card').refresh(queue);
 
     await interaction.reply({ embeds: [response({ client: interaction.client, description: `Loop mode set to **${mode}**`, color: colors.success })] });
   },
