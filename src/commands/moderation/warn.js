@@ -5,6 +5,7 @@ const store = require('../../database/store');
 const modlog = require('../../utils/modlog');
 const { reasonError, clip, joinClipped, modLabel } = require('../../utils/modguard');
 const policy = require('../../utils/warnpolicy');
+const presetApply = require('../../utils/presetApply');
 
 // After a warning: count active warnings and apply the highest threshold reached. Never throws.
 async function enforceThresholds(interaction, user) {
@@ -31,7 +32,10 @@ module.exports = {
       s.setName('add')
         .setDescription('Warn a member')
         .addUserOption((o) => o.setName('user').setDescription('Member to warn').setRequired(true))
-        .addStringOption((o) => o.setName('reason').setDescription('Reason for warning').setRequired(true))
+        // optional so a preset's default reason can stand in; with neither, execute() asks for one
+        .addStringOption((o) => o.setName('reason').setDescription('Reason for warning (or use a preset)'))
+        // preset stays LAST; in prefix mode presetApply rejoins it into the reason and reads a preset:NAME token instead
+        .addStringOption((o) => o.setName('preset').setDescription('Warn preset; its default reason is used if you give none').setMaxLength(512).setAutocomplete(true))
     )
     .addSubcommand((s) =>
       s.setName('list')
@@ -44,12 +48,24 @@ module.exports = {
         .addUserOption((o) => o.setName('user').setDescription('Member to clear warnings for').setRequired(true))
     ),
 
+  autocomplete: (interaction) => presetApply.autocomplete(interaction, 'warn'),
+
   async execute(interaction) {
     const sub = interaction.options.getSubcommand();
 
     if (sub === 'add') {
       const user = interaction.options.getUser('user');
-      const reason = interaction.options.getString('reason');
+      const pre = presetApply.fromInteraction(interaction, { action: 'warn', durationOption: null });
+      if (pre.error) {
+        return interaction.reply({ embeds: [response({ client: interaction.client, description: pre.error, color: colors.error })], ephemeral: true });
+      }
+      const reason = pre.reason;
+      if (!reason) {
+        return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Give a reason for the warning, or a warn preset that has a default reason.', color: colors.error })], ephemeral: true });
+      }
+      if (!user) {
+        return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Could not find that user.', color: colors.error })], ephemeral: true });
+      }
 
       if (user.id === interaction.user.id) {
         return interaction.reply({ embeds: [response({ client: interaction.client, description: "You can't warn yourself.", color: colors.error })], ephemeral: true });
