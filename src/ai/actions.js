@@ -343,10 +343,24 @@ async function handleButton(interaction) {
   }
 
   const { guild } = interaction;
+
+  // Acknowledge now: the fetches below and the DM/API calls after them can run past Discord's 3s window, and an
+  // expired interaction (10062) would otherwise turn a successful action into a false 'failed' audit row.
+  // Nothing has been done yet, so if even this fails we stop and record that.
+  try {
+    await interaction.deferUpdate();
+  } catch (err) {
+    audit.resolve(p.auditId, 'failed', `interaction expired before it could be acknowledged: ${err.message}`);
+    log.warn(`AI ${p.kind} not run, could not acknowledge the button: ${err.message}`);
+    return;
+  }
+  // editReply after deferUpdate edits the card; a failed edit must never change the outcome of the action itself.
+  const show = (payload) => interaction.editReply({ components: [], allowedMentions: NO_PINGS, ...payload }).catch(() => {});
+
   const v = await validateMute(guild, p.invokerId, p.targetId, p.ms, p.kind);
   if (v.error) {
     audit.resolve(p.auditId, 'rejected', v.error);
-    return interaction.update({ embeds: [resultCard({ client: interaction.client, title: 'NOT DONE', kind: p.kind, targetId: p.targetId, dur: p.dur, note: v.error, color: colors.error })], components: [], allowedMentions: NO_PINGS }).catch(() => {});
+    return show({ embeds: [resultCard({ client: interaction.client, title: 'NOT DONE', kind: p.kind, targetId: p.targetId, dur: p.dur, note: v.error, color: colors.error })] });
   }
 
   const reason = `${p.reason} (via Sonder AI, confirmed by ${interaction.user.tag})`;
@@ -356,34 +370,34 @@ async function handleButton(interaction) {
   let duration;
   try {
     if (p.kind === 'unmute') {
-      await dm('unmuted', colors.success);
       await v.target.timeout(null, reason.slice(0, 512));
+      await dm('unmuted', colors.success); // only after it worked
     } else if (p.kind === 'warn') {
       store.addWarning(guild.id, v.target.id, { reason: `${p.reason} (via Sonder AI)`, moderator: p.invokerId });
       const total = store.getWarnings(guild.id, v.target.id).length;
       extra = `Warning #${total}`;
       await dm('warned', colors.warning);
     } else if (p.kind === 'kick') {
-      await dm('kicked', colors.warning); // before the kick, while a DM can still be delivered
+      // A kicked member shares no server with the bot afterwards, so this DM can only go first. Every check passed.
+      await dm('kicked', colors.warning);
       await v.target.kick(reason.slice(0, 512));
     } else {
-      await dm('muted', colors.warning, { duration: p.dur });
       await v.target.timeout(p.ms, reason.slice(0, 512));
+      await dm('muted', colors.warning, { duration: p.dur }); // only after it worked
       duration = p.dur;
     }
-    const color = p.kind === 'unmute' ? colors.success : colors.warning;
-    await interaction.update({
-      embeds: [modAction({ client: interaction.client, action: p.kind, color, target: v.target.user, moderator: interaction.user, reason, duration, extra })],
-      components: [],
-    });
-    await modlog.send(guild, { action: p.kind, target: v.target.user, moderator: interaction.user, reason, duration, extra });
-    audit.resolve(p.auditId, 'executed');
-    log.info(`AI action executed: ${p.kind} target=${p.targetId} dur=${p.dur} by=${p.invokerId} guild=${guild.id} prompt=${JSON.stringify(p.prompt)}`);
   } catch (err) {
     audit.resolve(p.auditId, 'failed', err.message);
     log.warn(`AI ${p.kind} failed: ${err.message}`);
-    interaction.update({ embeds: [resultCard({ client: interaction.client, title: 'FAILED', kind: p.kind, targetId: p.targetId, dur: p.dur, note: "Couldn't do that. Check my permissions.", color: colors.error })], components: [], allowedMentions: NO_PINGS }).catch(() => {});
+    return show({ embeds: [resultCard({ client: interaction.client, title: 'FAILED', kind: p.kind, targetId: p.targetId, dur: p.dur, note: "Couldn't do that. Check my permissions.", color: colors.error })] });
   }
+
+  // The action happened. Record that first; the card and modlog are presentation.
+  audit.resolve(p.auditId, 'executed');
+  log.info(`AI action executed: ${p.kind} target=${p.targetId} dur=${p.dur} by=${p.invokerId} guild=${guild.id} prompt=${JSON.stringify(p.prompt)}`);
+  const color = p.kind === 'unmute' ? colors.success : colors.warning;
+  await show({ embeds: [modAction({ client: interaction.client, action: p.kind, color, target: v.target.user, moderator: interaction.user, reason: clip(reason, 512), duration, extra })] });
+  await modlog.send(guild, { action: p.kind, target: v.target.user, moderator: interaction.user, reason: clip(reason, 512), duration, extra }).catch(() => {});
 }
 
 module.exports = { parseMuteIntent, proposeMute, handleButton, usageHint, _limits: { windowOk, USER_RATE_MAX, RATE_MAX } };

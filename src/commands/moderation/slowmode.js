@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { colors } = require('../../utils/constants');
 const { response } = require('../../utils/embed');
-const modlog = require('../../utils/modlog');
+const { sendChannelLog } = require('../../utils/modguard');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -12,7 +12,11 @@ module.exports = {
 
   async execute(interaction) {
     const seconds = interaction.options.getInteger('seconds');
-    await interaction.channel.setRateLimitPerUser(seconds, `Set by ${interaction.user.tag}`);
+    try {
+      await interaction.channel.setRateLimitPerUser(seconds, `Set by ${interaction.user.tag}`);
+    } catch {
+      return interaction.reply({ embeds: [response({ client: interaction.client, description: "Couldn't change slowmode. Check my permissions in this channel.", color: colors.error })], ephemeral: true });
+    }
 
     await interaction.reply({
       embeds: [response({
@@ -21,6 +25,9 @@ module.exports = {
         color: seconds ? colors.success : colors.muted,
       })],
     });
-    await modlog.send(interaction.guild, { action: 'slowmode', target: interaction.channel, moderator: interaction.user, reason: seconds ? `Set to ${seconds}s` : 'Disabled' });
+    await sendChannelLog(interaction.guild, {
+      action: 'slowmode', channel: interaction.channel, moderator: interaction.user,
+      reason: seconds ? `Set to ${seconds}s` : 'Disabled', color: colors.info,
+    });
   },
 };

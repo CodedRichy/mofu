@@ -3,6 +3,7 @@ const { colors } = require('../../utils/constants');
 const { fetchAllMembers } = require('../../utils/members');
 const { response } = require('../../utils/embed');
 const store = require('../../database/store');
+const { memberProblem } = require('../../utils/modguard');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -42,11 +43,16 @@ module.exports = {
         return interaction.reply({ embeds: [response({ client: interaction.client, description: 'User not found.', color: colors.error })], ephemeral: true });
       }
 
-      if (member.roles.highest.position > interaction.member.roles.highest.position) {
-        return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Target has a higher role.', color: colors.error })], ephemeral: true });
+      const problem = memberProblem(interaction.guild, interaction.member, member, 'change the nickname of');
+      if (problem) {
+        return interaction.reply({ embeds: [response({ client: interaction.client, description: problem, color: colors.error })], ephemeral: true });
       }
 
-      await member.setNickname(name, `Changed by ${interaction.user.tag}`);
+      try {
+        await member.setNickname(name, `Changed by ${interaction.user.tag}`);
+      } catch {
+        return interaction.reply({ embeds: [response({ client: interaction.client, description: "Couldn't change that nickname. Check my permissions and role position.", color: colors.error })], ephemeral: true });
+      }
       await interaction.reply({
         embeds: [response({
           client: interaction.client,
@@ -88,12 +94,9 @@ module.exports = {
         return interaction.reply({ embeds: [response({ client: interaction.client, description: "You can't force a nickname on yourself.", color: colors.error })], ephemeral: true });
       }
 
-      if (!target.manageable) {
-        return interaction.reply({ embeds: [response({ client: interaction.client, description: 'I cannot manage that user.', color: colors.error })], ephemeral: true });
-      }
-
-      if (target.roles.highest.position > interaction.member.roles.highest.position) {
-        return interaction.reply({ embeds: [response({ client: interaction.client, description: "You can't manage someone with a higher role.", color: colors.error })], ephemeral: true });
+      const problem = memberProblem(interaction.guild, interaction.member, target, 'manage');
+      if (problem) {
+        return interaction.reply({ embeds: [response({ client: interaction.client, description: problem, color: colors.error })], ephemeral: true });
       }
 
       const nickname = interaction.options.getString('nickname');
@@ -118,12 +121,9 @@ module.exports = {
         return interaction.reply({ embeds: [response({ client: interaction.client, description: "You can't unforce a nickname on yourself.", color: colors.error })], ephemeral: true });
       }
 
-      if (!target.manageable) {
-        return interaction.reply({ embeds: [response({ client: interaction.client, description: 'I cannot manage that user.', color: colors.error })], ephemeral: true });
-      }
-
-      if (target.roles.highest.position > interaction.member.roles.highest.position) {
-        return interaction.reply({ embeds: [response({ client: interaction.client, description: "You can't manage someone with a higher role.", color: colors.error })], ephemeral: true });
+      const problem = memberProblem(interaction.guild, interaction.member, target, 'manage');
+      if (problem) {
+        return interaction.reply({ embeds: [response({ client: interaction.client, description: problem, color: colors.error })], ephemeral: true });
       }
 
       store.setConfig(interaction.guild.id, `forcenick_${target.id}`, null);

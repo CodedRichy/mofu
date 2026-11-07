@@ -3,6 +3,7 @@ const { colors } = require('../../utils/constants');
 const { response } = require('../../utils/embed');
 const store = require('../../database/store');
 const { createRole } = require('../../utils/roleCreate');
+const { roleProblem } = require('../../utils/modguard');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -29,8 +30,10 @@ module.exports = {
     if (sub === 'add') {
       const role = interaction.options.getRole('role');
 
-      if (role.managed || role.id === guild.roles.everyone.id) {
-        return interaction.reply({ embeds: [response({ client: interaction.client, description: "This role can't be auto-assigned.", color: colors.error })], ephemeral: true });
+      // managed / @everyone / at-or-above the invoker's top role / above the bot are all refused
+      const problem = roleProblem(guild, interaction.member, role);
+      if (problem) {
+        return interaction.reply({ embeds: [response({ client: interaction.client, description: problem, color: colors.error })], ephemeral: true });
       }
 
       if (roles.includes(role.id)) {

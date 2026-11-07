@@ -2,6 +2,7 @@ const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { colors } = require('../../utils/constants');
 const { modAction, dmNotice, response } = require('../../utils/embed');
 const modlog = require('../../utils/modlog');
+const { reasonError } = require('../../utils/modguard');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -14,6 +15,11 @@ module.exports = {
   async execute(interaction) {
     const member = interaction.options.getMember('user');
     const reason = interaction.options.getString('reason') || 'No reason provided';
+
+    const reasonErr = reasonError(reason);
+    if (reasonErr) {
+      return interaction.reply({ embeds: [response({ client: interaction.client, description: reasonErr, color: colors.error })], ephemeral: true });
+    }
 
     if (!member) {
       return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Member not found in server.', color: colors.error })], ephemeral: true });
@@ -31,9 +37,14 @@ module.exports = {
       return interaction.reply({ embeds: [response({ client: interaction.client, description: "You can't kick someone with a higher or equal role.", color: colors.error })], ephemeral: true });
     }
 
+    // A kicked member shares no server with the bot afterwards, so the DM can only be delivered first.
     await member.user.send({ embeds: [dmNotice({ guild: interaction.guild, action: 'kicked', reason, color: colors.warning })] }).catch(() => {});
 
-    await member.kick(reason);
+    try {
+      await member.kick(reason);
+    } catch {
+      return interaction.reply({ embeds: [response({ client: interaction.client, description: "Couldn't kick that member. Check my permissions and role position.", color: colors.error })], ephemeral: true });
+    }
 
     const embed = modAction({
       client: interaction.client,

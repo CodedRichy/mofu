@@ -2,6 +2,7 @@ const { SlashCommandBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilde
 const { colors } = require('../../utils/constants');
 const { response, base } = require('../../utils/embed');
 const store = require('../../database/store');
+const { roleProblem, clip } = require('../../utils/modguard');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -28,11 +29,23 @@ module.exports = {
     for (let i = 1; i <= 4; i++) {
       const role = interaction.options.getRole(`role${i}`);
       const label = interaction.options.getString(`label${i}`);
-      if (role && label) roles.push({ id: role.id, label, name: role.name });
+      if (role && label) roles.push({ id: role.id, label: clip(label, 80), name: role.name, role });
     }
 
     if (!roles.length) {
       return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Provide at least one role and label.', color: colors.error })], ephemeral: true });
+    }
+
+    // Members get these roles by clicking, so the panel creator may only offer roles they could hand out themselves.
+    // (Re-checked at click time against the bot; here against the creator's rank.)
+    for (const r of roles) {
+      const problem = roleProblem(interaction.guild, interaction.member, r.role);
+      if (problem) {
+        return interaction.reply({ embeds: [response({ client: interaction.client, description: `**${r.role.name}**: ${problem}`, color: colors.error })], ephemeral: true });
+      }
+    }
+    if (new Set(roles.map((r) => r.id)).size !== roles.length) {
+      return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Each role can only appear once on a panel.', color: colors.error })], ephemeral: true });
     }
 
     const btnStyles = [ButtonStyle.Primary, ButtonStyle.Success, ButtonStyle.Secondary, ButtonStyle.Danger];

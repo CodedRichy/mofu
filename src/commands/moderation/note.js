@@ -2,6 +2,7 @@ const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { colors } = require('../../utils/constants');
 const { base, response } = require('../../utils/embed');
 const store = require('../../database/store');
+const { clip, joinClipped, modLabel } = require('../../utils/modguard');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -48,14 +49,13 @@ module.exports = {
       }
 
       const total = notes.length;
-      const recent = notes.slice(-10).reverse();
+      // getNotes is newest-first, so the first ten are the newest ten
+      const recent = notes.slice(0, 10);
 
-      const list = recent
-        .map((n) => {
-          const ts = Math.floor(new Date(n.timestamp).getTime() / 1000);
-          return `\`#${n.id}\` ${n.content}\n▸ ${n.moderator} • <t:${ts}:R>`;
-        })
-        .join('\n\n');
+      const list = joinClipped(recent.map((n) => {
+        const ts = Math.floor(new Date(n.timestamp).getTime() / 1000);
+        return `\`#${n.id}\` ${clip(n.content, 300)}\n▸ ${modLabel(n.moderator)} • <t:${ts}:R>`;
+      }), 4000, '\n\n');
 
       const embed = base(interaction.client)
         .setAuthor({ name: `Notes — ${user.tag}`, iconURL: user.displayAvatarURL() })

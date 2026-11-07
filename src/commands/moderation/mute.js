@@ -3,6 +3,7 @@ const { colors } = require('../../utils/constants');
 const { modAction, dmNotice, response } = require('../../utils/embed');
 const { parse, format } = require('../../utils/duration');
 const modlog = require('../../utils/modlog');
+const { reasonError } = require('../../utils/modguard');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -18,8 +19,9 @@ module.exports = {
     const durationStr = interaction.options.getString('duration') || '30m';
     const reason = interaction.options.getString('reason') || 'No reason provided';
 
-    if (reason && reason.length > 1000) {
-      return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Reason is too long (max 1000 characters).', color: colors.error })], ephemeral: true });
+    const reasonErr = reasonError(reason);
+    if (reasonErr) {
+      return interaction.reply({ embeds: [response({ client: interaction.client, description: reasonErr, color: colors.error })], ephemeral: true });
     }
 
     if (!member) {
@@ -52,8 +54,12 @@ module.exports = {
     }
 
     const dur = format(ms);
-    try { await member.user.send({ embeds: [dmNotice({ guild: interaction.guild, action: 'muted', reason, color: colors.warning, duration: dur })] }); } catch {}
-    await member.timeout(ms, reason);
+    try {
+      await member.timeout(ms, reason);
+    } catch {
+      return interaction.reply({ embeds: [response({ client: interaction.client, description: "Couldn't mute that member. Check my permissions and role position.", color: colors.error })], ephemeral: true });
+    }
+    await member.user.send({ embeds: [dmNotice({ guild: interaction.guild, action: 'muted', reason, color: colors.warning, duration: dur })] }).catch(() => {});
 
     const embed = modAction({
       client: interaction.client,

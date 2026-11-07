@@ -2,6 +2,7 @@ const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { colors } = require('../../utils/constants');
 const { base, response } = require('../../utils/embed');
 const store = require('../../database/store');
+const { clip, joinClipped, modLabel } = require('../../utils/modguard');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -30,17 +31,17 @@ module.exports = {
     if (warnings.length) {
       const lines = warnings.slice(0, 5).map((w) => {
         const unix = Math.floor(new Date(w.timestamp).getTime() / 1000);
-        return `\`#${w.id}\` ${w.reason || 'No reason'}\n▸ ${w.moderator} • <t:${unix}:R>`;
+        return `\`#${w.id}\` ${clip(w.reason || 'No reason', 120)}\n▸ ${modLabel(w.moderator)} • <t:${unix}:R>`;
       });
-      embed.addFields({ name: '⚠️ Warnings', value: lines.join('\n') });
+      embed.addFields({ name: '⚠️ Warnings', value: joinClipped(lines, 1024) });
     }
 
     if (notes.length) {
       const lines = notes.slice(0, 5).map((n) => {
         const unix = Math.floor(new Date(n.timestamp).getTime() / 1000);
-        return `\`#${n.id}\` ${n.content}\n▸ ${n.moderator} • <t:${unix}:R>`;
+        return `\`#${n.id}\` ${clip(n.content, 120)}\n▸ ${modLabel(n.moderator)} • <t:${unix}:R>`;
       });
-      embed.addFields({ name: '📝 Notes', value: lines.join('\n') });
+      embed.addFields({ name: '📝 Notes', value: joinClipped(lines, 1024) });
     }
 
     embed.setFooter({ text: `Total: ${warnings.length + notes.length} records` });

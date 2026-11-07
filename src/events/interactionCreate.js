@@ -215,12 +215,23 @@ Describe your issue and be patient.`);
     if (!role) return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Role no longer exists.', color: colors.error })], ephemeral: true });
 
     const member = interaction.member;
-    if (member.roles.cache.has(roleId)) {
-      await member.roles.remove(roleId).catch(() => {});
-      return interaction.reply({ embeds: [response({ client: interaction.client, description: `Removed **${role.name}**`, color: colors.muted })], ephemeral: true });
+    const rrFail = (description) =>
+      interaction.reply({ embeds: [response({ client: interaction.client, description, color: colors.error })], ephemeral: true });
+
+    // Never grant @everyone / integration-managed roles, or one the bot can no longer manage (position changed since
+    // the panel was made).
+    if (role.id === guild.id || role.managed || !role.editable) {
+      return rrFail("I can't assign that role anymore. Ask a moderator to check the panel.");
     }
-    await member.roles.add(roleId).catch(() => {});
-    return interaction.reply({ embeds: [response({ client: interaction.client, description: `Added **${role.name}**`, color: colors.success })], ephemeral: true });
+
+    const removing = member.roles.cache.has(roleId);
+    try {
+      if (removing) await member.roles.remove(roleId, 'Reaction role');
+      else await member.roles.add(roleId, 'Reaction role');
+    } catch {
+      return rrFail(`Couldn't ${removing ? 'remove' : 'add'} **${role.name}**. Ask a moderator to check my permissions.`);
+    }
+    return interaction.reply({ embeds: [response({ client: interaction.client, description: removing ? `Removed **${role.name}**` : `Added **${role.name}**`, color: removing ? colors.muted : colors.success })], ephemeral: true });
 
   } else if (customId === 'giveaway_enter') {
     const gw = giveawayDb.get(guild.id, interaction.message.id);

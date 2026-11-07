@@ -2,16 +2,18 @@ const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { colors } = require('../../utils/constants');
 const { modAction, dmNotice, response } = require('../../utils/embed');
 const modlog = require('../../utils/modlog');
+const { reasonError } = require('../../utils/modguard');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('ban')
     .setDescription('Ban a member from the server')
     .addUserOption((o) => o.setName('user').setDescription('Member to ban').setRequired(true))
-    .addStringOption((o) => o.setName('reason').setDescription('Reason for ban'))
     .addIntegerOption((o) =>
       o.setName('delete_messages').setDescription('Days of messages to delete (0-7)').setMinValue(0).setMaxValue(7)
     )
+    // free-text reason must stay LAST: the prefix parser gives every earlier string option a single word
+    .addStringOption((o) => o.setName('reason').setDescription('Reason for ban'))
     .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
 
   async execute(interaction) {
@@ -19,6 +21,11 @@ module.exports = {
     const reason = interaction.options.getString('reason') || 'No reason provided';
     const days = interaction.options.getInteger('delete_messages') || 0;
     const member = interaction.guild.members.cache.get(user.id);
+
+    const reasonErr = reasonError(reason);
+    if (reasonErr) {
+      return interaction.reply({ embeds: [response({ client: interaction.client, description: reasonErr, color: colors.error })], ephemeral: true });
+    }
 
     if (user.id === interaction.user.id) {
       return interaction.reply({ embeds: [response({ client: interaction.client, description: "You can't ban yourself.", color: colors.error })], ephemeral: true });
@@ -33,9 +40,14 @@ module.exports = {
       }
     }
 
+    // A banned user shares no server with the bot, so the DM can only be delivered first. All checks have passed by here.
     await user.send({ embeds: [dmNotice({ guild: interaction.guild, action: 'banned', reason, color: colors.error })] }).catch(() => {});
 
-    await interaction.guild.members.ban(user, { reason, deleteMessageSeconds: days * 86400 });
+    try {
+      await interaction.guild.members.ban(user, { reason, deleteMessageSeconds: days * 86400 });
+    } catch {
+      return interaction.reply({ embeds: [response({ client: interaction.client, description: "Couldn't ban that user. Check my permissions and role position.", color: colors.error })], ephemeral: true });
+    }
 
     const embed = modAction({
       client: interaction.client,

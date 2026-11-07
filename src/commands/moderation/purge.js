@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { colors } = require('../../utils/constants');
 const { response } = require('../../utils/embed');
-const modlog = require('../../utils/modlog');
+const { sendChannelLog } = require('../../utils/modguard');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -16,30 +16,47 @@ module.exports = {
   async execute(interaction) {
     const amount = interaction.options.getInteger('amount');
     const targetUser = interaction.options.getUser('user');
+    // Prefix path only: the message that invoked the command (slash interactions have no `message`).
+    const commandMessage = interaction.message || null;
+
+    // Fetch BEFORE deferring: on the prefix path deferReply posts a placeholder message that must not be purged.
+    // One extra is fetched so the command message can be excluded without coming up short.
+    let fetched;
+    try {
+      fetched = await interaction.channel.messages.fetch({ limit: targetUser ? 100 : Math.min(100, amount + (commandMessage ? 1 : 0)) });
+    } catch {
+      return interaction.reply({ embeds: [response({ client: interaction.client, description: "Couldn't read this channel's messages. Check my permissions.", color: colors.error })], ephemeral: true });
+    }
+
+    let messages = [...fetched.values()].filter((m) => !commandMessage || m.id !== commandMessage.id);
+    if (targetUser) messages = messages.filter((m) => m.author.id === targetUser.id);
+    messages = messages.slice(0, amount);
 
     await interaction.deferReply({ ephemeral: true });
 
-    let messages = await interaction.channel.messages.fetch({ limit: targetUser ? 100 : amount });
-
-    if (targetUser) {
-      messages = messages.filter((m) => m.author.id === targetUser.id);
-      messages = [...messages.values()].slice(0, amount);
+    let deleted;
+    try {
+      deleted = await interaction.channel.bulkDelete(messages, true);
+    } catch {
+      return interaction.editReply({ embeds: [response({ client: interaction.client, description: "Couldn't delete those messages. Check my permissions.", color: colors.error })] }).catch(() => {});
     }
 
-    const deleted = await interaction.channel.bulkDelete(messages, true);
+    // Tidy up the command message itself (prefix path); it is not part of the count.
+    if (commandMessage?.deletable) commandMessage.delete().catch(() => {});
 
     const desc = targetUser
       ? `Deleted **${deleted.size}** message(s) from **${targetUser.tag}**`
       : `Deleted **${deleted.size}** message(s)`;
 
-    await interaction.editReply({ embeds: [response({ client: interaction.client, description: desc, color: colors.info })] });
-
-    await modlog.send(interaction.guild, {
+    // Log first: a failed reply (message gone, interaction expired) must not skip the audit trail.
+    await sendChannelLog(interaction.guild, {
       action: 'purge',
-      target: interaction.user,
+      channel: interaction.channel,
       moderator: interaction.user,
-      reason: `${deleted.size} messages in #${interaction.channel.name}`,
-      extra: targetUser ? `Filtered: ${targetUser.tag}` : null,
+      reason: `${deleted.size} messages${targetUser ? ` from ${targetUser.tag}` : ''}`,
+      color: colors.info,
     });
+
+    await interaction.editReply({ embeds: [response({ client: interaction.client, description: desc, color: colors.info })] }).catch(() => {});
   },
 };

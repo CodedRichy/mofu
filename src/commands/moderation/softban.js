@@ -2,6 +2,7 @@ const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { colors } = require('../../utils/constants');
 const { modAction, dmNotice, response } = require('../../utils/embed');
 const modlog = require('../../utils/modlog');
+const { reasonError } = require('../../utils/modguard');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -16,6 +17,11 @@ module.exports = {
     const reason = interaction.options.getString('reason') || 'No reason provided';
     const member = interaction.guild.members.cache.get(user.id);
 
+    const reasonErr = reasonError(reason);
+    if (reasonErr) {
+      return interaction.reply({ embeds: [response({ client: interaction.client, description: reasonErr, color: colors.error })], ephemeral: true });
+    }
+
     if (user.id === interaction.user.id) {
       return interaction.reply({ embeds: [response({ client: interaction.client, description: "You can't softban yourself.", color: colors.error })], ephemeral: true });
     }
@@ -29,10 +35,27 @@ module.exports = {
       }
     }
 
+    // Already banned: a softban would end in an unban and silently lift the real ban.
+    const existing = await interaction.guild.bans.fetch(user.id).catch(() => null);
+    if (existing) {
+      return interaction.reply({ embeds: [response({ client: interaction.client, description: 'That user is already banned. Use `/unban` first if you want a softban.', color: colors.error })], ephemeral: true });
+    }
+
+    // The DM can only be delivered before the ban removes the shared server.
     await user.send({ embeds: [dmNotice({ guild: interaction.guild, action: 'softbanned', reason, color: colors.error })] }).catch(() => {});
 
-    await interaction.guild.members.ban(user, { reason, deleteMessageSeconds: 604800 });
-    await interaction.guild.members.unban(user, 'Softban — auto unban');
+    try {
+      await interaction.guild.members.ban(user, { reason, deleteMessageSeconds: 604800 });
+    } catch {
+      return interaction.reply({ embeds: [response({ client: interaction.client, description: "Couldn't softban that user. Check my permissions and role position.", color: colors.error })], ephemeral: true });
+    }
+    try {
+      await interaction.guild.members.unban(user, 'Softban - auto unban');
+    } catch {
+      await interaction.reply({ embeds: [response({ client: interaction.client, description: "The ban went through but the automatic unban failed. **They are still banned.** Use `/unban`.", color: colors.error })] });
+      await modlog.send(interaction.guild, { action: 'ban', target: user, moderator: interaction.user, reason: `${reason} (softban unban failed)` });
+      return;
+    }
 
     const embed = modAction({
       client: interaction.client,
