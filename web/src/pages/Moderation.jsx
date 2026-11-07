@@ -7,19 +7,15 @@ import { Badge } from '../components/Badge'
 import { Avatar } from '../components/Avatar'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
-
-function api(path, token, opts = {}) {
-  return fetch(`/api${path}`, {
-    ...opts,
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...opts.headers },
-  }).then(r => r.ok ? r.json() : null)
-}
+import { api } from '../lib/api'
+import { useToken } from '../lib/auth'
 
 function NavItem({ icon: Icon, label, active, onClick }) {
   const [h, setH] = useState(false)
   return (
     <button
       onClick={onClick}
+      aria-current={active ? 'page' : undefined}
       onMouseEnter={() => setH(true)}
       onMouseLeave={() => setH(false)}
       style={{
@@ -87,6 +83,7 @@ function SearchField({ value, onChange, placeholder }) {
       </span>
       <input
         type="text"
+        aria-label={placeholder || 'Filter'}
         value={value}
         onChange={e => onChange(e.target.value)}
         onFocus={() => setFocused(true)}
@@ -129,7 +126,7 @@ function DeleteButton({ onConfirm }) {
       leftIcon={<Trash2 size={12} />}
       style={confirming ? {
         background: 'var(--error-subtle)',
-        border: '1px solid rgba(248,113,113,0.35)',
+        border: '1px solid var(--error-border)',
         color: 'var(--error)',
         fontWeight: 'var(--weight-semibold)',
       } : undefined}
@@ -344,7 +341,9 @@ function ModStatsTab({ stats }) {
 export function Moderation() {
   const { guildId } = useParams()
   const navigate = useNavigate()
-  const token = localStorage.getItem('sonder_token')
+  const token = useToken()
+  const [errors, setErrors] = useState({})
+  const [actionError, setActionError] = useState(null)
   const [tab, setTab] = useState('warnings')
   const [search, setSearch] = useState('')
   const [warnings, setWarnings] = useState(null)
@@ -355,37 +354,40 @@ export function Moderation() {
   useEffect(() => {
     if (!token) { navigate('/dashboard'); return }
     // Fetch guild info for sidebar
-    api(`/guilds/${guildId}/config`, token).then(data => {
-      if (!data) navigate('/dashboard')
-      else setGuild(data)
+    api(`/guilds/${guildId}/config`, token).then(res => {
+      if (!res.ok) navigate('/dashboard')
+      else setGuild(res.data)
     })
   }, [guildId])
 
+  // A failed fetch records an error and leaves the list null: an empty list means "really none", never "request failed".
+  function load(key, path, setter) {
+    setErrors(e => ({ ...e, [key]: null }))
+    api(`/guilds/${guildId}${path}`, token).then(res => {
+      if (res.ok) setter(res.data || [])
+      else setErrors(e => ({ ...e, [key]: res.error }))
+    })
+  }
+
   useEffect(() => {
     if (!token) return
-    if (tab === 'warnings' && !warnings) {
-      api(`/guilds/${guildId}/warnings`, token).then(data => setWarnings(data || []))
-    }
-    if (tab === 'notes' && !notes) {
-      api(`/guilds/${guildId}/notes`, token).then(data => setNotes(data || []))
-    }
-    if (tab === 'stats' && !modStats) {
-      api(`/guilds/${guildId}/modstats`, token).then(data => setModStats(data || []))
-    }
+    if (tab === 'warnings' && !warnings && !errors.warnings) load('warnings', '/warnings', setWarnings)
+    if (tab === 'notes' && !notes && !errors.notes) load('notes', '/notes', setNotes)
+    if (tab === 'stats' && !modStats && !errors.stats) load('stats', '/modstats', setModStats)
   }, [tab, guildId])
 
   async function deleteWarning(id) {
-    const result = await api(`/guilds/${guildId}/warnings/${id}`, token, { method: 'DELETE' })
-    if (result?.success) {
-      setWarnings(prev => prev.filter(w => w.id !== id))
-    }
+    setActionError(null)
+    const res = await api(`/guilds/${guildId}/warnings/${id}`, token, { method: 'DELETE' })
+    if (res.ok && res.data?.success) setWarnings(prev => prev.filter(w => w.id !== id))
+    else setActionError(res.error || "Couldn't delete that warning.")
   }
 
   async function deleteNote(id) {
-    const result = await api(`/guilds/${guildId}/notes/${id}`, token, { method: 'DELETE' })
-    if (result?.success) {
-      setNotes(prev => prev.filter(n => n.id !== id))
-    }
+    setActionError(null)
+    const res = await api(`/guilds/${guildId}/notes/${id}`, token, { method: 'DELETE' })
+    if (res.ok && res.data?.success) setNotes(prev => prev.filter(n => n.id !== id))
+    else setActionError(res.error || "Couldn't delete that note.")
   }
 
   if (!guild) {
@@ -408,6 +410,16 @@ export function Moderation() {
     { id: 'stats', label: 'Mod Stats' },
   ]
 
+  const failed = (key, label) => (
+    <div role="alert" style={{ padding: 'var(--space-8) var(--space-4)', textAlign: 'center', color: 'var(--error)', fontSize: 'var(--text-sm)' }}>
+      <div>{"Couldn't load " + label + "."}</div>
+      <div style={{ color: 'var(--fg-3)', fontSize: 'var(--text-xs)', marginTop: 'var(--space-1)' }}>{errors[key]}</div>
+      <div style={{ marginTop: 'var(--space-3)' }}>
+        <Button variant="secondary" size="sm" onClick={() => load(key, { warnings: '/warnings', notes: '/notes', stats: '/modstats' }[key], { warnings: setWarnings, notes: setNotes, stats: setModStats }[key])}>Retry</Button>
+      </div>
+    </div>
+  )
+
   const loading = (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-12)' }}>
       <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid var(--border-default)', borderTopColor: 'var(--accent)', animation: 'spin 0.7s linear infinite' }} />
@@ -415,12 +427,12 @@ export function Moderation() {
   )
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
+    <div className="dash-shell">
       {/* Noise overlay */}
       <div style={{ position: 'fixed', inset: 0, backgroundImage: NOISE_SVG, backgroundRepeat: 'repeat', pointerEvents: 'none', zIndex: 0, opacity: 0.5 }} />
 
       {/* Sidebar */}
-      <aside style={{
+      <aside className="dash-aside" style={{
         width: 'var(--sidebar-width)', flexShrink: 0,
         borderRight: '1px solid var(--border-subtle)',
         display: 'flex', flexDirection: 'column',
@@ -446,9 +458,9 @@ export function Moderation() {
         </button>
 
         {/* Server identity */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2-5)', padding: '0 var(--space-2)', marginBottom: 'var(--space-6)' }}>
+        <div className="dash-hide-narrow" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2-5)', padding: '0 var(--space-2)', marginBottom: 'var(--space-6)' }}>
           {guild.icon ? (
-            <img src={guild.icon} style={{ width: 30, height: 30, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }} />
+            <img src={guild.icon} alt="" style={{ width: 30, height: 30, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }} />
           ) : (
             <div style={{
               width: 30, height: 30, borderRadius: 'var(--radius-md)',
@@ -469,21 +481,21 @@ export function Moderation() {
         </div>
 
         {/* Section label */}
-        <div style={{
+        <div className="dash-hide-narrow" style={{
           fontSize: 10, fontWeight: 'var(--weight-semibold)', color: 'var(--fg-4)',
           padding: '0 var(--space-3)', marginBottom: 'var(--space-2)',
           textTransform: 'uppercase', letterSpacing: 'var(--tracking-caps)',
         }}>Moderation</div>
 
         {/* Nav items */}
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <nav className="dash-nav" aria-label="Moderation">
           {navItems.map(n => (
             <NavItem key={n.id} icon={n.icon} label={n.label} active={tab === n.id} onClick={() => setTab(n.id)} />
           ))}
         </nav>
 
         {/* Summary counts */}
-        <div style={{ marginTop: 'auto', padding: 'var(--space-3)' }}>
+        <div className="dash-hide-narrow" style={{ marginTop: 'auto', padding: 'var(--space-3)' }}>
           <div style={{
             padding: 'var(--space-3)', borderRadius: 'var(--radius-md)',
             background: 'var(--surface-1)', border: '1px solid var(--border-subtle)',
@@ -507,7 +519,7 @@ export function Moderation() {
       </aside>
 
       {/* Main content */}
-      <main style={{ flex: 1, overflow: 'auto', padding: 'var(--space-10) var(--space-12)', position: 'relative', zIndex: 1 }}>
+      <main className="dash-main" style={{ flex: 1, overflow: 'auto', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: 860, animation: 'fade-up 0.3s var(--ease-default) both' }}>
           {/* Header */}
           <div style={{ marginBottom: 'var(--space-6)' }}>
@@ -522,7 +534,7 @@ export function Moderation() {
 
           {/* Tabs + Search bar */}
           <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap',
             marginBottom: 'var(--space-5)', gap: 'var(--space-4)',
           }}>
             <Tabs
@@ -532,16 +544,20 @@ export function Moderation() {
               variant="pills"
             />
             {tab !== 'stats' && (
-              <div style={{ width: 260 }}>
+              <div style={{ width: 260, maxWidth: '100%' }}>
                 <SearchField value={search} onChange={setSearch} placeholder="Filter by user..." />
               </div>
             )}
           </div>
 
+          {actionError && (
+            <div role="alert" style={{ marginBottom: 'var(--space-3)', fontSize: 'var(--text-xs)', color: 'var(--error)', background: 'var(--error-subtle)', border: '1px solid var(--error-border)', borderRadius: 'var(--radius-md)', padding: 'var(--space-2) var(--space-3)' }}>{actionError}</div>
+          )}
+
           {/* Content */}
           <SectionCard>
             {tab === 'warnings' && (
-              warnings === null ? loading : (
+              errors.warnings && warnings === null ? failed('warnings', 'warnings') : warnings === null ? loading : (
                 <>
                   <div style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -551,13 +567,13 @@ export function Moderation() {
                       <Badge variant="warning">{warnings.length} warning{warnings.length !== 1 ? 's' : ''}</Badge>
                     </div>
                   </div>
-                  <WarningsTab warnings={warnings} search={search} onDelete={deleteWarning} />
+                  <div className="table-scroll"><div className="table-inner"><WarningsTab warnings={warnings} search={search} onDelete={deleteWarning} /></div></div>
                 </>
               )
             )}
 
             {tab === 'notes' && (
-              notes === null ? loading : (
+              errors.notes && notes === null ? failed('notes', 'notes') : notes === null ? loading : (
                 <>
                   <div style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -567,13 +583,13 @@ export function Moderation() {
                       <Badge variant="accent">{notes.length} note{notes.length !== 1 ? 's' : ''}</Badge>
                     </div>
                   </div>
-                  <NotesTab notes={notes} search={search} onDelete={deleteNote} />
+                  <div className="table-scroll"><div className="table-inner"><NotesTab notes={notes} search={search} onDelete={deleteNote} /></div></div>
                 </>
               )
             )}
 
             {tab === 'stats' && (
-              modStats === null ? loading : (
+              errors.stats && modStats === null ? failed('stats', 'moderator stats') : modStats === null ? loading : (
                 <ModStatsTab stats={modStats} />
               )
             )}

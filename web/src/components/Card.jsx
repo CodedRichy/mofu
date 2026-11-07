@@ -35,6 +35,13 @@ export function Card({ variant = 'default', padding = 'md', children, onClick, s
   return (
     <div
       onClick={onClick}
+      {...(interactive ? {
+        role: 'button',
+        tabIndex: 0,
+        onKeyDown: e => {
+          if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onClick(e) }
+        },
+      } : {})}
       onMouseEnter={() => interactive && setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{

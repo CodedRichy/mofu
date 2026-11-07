@@ -34,7 +34,7 @@ const CATEGORIES = {
     ],
   },
   config: {
-    icon: Settings, color: '#a78bfa',
+    icon: Settings, color: 'var(--fg-2)',
     commands: [
       { name: 'welcome', desc: 'Configure welcome messages' },
       { name: 'goodbye', desc: 'Configure goodbye messages' },
@@ -125,7 +125,7 @@ const CATEGORIES = {
     ],
   },
   fun: {
-    icon: Smile, color: '#fb923c',
+    icon: Smile, color: 'var(--cat-amber)',
     commands: [
       { name: '8ball', desc: 'Ask the magic 8-ball' },
       { name: 'meme', desc: 'Get a random meme' },
@@ -149,7 +149,7 @@ const CATEGORIES = {
     ],
   },
   lastfm: {
-    icon: Radio, color: '#ef4444',
+    icon: Radio, color: 'var(--cat-rose)',
     commands: [
       { name: 'fm', desc: 'Last.fm now playing and stats' },
     ],
@@ -268,6 +268,7 @@ export function Commands() {
             onChange={e => setSearch(e.target.value)}
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
+            aria-label="Search commands"
             placeholder="Search commands..."
             style={{
               flex: 1, background: 'transparent', border: 'none', outline: 'none',
@@ -280,7 +281,7 @@ export function Commands() {
               <span style={{ fontSize: 'var(--text-xs)', color: 'var(--fg-3)', fontFamily: 'var(--font-mono)' }}>
                 {filteredCommands.length}
               </span>
-              <button onClick={() => setSearch('')} style={{ display: 'flex', color: 'var(--fg-4)', cursor: 'pointer' }}>
+              <button onClick={() => setSearch('')} aria-label="Clear search" style={{ display: 'flex', color: 'var(--fg-3)', cursor: 'pointer' }}>
                 <X size={14} />
               </button>
             </div>

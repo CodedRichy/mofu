@@ -25,7 +25,7 @@ export function Button({
   const variants = {
     primary: {
       background: hovered ? 'var(--accent-hover)' : 'var(--accent)',
-      color: '#fff',
+      color: 'var(--accent-fg)',
       border: '1px solid rgba(0,0,0,0.18)',
       boxShadow: hovered ? 'var(--shadow-accent)' : '0 1px 3px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.12)',
     },
@@ -44,7 +44,7 @@ export function Button({
     destructive: {
       background: hovered ? 'var(--error-subtle)' : 'transparent',
       color: 'var(--error)',
-      border: `1px solid ${hovered ? 'rgba(248,113,113,0.35)' : 'transparent'}`,
+      border: `1px solid ${hovered ? 'var(--error-border)' : 'transparent'}`,
       boxShadow: 'none',
     },
   }

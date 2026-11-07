@@ -4,10 +4,27 @@ import { ArrowRight, Plus } from 'lucide-react'
 import { Layout } from '../components/Layout'
 import '../styles/landing.css'
 
-const CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID
-const INVITE = CLIENT_ID
-  ? `https://discord.com/oauth2/authorize?client_id=${CLIENT_ID}&permissions=1375332592887&scope=bot+applications.commands`
-  : '/dashboard'
+import { INVITE_URL } from '../lib/invite'
+
+// With no VITE_DISCORD_CLIENT_ID there is no valid invite: render an inert button (and, in dev, say why)
+// rather than silently sending visitors to /dashboard.
+function AddToDiscord() {
+  if (INVITE_URL) {
+    return <a className="ln-btn ln-btn--primary" href={INVITE_URL}><Plus size={18} aria-hidden="true" />Add to Discord</a>
+  }
+  return (
+    <>
+      <span className="ln-btn ln-btn--primary" role="link" aria-disabled="true" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+        <Plus size={18} aria-hidden="true" />Add to Discord
+      </span>
+      {import.meta.env.DEV && (
+        <p role="alert" style={{ flexBasis: '100%', margin: '8px 0 0', fontSize: 13, color: 'var(--warning)' }}>
+          Dev warning: VITE_DISCORD_CLIENT_ID is not set, so the invite link is disabled. Copy web/.env.example to web/.env and set it.
+        </p>
+      )}
+    </>
+  )
+}
 
 function Reveal({ children, delay = 0, as: Tag = 'div', className = '', ...rest }) {
   const ref = useRef(null)
@@ -71,7 +88,7 @@ export function Landing() {
                 button on anything that can hurt. Built to be a drop-in replacement for the bot you have now.
               </p>
               <div className="ln-cta">
-                <a className="ln-btn ln-btn--primary" href={INVITE}><Plus size={18} aria-hidden="true" />Add to Discord</a>
+                <AddToDiscord />
                 <Link className="ln-btn ln-btn--ghost" to="/commands">Browse commands <ArrowRight size={18} aria-hidden="true" /></Link>
               </div>
               <p className="ln-fine">Free to start. No card, no vote walls.</p>
@@ -178,7 +195,7 @@ export function Landing() {
         <Reveal as="section" className="ln-section ln-final">
           <h2 className="ln-h2">Try it in your server.</h2>
           <div className="ln-cta">
-            <a className="ln-btn ln-btn--primary" href={INVITE}><Plus size={18} aria-hidden="true" />Add to Discord</a>
+            <AddToDiscord />
           </div>
         </Reveal>
         <div className="ln-end" />

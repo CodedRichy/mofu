@@ -2,9 +2,10 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { LogIn, Users, Server, Terminal, Activity, ArrowUpRight, Sparkles } from 'lucide-react'
 import { Layout } from '../components/Layout'
+import { api } from '../lib/api'
+import { useToken, setToken, clearToken, loginUrl as buildLoginUrl, verifyOAuthState } from '../lib/auth'
 
-const CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID || ''
-const REDIRECT_URI = window.location.origin + '/dashboard'
+const handledCodes = new Set()
 
 const LOADING_PHRASES = [
   'listening..', 'reading the room..', 'taking it all in..',
@@ -20,20 +21,9 @@ function getGreeting(name) {
   return `late one, ${name}. let's take a look.`
 }
 
-function api(path, token) {
-  return fetch(`/api${path}`, {
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-  }).then(r => {
-    if (!r.ok && r.status === 401) {
-      localStorage.removeItem('sonder_token')
-      window.location.href = '/'
-      return null
-    }
-    return r.ok ? r.json() : null
-  })
-}
-
 function StatCard({ icon: Icon, label, value, accent }) {
+  // accent is a CSS colour token (var(--x)); tint it with color-mix, since appending hex alpha to var() is invalid CSS
+  const tint = `color-mix(in oklab, ${accent} 12%, transparent)`
   const [hovered, setHovered] = useState(false)
   return (
     <div
@@ -51,7 +41,7 @@ function StatCard({ icon: Icon, label, value, accent }) {
     >
       <div style={{
         position: 'absolute', top: -30, right: -30, width: 100, height: 100,
-        background: `radial-gradient(circle, ${accent}12 0%, transparent 70%)`,
+        background: `radial-gradient(circle, ${tint} 0%, transparent 70%)`,
         borderRadius: '50%', transition: 'opacity 200ms', opacity: hovered ? 1 : 0.4,
       }} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
@@ -69,9 +59,16 @@ function GuildCard({ guild, onClick, index }) {
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label={`Manage ${guild.name}`}
       onClick={onClick}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onFocus={() => setHovered(true)}
+      onBlur={() => setHovered(false)}
+      className={isFeature ? 'dash-span-2' : undefined}
       style={{
         padding: isFeature ? 'var(--space-6)' : 'var(--space-4)',
         borderRadius: 'var(--radius-xl)', cursor: 'pointer',
@@ -87,6 +84,7 @@ function GuildCard({ guild, onClick, index }) {
         {guild.icon ? (
           <img
             src={`https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64`}
+            alt=""
             style={{
               width: isFeature ? 48 : 38, height: isFeature ? 48 : 38,
               borderRadius: 'var(--radius-lg)', flexShrink: 0,
@@ -129,7 +127,8 @@ function GuildCard({ guild, onClick, index }) {
 }
 
 export function Dashboard() {
-  const [token, setToken] = useState(() => localStorage.getItem('sonder_token'))
+  const token = useToken()
+  const [authError, setAuthError] = useState(null)
   const [user, setUser] = useState(null)
   const [guilds, setGuilds] = useState([])
   const [stats, setStats] = useState(null)
@@ -137,38 +136,68 @@ export function Dashboard() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
 
+  // OAuth callback: runs once per ?code=. Every path ends in setLoading(false) (or a navigate that re-runs the effect).
   useEffect(() => {
     const code = searchParams.get('code')
     if (code) {
-      fetch('/api/auth/callback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
-      })
-        .then(r => r.json())
-        .then(data => {
-          if (data.access_token) {
-            localStorage.setItem('sonder_token', data.access_token)
+      // StrictMode runs effects twice in dev, and the OAuth state/code are single-use: handle each code once.
+      if (handledCodes.has(code)) return
+      handledCodes.add(code)
+      const finish = (err) => {
+        if (err) setAuthError(err)
+        setLoading(false)
+        navigate('/dashboard', { replace: true })
+      }
+      if (!verifyOAuthState(searchParams.get('state'))) {
+        finish('Sign-in could not be verified (state mismatch). Please try again.')
+        return
+      }
+      setLoading(true)
+      ;(async () => {
+        try {
+          const r = await fetch('/api/auth/callback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code, state: searchParams.get('state') }),
+          })
+          const data = await r.json().catch(() => null)
+          if (r.ok && data && data.access_token) {
             setToken(data.access_token)
+            finish(null)
+          } else {
+            finish(`Sign-in failed (${r.status}). Please try again.`)
           }
-          navigate('/dashboard', { replace: true })
-        })
-        .catch(() => navigate('/dashboard', { replace: true }))
+        } catch {
+          finish("Couldn't reach the server to finish signing in. Please try again.")
+        }
+      })()
       return
     }
 
-    if (!token) { setLoading(false); return }
+    if (!token) { setUser(null); setLoading(false); return }
 
-    Promise.all([
-      api('/user', token),
-      api('/guilds', token),
-      api('/stats', token),
-    ]).then(([u, g, s]) => {
-      if (!u) { localStorage.removeItem('sonder_token'); setToken(null) }
-      else { setUser(u); setGuilds(g || []); setStats(s) }
-      setLoading(false)
-    })
-  }, [token])
+    let cancelled = false
+    setLoading(true)
+    ;(async () => {
+      try {
+        const [u, g, s] = await Promise.all([
+          api('/user', token, { noRedirect: true }),
+          api('/guilds', token, { noRedirect: true }),
+          api('/stats', token, { noRedirect: true }),
+        ])
+        if (cancelled) return
+        if (u.status === 401) { clearToken(); return }   // only a 401 means the token is bad
+        if (!u.ok) { setAuthError(u.error); return }
+        setAuthError(null)
+        setUser(u.data)
+        setGuilds(g.ok ? g.data || [] : [])
+        setStats(s.ok ? s.data : null)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [token, searchParams])
 
   const loadingPhrase = useMemo(() => LOADING_PHRASES[Math.floor(Math.random() * LOADING_PHRASES.length)], [])
 
@@ -190,7 +219,7 @@ export function Dashboard() {
   }
 
   if (!token || !user) {
-    const loginUrl = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=identify+guilds`
+    const loginUrl = buildLoginUrl()
     return (
       <Layout>
         <style>{`
@@ -235,6 +264,9 @@ export function Dashboard() {
           }}>
             Sign in with Discord to get started
           </p>
+          {authError && (
+            <p role="alert" style={{ fontSize: 'var(--text-sm)', color: 'var(--error)', marginBottom: 'var(--space-5)', maxWidth: 420 }}>{authError}</p>
+          )}
 
           <a href={loginUrl} style={{
             display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2-5)',
@@ -277,7 +309,7 @@ export function Dashboard() {
         {/* Stats */}
         {stats && (
           <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-3)',
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 'var(--space-3)',
             marginBottom: 'var(--space-10)',
             animation: 'fade-up 0.5s var(--ease-default) 0.06s both',
           }}>
@@ -301,7 +333,7 @@ export function Dashboard() {
               <p style={{ fontSize: 'var(--text-sm)', color: 'var(--fg-3)' }}>no servers found. make sure sonder's in your server.</p>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-3)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))', gap: 'var(--space-3)' }}>
               {guilds.map((g, i) => (
                 <div key={g.id} style={{ animation: `fade-up 0.4s var(--ease-default) ${0.04 * i}s both` }}>
                   <GuildCard guild={g} index={i} onClick={() => navigate(`/dashboard/${g.id}`)} />

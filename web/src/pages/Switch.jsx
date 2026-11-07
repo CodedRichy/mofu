@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { Layout } from '../components/Layout'
 
 const h2 = { fontFamily: 'var(--font-display)', fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-semibold)', color: 'var(--fg-2)', marginBottom: 'var(--space-2)' }
@@ -53,7 +54,7 @@ export function Switch() {
               <li><strong style={strong}>Talk to it.</strong> Anyone you allow can say "sonder mute kai 10m spam" in chat. Sonder checks that person's real permissions and role order, shows a confirm button only they can press, and tags the action in the audit log. The AI never decides what runs.</li>
               <li><strong style={strong}>It knows your server.</strong> <span style={code}>/memory</span> lets admins teach it short facts about the community. It reads only the last few messages in the channel, never a log of everything.</li>
               <li><strong style={strong}>Slash and prefix.</strong> Every command works both ways, and the prefix is yours to change.</li>
-              <li><strong style={strong}>Your data goes away.</strong> Remove Sonder and everything stored for your server is deleted after 30 days. Read the <a href="/privacy" style={{ color: 'var(--fg-2)' }}>privacy policy</a> for exactly what is kept.</li>
+              <li><strong style={strong}>Your data goes away.</strong> Remove Sonder and everything stored for your server is deleted after 30 days. Read the <Link to="/privacy" style={{ color: 'var(--fg-2)' }}>privacy policy</Link> for exactly what is kept.</li>
             </ul>
           </section>
 

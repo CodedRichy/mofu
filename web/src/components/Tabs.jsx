@@ -38,10 +38,12 @@ export function Tabs({ items, activeId, onChange, variant = 'default', style }) 
   }
 
   return (
-    <div style={{ display: 'flex', gap: 2, alignItems: 'center', ...style }}>
+    <div role="tablist" style={{ display: 'flex', gap: 2, alignItems: 'center', overflowX: 'auto', maxWidth: '100%', ...style }}>
       {items.map(item => (
         <button
           key={item.id}
+          role="tab"
+          aria-selected={item.id === activeId}
           onClick={() => onChange(item.id)}
           onMouseEnter={() => setHovered(item.id)}
           onMouseLeave={() => setHovered(null)}

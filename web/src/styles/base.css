@@ -106,3 +106,62 @@ img, video, svg {
   .nav-link { padding: 8px 9px !important; font-size: var(--text-sm) !important; }
   .nav-login { padding: 0 12px !important; }
 }
+
+/* keyboard focus on custom interactive elements */
+[role="button"]:focus-visible,
+[role="switch"]:focus-visible,
+[role="tab"]:focus-visible,
+button:focus-visible,
+a:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* ---- dashboard shell: sidebar + main, collapses to a top bar under 768px ---- */
+.dash-shell { display: flex; height: 100vh; overflow: hidden; background: var(--bg); }
+.dash-aside { overflow-y: auto; }
+.dash-main { padding: var(--space-10) var(--space-12); }
+.dash-nav { display: flex; flex-direction: column; gap: 1px; }
+
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+.table-scroll > .table-inner { min-width: 560px; }
+
+.grid-auto-stat { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-3); }
+
+@media (max-width: 768px) {
+  .dash-shell { flex-direction: column; height: auto; min-height: 100vh; overflow: visible; }
+  .dash-aside {
+    width: 100% !important; flex-direction: column !important;
+    border-right: none !important; border-bottom: 1px solid var(--border-subtle);
+    padding: var(--space-3) var(--space-3) var(--space-2) !important;
+    overflow: visible; position: sticky !important; top: 0; z-index: 20 !important;
+  }
+  .dash-aside .dash-hide-narrow { display: none !important; }
+  .dash-aside .dash-nav {
+    flex-direction: row !important; overflow-x: auto; gap: 4px !important;
+    padding-bottom: var(--space-2); -webkit-overflow-scrolling: touch;
+  }
+  .dash-aside .dash-nav > * { flex: 0 0 auto; }
+  .dash-aside .dash-nav button { width: auto !important; white-space: nowrap; margin-bottom: 0 !important; }
+  .dash-save { margin-top: var(--space-2) !important; }
+  .dash-main { padding: var(--space-6) var(--space-4) !important; overflow: visible !important; }
+  .dash-main > div { max-width: 100% !important; }
+  .dash-span-2 { grid-column: auto !important; }
+  .dash-stack { flex-direction: column !important; align-items: stretch !important; }
+  .dash-stack > * { flex: 1 1 auto !important; width: 100% !important; }
+
+  /* assistant keeps a full-height chat; its history column collapses to the header strip */
+  .assistant-shell { flex-direction: column; }
+  .assistant-aside { width: 100% !important; border-right: none !important; border-bottom: 1px solid var(--border-subtle); }
+  .assistant-msgs { padding: var(--space-4) var(--space-4) !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

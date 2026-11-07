@@ -1,27 +1,17 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useId } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, Save, Shield, Bot, Bell, Check, Settings, Hash, MessageSquare, Server, Sparkles, ExternalLink, Zap, Terminal, Trash2, Plus, AlertTriangle, Coins, TrendingUp } from 'lucide-react'
 import { NOISE_SVG } from '../components/Layout'
-
-function api(path, token, opts = {}) {
-  return fetch(`/api${path}`, {
-    ...opts,
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...opts.headers },
-  }).then(r => {
-    if (!r.ok && r.status === 401) {
-      localStorage.removeItem('sonder_token')
-      window.location.href = '/'
-      return null
-    }
-    return r.ok ? r.json() : null
-  })
-}
+import { api } from '../lib/api'
+import { useToken } from '../lib/auth'
+import { useListText } from '../lib/listText'
 
 function NavItem({ icon: Icon, label, active, onClick }) {
   const [h, setH] = useState(false)
   return (
     <button
       onClick={onClick}
+      aria-current={active ? 'page' : undefined}
       onMouseEnter={() => setH(true)}
       onMouseLeave={() => setH(false)}
       style={{
@@ -55,6 +45,11 @@ function Toggle({ label, description, checked, onChange }) {
   const [h, setH] = useState(false)
   return (
     <div
+      role="switch"
+      aria-checked={!!checked}
+      aria-label={label}
+      tabIndex={0}
+      onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); onChange(!checked) } }}
       onMouseEnter={() => setH(true)}
       onMouseLeave={() => setH(false)}
       style={{
@@ -78,7 +73,7 @@ function Toggle({ label, description, checked, onChange }) {
         boxShadow: checked ? '0 0 10px rgba(255, 255, 255, 0.13)' : 'none',
       }}>
         <div style={{
-          width: 14, height: 14, borderRadius: '50%', background: '#fff',
+          width: 14, height: 14, borderRadius: '50%', background: checked ? 'var(--accent-fg)' : 'var(--fg-2)',
           transform: checked ? 'translateX(16px)' : 'translateX(0)',
           transition: 'transform 160ms var(--ease-spring)',
           boxShadow: 'var(--shadow-xs)',
@@ -90,9 +85,10 @@ function Toggle({ label, description, checked, onChange }) {
 
 function Field({ label, value, onChange, type = 'text', hint, icon: Icon }) {
   const [focused, setFocused] = useState(false)
+  const id = useId()
   return (
     <div style={{ marginBottom: 'var(--space-5)' }}>
-      <label style={{
+      <label htmlFor={id} style={{
         display: 'block', fontSize: 'var(--text-xs)', color: 'var(--fg-2)',
         marginBottom: 'var(--space-1-5)', fontWeight: 'var(--weight-medium)',
         letterSpacing: '0.01em',
@@ -108,6 +104,7 @@ function Field({ label, value, onChange, type = 'text', hint, icon: Icon }) {
         {Icon && <span style={{ display: 'flex', padding: '0 0 0 var(--space-3)', color: 'var(--fg-4)' }}><Icon size={13} /></span>}
         {type === 'textarea' ? (
           <textarea
+            id={id}
             value={value || ''}
             onChange={e => onChange(e.target.value)}
             onFocus={() => setFocused(true)}
@@ -122,6 +119,7 @@ function Field({ label, value, onChange, type = 'text', hint, icon: Icon }) {
           />
         ) : (
           <input
+            id={id}
             type={type}
             value={value || ''}
             onChange={e => onChange(e.target.value)}
@@ -136,8 +134,25 @@ function Field({ label, value, onChange, type = 'text', hint, icon: Icon }) {
           />
         )}
       </div>
-      {hint && <span style={{ fontSize: 'var(--text-xs)', color: 'var(--fg-4)', marginTop: 'var(--space-1-5)', display: 'block' }}>{hint}</span>}
+      {hint && <span style={{ fontSize: 'var(--text-xs)', color: 'var(--fg-3)', marginTop: 'var(--space-1-5)', display: 'block' }}>{hint}</span>}
     </div>
+  )
+}
+
+// Text box for a list value: raw text stays local so "a, b," and trailing newlines survive typing.
+function ListField({ label, list, onList, mode = 'comma', hint }) {
+  const [text, onText] = useListText(list, onList, mode)
+  return <Field label={label} value={text} onChange={onText} type="textarea" hint={hint} />
+}
+
+function Notice({ children }) {
+  if (!children) return null
+  return (
+    <div role="alert" style={{
+      fontSize: 'var(--text-xs)', color: 'var(--error)', background: 'var(--error-subtle)',
+      border: '1px solid var(--error-border)', borderRadius: 'var(--radius-md)',
+      padding: 'var(--space-2) var(--space-3)', lineHeight: 1.5,
+    }}>{children}</div>
   )
 }
 
@@ -184,15 +199,17 @@ function Divider() {
 export function GuildConfig() {
   const { guildId } = useParams()
   const navigate = useNavigate()
-  const token = localStorage.getItem('sonder_token')
+  const token = useToken()
   const [cfg, setCfg] = useState(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState(null)
   const [tab, setTab] = useState('general')
 
   // Automod state
   const [automod, setAutomod] = useState(null)
   const [automodSaving, setAutomodSaving] = useState(false)
+  const [automodError, setAutomodError] = useState(null)
 
   // Custom commands state
   const [customCmds, setCustomCmds] = useState([])
@@ -200,21 +217,24 @@ export function GuildConfig() {
   const [newCmdResponse, setNewCmdResponse] = useState('')
   const [cmdCreating, setCmdCreating] = useState(false)
   const [deletingCmd, setDeletingCmd] = useState(null) // name of cmd pending confirmation
+  const [cmdError, setCmdError] = useState(null)
 
   useEffect(() => {
     if (!token) { navigate('/dashboard'); return }
-    api(`/guilds/${guildId}/config`, token).then(data => {
-      if (!data) navigate('/dashboard')
-      else setCfg(data)
+    api(`/guilds/${guildId}/config`, token).then(res => {
+      if (!res.ok) navigate('/dashboard')
+      else setCfg(res.data)
     })
   }, [guildId])
 
   // Fetch automod config when tab switches to automod
   useEffect(() => {
     if (tab === 'automod' && token && !automod) {
-      api(`/guilds/${guildId}/automod-config`, token).then(data => {
-        if (data) setAutomod(data)
-        else setAutomod({})
+      setAutomodError(null)
+      // On failure leave automod null: seeding {} here would let Save overwrite the real settings with nothing.
+      api(`/guilds/${guildId}/automod-config`, token).then(res => {
+        if (res.ok) setAutomod(res.data || {})
+        else setAutomodError(res.error)
       })
     }
   }, [tab, guildId])
@@ -222,8 +242,9 @@ export function GuildConfig() {
   // Fetch custom commands when tab switches to commands
   useEffect(() => {
     if (tab === 'commands' && token) {
-      api(`/guilds/${guildId}/custom-commands`, token).then(data => {
-        if (data) setCustomCmds(data)
+      api(`/guilds/${guildId}/custom-commands`, token).then(res => {
+        if (res.ok) { setCustomCmds(res.data || []); setCmdError(null) }
+        else setCmdError(res.error)
       })
     }
   }, [tab, guildId])
@@ -241,13 +262,22 @@ export function GuildConfig() {
     setSaved(false)
   }
 
-  async function save() {
-    setSaving(true)
-    const { name, icon, memberCount, ...rest } = cfg
-    await api(`/guilds/${guildId}/config`, token, { method: 'PATCH', body: JSON.stringify(rest) })
-    setSaving(false)
+  function flashSaved() {
     setSaved(true)
     setTimeout(() => setSaved(false), 3000)
+  }
+
+  async function save() {
+    setSaving(true)
+    setSaveError(null)
+    try {
+      const { name, icon, memberCount, ...rest } = cfg
+      const res = await api(`/guilds/${guildId}/config`, token, { method: 'PATCH', body: JSON.stringify(rest) })
+      if (res.ok) flashSaved()
+      else setSaveError(res.error)
+    } finally {
+      setSaving(false)
+    }
   }
 
   function updateAutomod(key, value) {
@@ -256,31 +286,41 @@ export function GuildConfig() {
 
   async function saveAutomod() {
     setAutomodSaving(true)
-    await api(`/guilds/${guildId}/automod-config`, token, { method: 'PATCH', body: JSON.stringify(automod) })
-    setAutomodSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+    setAutomodError(null)
+    try {
+      const res = await api(`/guilds/${guildId}/automod-config`, token, { method: 'PATCH', body: JSON.stringify(automod) })
+      if (res.ok) flashSaved()
+      else setAutomodError(res.error)
+    } finally {
+      setAutomodSaving(false)
+    }
   }
 
   async function createCustomCmd() {
     if (!newCmdName.trim() || !newCmdResponse.trim()) return
     setCmdCreating(true)
-    await api(`/guilds/${guildId}/custom-commands`, token, {
-      method: 'POST',
-      body: JSON.stringify({ name: newCmdName.trim().toLowerCase(), response: newCmdResponse.trim() }),
-    })
-    // Refresh list
-    const data = await api(`/guilds/${guildId}/custom-commands`, token)
-    if (data) setCustomCmds(data)
-    setNewCmdName('')
-    setNewCmdResponse('')
-    setCmdCreating(false)
+    setCmdError(null)
+    try {
+      const res = await api(`/guilds/${guildId}/custom-commands`, token, {
+        method: 'POST',
+        body: JSON.stringify({ name: newCmdName.trim().toLowerCase(), response: newCmdResponse.trim() }),
+      })
+      if (!res.ok) { setCmdError(res.error); return }   // keep the form so nothing typed is lost
+      const list = await api(`/guilds/${guildId}/custom-commands`, token)
+      if (list.ok) setCustomCmds(list.data || [])
+      setNewCmdName('')
+      setNewCmdResponse('')
+    } finally {
+      setCmdCreating(false)
+    }
   }
 
   async function deleteCustomCmd(name) {
     if (deletingCmd !== name) { setDeletingCmd(name); return }
-    await api(`/guilds/${guildId}/custom-commands/${encodeURIComponent(name)}`, token, { method: 'DELETE' })
-    setCustomCmds(prev => prev.filter(c => c.name !== name))
+    setCmdError(null)
+    const res = await api(`/guilds/${guildId}/custom-commands/${encodeURIComponent(name)}`, token, { method: 'DELETE' })
+    if (res.ok) setCustomCmds(prev => prev.filter(c => c.name !== name))
+    else setCmdError(res.error)
     setDeletingCmd(null)
   }
 
@@ -295,12 +335,12 @@ export function GuildConfig() {
   ]
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
+    <div className="dash-shell">
       {/* Noise overlay */}
       <div style={{ position: 'fixed', inset: 0, backgroundImage: NOISE_SVG, backgroundRepeat: 'repeat', pointerEvents: 'none', zIndex: 0, opacity: 0.5 }} />
 
       {/* Sidebar */}
-      <aside style={{
+      <aside className="dash-aside" style={{
         width: 'var(--sidebar-width)', flexShrink: 0,
         borderRight: '1px solid var(--border-subtle)',
         display: 'flex', flexDirection: 'column',
@@ -326,9 +366,9 @@ export function GuildConfig() {
         </button>
 
         {/* Server identity */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2-5)', padding: '0 var(--space-2)', marginBottom: 'var(--space-6)' }}>
+        <div className="dash-hide-narrow" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2-5)', padding: '0 var(--space-2)', marginBottom: 'var(--space-6)' }}>
           {cfg.icon ? (
-            <img src={cfg.icon} style={{ width: 30, height: 30, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }} />
+            <img src={cfg.icon} alt="" style={{ width: 30, height: 30, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }} />
           ) : (
             <div style={{
               width: 30, height: 30, borderRadius: 'var(--radius-md)',
@@ -349,31 +389,31 @@ export function GuildConfig() {
         </div>
 
         {/* Section label */}
-        <div style={{
+        <div className="dash-hide-narrow" style={{
           fontSize: 10, fontWeight: 'var(--weight-semibold)', color: 'var(--fg-4)',
           padding: '0 var(--space-3)', marginBottom: 'var(--space-2)',
           textTransform: 'uppercase', letterSpacing: 'var(--tracking-caps)',
         }}>Settings</div>
 
         {/* Nav items */}
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <nav className="dash-nav" aria-label="Server settings">
           {navItems.map(n => (
             <NavItem key={n.id} icon={n.icon} label={n.label} active={tab === n.id} onClick={() => setTab(n.id)} />
           ))}
         </nav>
 
         {/* Divider */}
-        <div style={{ height: 1, background: 'var(--border-subtle)', margin: 'var(--space-4) var(--space-2)' }} />
+        <div className="dash-hide-narrow" style={{ height: 1, background: 'var(--border-subtle)', margin: 'var(--space-4) var(--space-2)' }} />
 
         {/* Management section label */}
-        <div style={{
+        <div className="dash-hide-narrow" style={{
           fontSize: 10, fontWeight: 'var(--weight-semibold)', color: 'var(--fg-4)',
           padding: '0 var(--space-3)', marginBottom: 'var(--space-2)',
           textTransform: 'uppercase', letterSpacing: 'var(--tracking-caps)',
         }}>Management</div>
 
         {/* Management nav links */}
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <nav className="dash-nav" aria-label="Management">
           {[
             { to: `/dashboard/${guildId}/moderation`, label: 'Moderation', icon: Shield },
             { to: `/dashboard/${guildId}/economy`, label: 'Economy', icon: Coins },
@@ -386,7 +426,8 @@ export function GuildConfig() {
         </nav>
 
         {/* Save button */}
-        <div style={{ marginTop: 'auto', padding: '0 var(--space-1)' }}>
+        <div className="dash-save" style={{ marginTop: 'auto', padding: '0 var(--space-1)' }}>
+          {saveError && <div style={{ marginBottom: 'var(--space-2)' }}><Notice>{saveError}</Notice></div>}
           <button
             onClick={save}
             disabled={saving}
@@ -397,7 +438,7 @@ export function GuildConfig() {
               color: saved ? 'var(--success)' : 'var(--accent-fg)',
               fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-semibold)',
               fontFamily: 'var(--font-body)', cursor: saving ? 'wait' : 'pointer',
-              border: saved ? '1px solid rgba(62,207,142,0.25)' : '1px solid rgba(0,0,0,0.2)',
+              border: saved ? '1px solid var(--success-border)' : '1px solid rgba(0,0,0,0.2)',
               boxShadow: saved ? 'none' : '0 1px 3px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
               transition: 'all 160ms var(--ease-default)',
               opacity: saving ? 0.7 : 1,
@@ -410,7 +451,7 @@ export function GuildConfig() {
       </aside>
 
       {/* Main content */}
-      <main style={{ flex: 1, overflow: 'auto', padding: 'var(--space-10) var(--space-12)', position: 'relative', zIndex: 1 }}>
+      <main className="dash-main" style={{ flex: 1, overflow: 'auto', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: 640 }}>
           {tab === 'general' && (
             <Panel title="General" description="the basics. prefix, identity, how sonder shows up.">
@@ -450,15 +491,15 @@ export function GuildConfig() {
                 <Toggle label="Anti-Link" description="Block links from non-moderators" checked={!!cfg.antilink} onChange={v => update('antilink', v)} />
               </SectionCard>
               <SectionCard title="Word Filter">
-                <Field label="Blocked Words" value={(cfg.word_filter || []).join(', ')} onChange={v => update('word_filter', v.split(',').map(w => w.trim()).filter(Boolean))} type="textarea" hint="Comma-separated list of blocked words" />
+                <ListField label="Blocked Words" list={cfg.word_filter} onList={v => update('word_filter', v)} hint="Comma-separated list of blocked words" />
                 {cfg.word_filter?.length > 0 && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1-5)', marginTop: 'var(--space-3)' }}>
-                    {cfg.word_filter.map(w => (
-                      <span key={w} style={{
+                    {cfg.word_filter.map((w, i) => (
+                      <span key={`${w}-${i}`} style={{
                         fontSize: 'var(--text-xs)', padding: '3px 8px',
                         borderRadius: 'var(--radius-sm)',
                         background: 'var(--error-subtle)',
-                        border: '1px solid rgba(248,113,113,0.2)',
+                        border: '1px solid var(--error-border)',
                         color: 'var(--error)',
                         fontFamily: 'var(--font-mono)',
                       }}>{w}</span>
@@ -485,7 +526,7 @@ export function GuildConfig() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-5)' }}>
                   <div style={{
                     width: 36, height: 36, borderRadius: 'var(--radius-lg)',
-                    background: 'linear-gradient(135deg, var(--accent-subtle), rgba(168,85,247,0.1))',
+                    background: 'var(--accent-subtle)',
                     border: '1px solid var(--border-accent)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
@@ -493,7 +534,7 @@ export function GuildConfig() {
                   </div>
                   <div>
                     <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-semibold)', color: 'var(--fg-1)' }}>AI Commands</div>
-                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--fg-3)' }}>Llama 3.3 70B via Groq</div>
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--fg-3)' }}>Qwen3.8 27B via Groq</div>
                   </div>
                 </div>
 
@@ -542,7 +583,9 @@ export function GuildConfig() {
 
           {tab === 'automod' && (
             <Panel title="Automod" description="automated protection. sonder watches so you don't have to.">
-              {!automod ? (
+              {!automod && automodError ? (
+                <Notice>{"Couldn't load automod settings. " + automodError}</Notice>
+              ) : !automod ? (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-8)' }}>
                   <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid var(--border-default)', borderTopColor: 'var(--accent)', animation: 'spin 0.7s linear infinite' }} />
                 </div>
@@ -617,11 +660,11 @@ export function GuildConfig() {
                     />
                     {automod.antilink && (
                       <div style={{ marginTop: 'var(--space-4)', padding: '0 var(--space-4)' }}>
-                        <Field
+                        <ListField
                           label="Whitelisted Domains"
-                          value={(automod.antilink_whitelist || []).join('\n')}
-                          onChange={v => updateAutomod('antilink_whitelist', v.split('\n').map(d => d.trim()).filter(Boolean))}
-                          type="textarea"
+                          list={automod.antilink_whitelist}
+                          onList={v => updateAutomod('antilink_whitelist', v)}
+                          mode="line"
                           hint="One domain per line (e.g. youtube.com, discord.gg)"
                         />
                       </div>
@@ -637,21 +680,20 @@ export function GuildConfig() {
                     />
                     {automod.word_filter && (
                       <div style={{ marginTop: 'var(--space-4)', padding: '0 var(--space-4)' }}>
-                        <Field
+                        <ListField
                           label="Blocked Words"
-                          value={(automod.word_filter_list || []).join(', ')}
-                          onChange={v => updateAutomod('word_filter_list', v.split(',').map(w => w.trim()).filter(Boolean))}
-                          type="textarea"
+                          list={automod.word_filter_list}
+                          onList={v => updateAutomod('word_filter_list', v)}
                           hint="Comma-separated list of words to block"
                         />
                         {(automod.word_filter_list || []).length > 0 && (
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1-5)', marginTop: 'var(--space-2)' }}>
-                            {automod.word_filter_list.map(w => (
-                              <span key={w} style={{
+                            {automod.word_filter_list.map((w, i) => (
+                              <span key={`${w}-${i}`} style={{
                                 fontSize: 'var(--text-xs)', padding: '3px 8px',
                                 borderRadius: 'var(--radius-sm)',
                                 background: 'var(--error-subtle)',
-                                border: '1px solid rgba(248,113,113,0.2)',
+                                border: '1px solid var(--error-border)',
                                 color: 'var(--error)',
                                 fontFamily: 'var(--font-mono)',
                               }}>{w}</span>
@@ -662,6 +704,7 @@ export function GuildConfig() {
                     )}
                   </SectionCard>
 
+                  {automodError && <Notice>{automodError}</Notice>}
                   <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                     <button
                       onClick={saveAutomod}
@@ -689,11 +732,12 @@ export function GuildConfig() {
 
           {tab === 'commands' && (
             <Panel title="Custom Commands" description="your words, sonder's voice.">
+              <Notice>{cmdError}</Notice>
               <SectionCard title="Add Command">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
                   <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'flex-end' }}>
-                    <div style={{ flex: '0 0 180px' }}>
-                      <label style={{
+                    <div style={{ flex: '0 1 180px', minWidth: 0 }}>
+                      <label htmlFor="cmd-name" style={{
                         display: 'block', fontSize: 'var(--text-xs)', color: 'var(--fg-2)',
                         marginBottom: 'var(--space-1-5)', fontWeight: 'var(--weight-medium)',
                       }}>Command Name</label>
@@ -704,6 +748,7 @@ export function GuildConfig() {
                       }}>
                         <span style={{ padding: '0 0 0 var(--space-2-5)', color: 'var(--fg-4)', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-mono)', userSelect: 'none' }}>;</span>
                         <input
+                          id="cmd-name"
                           value={newCmdName}
                           onChange={e => setNewCmdName(e.target.value.replace(/\s/g, '').slice(0, 32))}
                           placeholder="hello"
@@ -718,11 +763,12 @@ export function GuildConfig() {
                     </div>
                   </div>
                   <div>
-                    <label style={{
+                    <label htmlFor="cmd-response" style={{
                       display: 'block', fontSize: 'var(--text-xs)', color: 'var(--fg-2)',
                       marginBottom: 'var(--space-1-5)', fontWeight: 'var(--weight-medium)',
                     }}>Response</label>
                     <textarea
+                      id="cmd-response"
                       value={newCmdResponse}
                       onChange={e => setNewCmdResponse(e.target.value.slice(0, 2000))}
                       placeholder="Hello {user}! Welcome to {server}."
@@ -815,7 +861,7 @@ export function GuildConfig() {
                               height: 28, padding: '0 var(--space-2-5)', borderRadius: 'var(--radius-sm)',
                               background: deletingCmd === cmd.name ? 'var(--error)' : 'transparent',
                               border: deletingCmd === cmd.name ? '1px solid var(--error)' : '1px solid var(--border-default)',
-                              color: deletingCmd === cmd.name ? '#fff' : 'var(--fg-3)',
+                              color: deletingCmd === cmd.name ? 'var(--error-fg)' : 'var(--fg-3)',
                               fontSize: 'var(--text-xs)', cursor: 'pointer',
                               fontFamily: 'var(--font-body)',
                               transition: 'all 120ms var(--ease-default)',

@@ -4,7 +4,9 @@ export function Switch({ checked, onChange, label, disabled = false, style }) {
       <button
         role="switch"
         aria-checked={checked}
+        aria-label={typeof label === 'string' ? label : undefined}
         disabled={disabled}
+        type="button"
         onClick={() => !disabled && onChange(!checked)}
         style={{
           width: 36, height: 20, borderRadius: 'var(--radius-full)', padding: 2,
@@ -17,7 +19,7 @@ export function Switch({ checked, onChange, label, disabled = false, style }) {
       >
         <div style={{
           width: 14, height: 14, borderRadius: '50%',
-          background: '#fff',
+          background: checked ? 'var(--accent-fg)' : 'var(--fg-2)',
           transform: checked ? 'translateX(16px)' : 'translateX(0)',
           transition: 'transform 160ms var(--ease-spring)',
           boxShadow: '0 1px 3px rgba(0,0,0,0.3)',

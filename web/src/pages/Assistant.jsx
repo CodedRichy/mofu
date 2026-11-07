@@ -1,9 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Send, Bot, Plus, LogIn, Sparkles, Trash2 } from 'lucide-react'
 import { Layout, NOISE_SVG } from '../components/Layout'
-
-const CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID || ''
-const REDIRECT_URI = window.location.origin + '/dashboard'
+import { useToken, loginUrl as buildLoginUrl } from '../lib/auth'
 
 function ChatInput({ onSend, disabled }) {
   const [val, setVal] = useState('')
@@ -115,14 +113,14 @@ export function Assistant() {
   const [messages, setMessages] = useState([])
   const [typing, setTyping] = useState(false)
   const bottomRef = useRef(null)
-  const token = localStorage.getItem('sonder_token')
+  const token = useToken()
 
   useEffect(() => {
     if (bottomRef.current) bottomRef.current.scrollTop = bottomRef.current.scrollHeight
   }, [messages, typing])
 
   if (!token) {
-    const loginUrl = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=identify+guilds`
+    const loginUrl = buildLoginUrl()
     return (
       <Layout>
         <style>{`
@@ -216,9 +214,12 @@ export function Assistant() {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: text, history: messages.slice(-10) }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => null)
       setTyping(false)
-      setMessages(m => [...m, { id: Date.now() + 1, role: 'assistant', content: data.response || 'Sorry, I could not process that request.' }])
+      const content = res.ok && data?.response ? data.response
+        : res.status === 401 ? 'Your session expired. Sign in again to keep chatting.'
+        : 'Sorry, I could not process that request.'
+      setMessages(m => [...m, { id: Date.now() + 1, role: 'assistant', content }])
     } catch {
       setTyping(false)
       setMessages(m => [...m, { id: Date.now() + 1, role: 'assistant', content: 'The AI service is currently unavailable. Make sure the bot is running with a GROQ_API_KEY configured.' }])
@@ -227,9 +228,9 @@ export function Assistant() {
 
   return (
     <Layout bare>
-      <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      <div className="assistant-shell" style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
         {/* Sidebar */}
-        <div style={{
+        <div className="assistant-aside" style={{
           width: 'var(--sidebar-width)', flexShrink: 0,
           borderRight: '1px solid var(--border-subtle)',
           display: 'flex', flexDirection: 'column',
@@ -255,7 +256,7 @@ export function Assistant() {
               <Plus size={13} /> New conversation
             </button>
           </div>
-          <div style={{ flex: 1, padding: 'var(--space-1) var(--space-2)' }}>
+          <div className="dash-hide-narrow" style={{ flex: 1, padding: 'var(--space-1) var(--space-2)' }}>
             {messages.length > 0 && (
               <div style={{
                 fontSize: 'var(--text-xs)', color: 'var(--fg-3)',
@@ -267,7 +268,7 @@ export function Assistant() {
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {messages[0]?.content?.slice(0, 30)}...
                 </span>
-                <button onClick={() => setMessages([])} style={{ color: 'var(--fg-4)', cursor: 'pointer', display: 'flex' }}>
+                <button onClick={() => setMessages([])} aria-label="Clear conversation" style={{ color: 'var(--fg-3)', cursor: 'pointer', display: 'flex' }}>
                   <Trash2 size={11} />
                 </button>
               </div>
@@ -300,12 +301,12 @@ export function Assistant() {
               borderRadius: 'var(--radius-full)', padding: '3px 8px',
             }}>
               <Bot size={10} />
-              Llama 3.3 70B
+              Qwen3.8 27B
             </div>
           </div>
 
           {/* Messages */}
-          <div ref={bottomRef} style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-5) var(--space-10)' }}>
+          <div ref={bottomRef} className="assistant-msgs" style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-5) var(--space-10)' }}>
             {messages.length === 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 'var(--space-3)' }}>
                 <div style={{

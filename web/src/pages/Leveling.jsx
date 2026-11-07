@@ -8,12 +8,14 @@ import { Input } from '../components/Input'
 import { Switch } from '../components/Switch'
 import { Tabs } from '../components/Tabs'
 import { Badge } from '../components/Badge'
+import { api } from '../lib/api'
+import { useToken } from '../lib/auth'
+import { useListText } from '../lib/listText'
 
-function api(path, token, opts = {}) {
-  return fetch(`/api${path}`, {
-    ...opts,
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...opts.headers },
-  }).then(r => r.ok ? r.json() : null)
+// Comma-separated ID list input: raw text stays local so a trailing comma or "a, b" survives typing.
+function ListInput({ label, list, onList, ...rest }) {
+  const [text, onText] = useListText(list, onList)
+  return <Input label={label} value={text} onChange={e => onText(e.target.value)} {...rest} />
 }
 
 function xpForLevel(level) {
@@ -25,6 +27,7 @@ function NavItem({ icon: Icon, label, active, onClick }) {
   return (
     <button
       onClick={onClick}
+      aria-current={active ? 'page' : undefined}
       onMouseEnter={() => setH(true)}
       onMouseLeave={() => setH(false)}
       style={{
@@ -111,6 +114,11 @@ function Toggle({ label, description, checked, onChange }) {
   const [h, setH] = useState(false)
   return (
     <div
+      role="switch"
+      aria-checked={!!checked}
+      aria-label={label}
+      tabIndex={0}
+      onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); onChange(!checked) } }}
       onMouseEnter={() => setH(true)}
       onMouseLeave={() => setH(false)}
       style={{
@@ -134,7 +142,7 @@ function Toggle({ label, description, checked, onChange }) {
         boxShadow: checked ? '0 0 10px rgba(255, 255, 255, 0.13)' : 'none',
       }}>
         <div style={{
-          width: 14, height: 14, borderRadius: '50%', background: '#fff',
+          width: 14, height: 14, borderRadius: '50%', background: checked ? 'var(--accent-fg)' : 'var(--fg-2)',
           transform: checked ? 'translateX(16px)' : 'translateX(0)',
           transition: 'transform 160ms var(--ease-spring)',
           boxShadow: 'var(--shadow-xs)',
@@ -147,13 +155,15 @@ function Toggle({ label, description, checked, onChange }) {
 export function Leveling() {
   const { guildId } = useParams()
   const navigate = useNavigate()
-  const token = localStorage.getItem('sonder_token')
+  const token = useToken()
 
   const [tab, setTab] = useState('leaderboard')
   const [leaderboard, setLeaderboard] = useState(null)
   const [config, setConfig] = useState(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState(null)
+  const [loadError, setLoadError] = useState(null)
   const [guildInfo, setGuildInfo] = useState(null)
 
   // Role rewards form
@@ -164,30 +174,38 @@ export function Leveling() {
     if (!token) { navigate('/dashboard'); return }
 
     // Load guild info for sidebar
-    api(`/guilds/${guildId}/config`, token).then(data => {
-      if (!data) navigate('/dashboard')
-      else setGuildInfo(data)
+    api(`/guilds/${guildId}/config`, token).then(res => {
+      if (!res.ok) navigate('/dashboard')
+      else setGuildInfo(res.data)
     })
 
     // Load leaderboard
-    api(`/guilds/${guildId}/leaderboard`, token).then(data => {
-      if (data) setLeaderboard(data)
-      else setLeaderboard([])
+    api(`/guilds/${guildId}/leaderboard`, token).then(res => {
+      if (res.ok) setLeaderboard(res.data || [])
+      else { setLeaderboard([]); setLoadError(res.error) }
     })
 
-    // Load leveling config
-    api(`/guilds/${guildId}/leveling-config`, token).then(data => {
-      if (data) setConfig(data)
-      else setConfig({ enabled: true, levelup_channel: '', xp_multiplier: 1, level_roles: [], no_xp_channels: [], no_xp_roles: [] })
+    // Load leveling config. On failure keep config null-ish: defaults here would let Save overwrite real settings.
+    api(`/guilds/${guildId}/leveling-config`, token).then(res => {
+      if (res.ok) setConfig(res.data)
+      else setLoadError(res.error)
     })
   }, [guildId])
 
   async function saveConfig() {
     setSaving(true)
-    await api(`/guilds/${guildId}/leveling-config`, token, { method: 'PATCH', body: JSON.stringify(config) })
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+    setSaveError(null)
+    try {
+      const res = await api(`/guilds/${guildId}/leveling-config`, token, { method: 'PATCH', body: JSON.stringify(config) })
+      if (res.ok) {
+        setSaved(true)
+        setTimeout(() => setSaved(false), 3000)
+      } else {
+        setSaveError(res.error)
+      }
+    } finally {
+      setSaving(false)
+    }
   }
 
   function updateConfig(key, value) {
@@ -209,6 +227,14 @@ export function Leveling() {
     updateConfig('level_roles', (config.level_roles || []).filter(r => r.level !== level))
   }
 
+  if (loadError && !config) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-6)' }}>
+        <p role="alert" style={{ color: 'var(--error)', fontSize: 'var(--text-sm)', textAlign: 'center' }}>Couldn't load leveling settings. {loadError}</p>
+      </div>
+    )
+  }
+
   if (!guildInfo || leaderboard === null || !config) {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -224,12 +250,12 @@ export function Leveling() {
   ]
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
+    <div className="dash-shell">
       {/* Noise overlay */}
       <div style={{ position: 'fixed', inset: 0, backgroundImage: NOISE_SVG, backgroundRepeat: 'repeat', pointerEvents: 'none', zIndex: 0, opacity: 0.5 }} />
 
       {/* Sidebar */}
-      <aside style={{
+      <aside className="dash-aside" style={{
         width: 'var(--sidebar-width)', flexShrink: 0,
         borderRight: '1px solid var(--border-subtle)',
         display: 'flex', flexDirection: 'column',
@@ -255,9 +281,9 @@ export function Leveling() {
         </button>
 
         {/* Server identity */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2-5)', padding: '0 var(--space-2)', marginBottom: 'var(--space-6)' }}>
+        <div className="dash-hide-narrow" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2-5)', padding: '0 var(--space-2)', marginBottom: 'var(--space-6)' }}>
           {guildInfo.icon ? (
-            <img src={guildInfo.icon} style={{ width: 30, height: 30, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }} />
+            <img src={guildInfo.icon} alt="" style={{ width: 30, height: 30, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }} />
           ) : (
             <div style={{
               width: 30, height: 30, borderRadius: 'var(--radius-md)',
@@ -278,21 +304,24 @@ export function Leveling() {
         </div>
 
         {/* Section label */}
-        <div style={{
+        <div className="dash-hide-narrow" style={{
           fontSize: 10, fontWeight: 'var(--weight-semibold)', color: 'var(--fg-4)',
           padding: '0 var(--space-3)', marginBottom: 'var(--space-2)',
           textTransform: 'uppercase', letterSpacing: 'var(--tracking-caps)',
         }}>Leveling</div>
 
         {/* Nav items */}
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <nav className="dash-nav" aria-label="Leveling">
           {navItems.map(n => (
             <NavItem key={n.id} icon={n.icon} label={n.label} active={tab === n.id} onClick={() => setTab(n.id)} />
           ))}
         </nav>
 
         {/* Save button */}
-        <div style={{ marginTop: 'auto', padding: '0 var(--space-1)' }}>
+        <div className="dash-save" style={{ marginTop: 'auto', padding: '0 var(--space-1)' }}>
+          {saveError && (
+            <div role="alert" style={{ marginBottom: 'var(--space-2)', fontSize: 'var(--text-xs)', color: 'var(--error)', background: 'var(--error-subtle)', border: '1px solid var(--error-border)', borderRadius: 'var(--radius-md)', padding: 'var(--space-2) var(--space-3)' }}>{saveError}</div>
+          )}
           <button
             onClick={saveConfig}
             disabled={saving}
@@ -303,7 +332,7 @@ export function Leveling() {
               color: saved ? 'var(--success)' : 'var(--accent-fg)',
               fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-semibold)',
               fontFamily: 'var(--font-body)', cursor: saving ? 'wait' : 'pointer',
-              border: saved ? '1px solid rgba(62,207,142,0.25)' : '1px solid rgba(0,0,0,0.2)',
+              border: saved ? '1px solid var(--success-border)' : '1px solid rgba(0,0,0,0.2)',
               boxShadow: saved ? 'none' : '0 1px 3px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
               transition: 'all 160ms var(--ease-default)',
               opacity: saving ? 0.7 : 1,
@@ -316,7 +345,7 @@ export function Leveling() {
       </aside>
 
       {/* Main content */}
-      <main style={{ flex: 1, overflow: 'auto', padding: 'var(--space-10) var(--space-12)', position: 'relative', zIndex: 1 }}>
+      <main className="dash-main" style={{ flex: 1, overflow: 'auto', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: 720 }}>
           {tab === 'leaderboard' && (
             <Panel title="Leaderboard" description="Top 50 members by XP in this server.">
@@ -327,7 +356,7 @@ export function Leveling() {
                     <div style={{ fontSize: 'var(--text-sm)', color: 'var(--fg-3)' }}>no one's leveled up yet. the journey starts with a message.</div>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <div className="table-scroll"><div className="table-inner" style={{ display: 'flex', flexDirection: 'column' }}>
                     {/* Header */}
                     <div style={{
                       display: 'grid', gridTemplateColumns: '48px 1fr 72px 80px 120px',
@@ -367,7 +396,7 @@ export function Leveling() {
                           {/* User */}
                           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', minWidth: 0 }}>
                             {entry.avatar ? (
-                              <img src={entry.avatar} style={{ width: 24, height: 24, borderRadius: 'var(--radius-sm)', flexShrink: 0 }} />
+                              <img src={entry.avatar} alt="" style={{ width: 24, height: 24, borderRadius: 'var(--radius-sm)', flexShrink: 0 }} />
                             ) : (
                               <div style={{
                                 width: 24, height: 24, borderRadius: 'var(--radius-sm)',
@@ -404,7 +433,7 @@ export function Leveling() {
                         </div>
                       )
                     })}
-                  </div>
+                  </div></div>
                 )}
               </SectionCard>
             </Panel>
@@ -435,12 +464,13 @@ export function Leveling() {
               <SectionCard title="XP Multiplier">
                 <div style={{ padding: '0 var(--space-2)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
-                    <label style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-medium)', color: 'var(--fg-2)' }}>
+                    <label htmlFor="xp-multiplier" style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-medium)', color: 'var(--fg-2)' }}>
                       XP Multiplier
                     </label>
                     <Badge variant="accent">{config.xp_multiplier}x</Badge>
                   </div>
                   <input
+                    id="xp-multiplier"
                     type="range"
                     min="0.5"
                     max="3"
@@ -468,10 +498,10 @@ export function Leveling() {
               </SectionCard>
 
               <SectionCard title="No-XP Channels">
-                <Input
+                <ListInput
                   label="Channel IDs"
-                  value={(config.no_xp_channels || []).join(', ')}
-                  onChange={e => updateConfig('no_xp_channels', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                  list={config.no_xp_channels}
+                  onList={v => updateConfig('no_xp_channels', v)}
                   placeholder="Channel IDs, comma separated"
                   hint="Members will not earn XP in these channels"
                   leadingIcon={<Hash size={13} />}
@@ -479,10 +509,10 @@ export function Leveling() {
               </SectionCard>
 
               <SectionCard title="No-XP Roles">
-                <Input
+                <ListInput
                   label="Role IDs"
-                  value={(config.no_xp_roles || []).join(', ')}
-                  onChange={e => updateConfig('no_xp_roles', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                  list={config.no_xp_roles}
+                  onList={v => updateConfig('no_xp_roles', v)}
                   placeholder="Role IDs, comma separated"
                   hint="Members with any of these roles will not earn XP"
                   leadingIcon={<Shield size={13} />}
@@ -494,7 +524,7 @@ export function Leveling() {
           {tab === 'roles' && (
             <Panel title="Role Rewards" description="Automatically assign roles when members reach a level.">
               <SectionCard title="Add Role Reward">
-                <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'flex-end' }}>
+                <div className="dash-stack" style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'flex-end' }}>
                   <Input
                     label="Level"
                     type="number"

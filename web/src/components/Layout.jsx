@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useLocation, useNavigate, Link } from 'react-router-dom'
 import { LogIn, LogOut, ChevronRight } from 'lucide-react'
+import { useToken, clearToken, loginUrl as buildLoginUrl } from '../lib/auth'
+import { api } from '../lib/api'
 
 const NOISE_SVG = `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E")`
 
@@ -9,8 +11,6 @@ const NAV_LINKS = [
   { path: '/dashboard', label: 'Dashboard' },
   { path: '/status', label: 'Status' },
 ]
-
-const CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID || ''
 
 function NavLink({ to, label, active, entranceDelay = 0 }) {
   const [h, setH] = useState(false)
@@ -78,7 +78,7 @@ function LogoMark() {
 export function Layout({ children, bare = false }) {
   const location = useLocation()
   const navigate = useNavigate()
-  const [token, setToken] = useState(() => localStorage.getItem('sonder_token'))
+  const token = useToken()
   const [user, setUser] = useState(null)
   const [scrolled, setScrolled] = useState(false)
   const [loginHover, setLoginHover] = useState(false)
@@ -126,20 +126,19 @@ export function Layout({ children, bare = false }) {
   }, [])
 
   useEffect(() => {
-    if (!token) return
-    fetch('/api/user', {
-      headers: { Authorization: `Bearer ${token}` },
+    if (!token) { setUser(null); return }
+    let cancelled = false
+    // api() clears the token itself on a 401; any other failure (5xx, offline) keeps the session.
+    api('/user', token, { noRedirect: true }).then(res => {
+      if (!cancelled && res.ok) setUser(res.data)
     })
-      .then(r => r.ok ? r.json() : null)
-      .then(u => { if (u) setUser(u); else { localStorage.removeItem('sonder_token'); setToken(null) } })
-      .catch(() => {})
+    return () => { cancelled = true }
   }, [token])
 
-  const loginUrl = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(window.location.origin + '/dashboard')}&response_type=code&scope=identify+guilds`
+  const loginUrl = buildLoginUrl()
 
   const logout = () => {
-    localStorage.removeItem('sonder_token')
-    setToken(null)
+    clearToken()
     setUser(null)
     navigate('/')
   }
@@ -248,6 +247,7 @@ export function Layout({ children, bare = false }) {
               <>
                 <img
                   src={`https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=32`}
+                  alt={`${user.username}'s avatar`}
                   style={{
                     width: 28, height: 28,
                     borderRadius: 'var(--radius-md)',
@@ -257,15 +257,17 @@ export function Layout({ children, bare = false }) {
                 <span style={{ fontSize: 'var(--text-sm)', color: 'var(--fg-2)', fontWeight: 'var(--weight-medium)' }}>{user.username}</span>
                 <button
                   onClick={logout}
+                  aria-label="Log out"
+                  title="Log out"
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 4,
-                    fontSize: 'var(--text-xs)', color: 'var(--fg-4)', cursor: 'pointer',
+                    fontSize: 'var(--text-xs)', color: 'var(--fg-3)', cursor: 'pointer',
                     padding: '5px 8px', borderRadius: 'var(--radius-sm)',
                     border: '1px solid transparent', background: 'transparent',
                     transition: 'all 180ms var(--ease-default)',
                   }}
                   onMouseEnter={e => { e.currentTarget.style.color = 'var(--error)'; e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.background = 'var(--error-subtle)' }}
-                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--fg-4)'; e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.background = 'transparent' }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--fg-3)'; e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.background = 'transparent' }}
                 >
                   <LogOut size={13} />
                 </button>
@@ -307,9 +309,12 @@ export function Layout({ children, bare = false }) {
       <footer style={{ position: 'relative', zIndex: 1, borderTop: '1px solid var(--border-default)', marginTop: 'var(--space-16, 64px)' }}>
         <div style={{ maxWidth: 1160, margin: '0 auto', padding: '28px clamp(16px, 4vw, 40px)', display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--text-sm)', color: 'var(--fg-3)' }}>
           <span>sonder. Your server's data is deleted 30 days after the bot leaves.</span>
-          <span style={{ display: 'flex', gap: 20 }}>
+          <span style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px' }}>
             <Link to="/commands" style={{ color: 'inherit', textDecoration: 'none' }}>Commands</Link>
             <Link to="/dashboard" style={{ color: 'inherit', textDecoration: 'none' }}>Dashboard</Link>
+            <Link to="/switch" style={{ color: 'inherit', textDecoration: 'none' }}>Switch to sonder</Link>
+            <Link to="/terms" style={{ color: 'inherit', textDecoration: 'none' }}>Terms</Link>
+            <Link to="/privacy" style={{ color: 'inherit', textDecoration: 'none' }}>Privacy</Link>
           </span>
         </div>
       </footer>

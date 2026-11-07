@@ -2,12 +2,20 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Trophy, Search, User, ShoppingBag, Wallet, Landmark, Plus, Minus, Save, Check, RefreshCw, Hash } from 'lucide-react'
 import { NOISE_SVG } from '../components/Layout'
+import { api } from '../lib/api'
+import { useToken } from '../lib/auth'
 
-function api(path, token, opts = {}) {
-  return fetch(`/api${path}`, {
-    ...opts,
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...opts.headers },
-  }).then(r => r.ok ? r.json() : null)
+function LoadError({ what, message }) {
+  return (
+    <div role="alert" style={{
+      padding: 'var(--space-8) var(--space-4)', textAlign: 'center', borderRadius: 'var(--radius-lg)',
+      background: 'var(--error-subtle)', border: '1px solid var(--error-border)',
+      color: 'var(--error)', fontSize: 'var(--text-sm)',
+    }}>
+      <div>{"Couldn't load " + what + "."}</div>
+      {message && <div style={{ color: 'var(--fg-3)', fontSize: 'var(--text-xs)', marginTop: 'var(--space-1)' }}>{message}</div>}
+    </div>
+  )
 }
 
 function fmt(n) {
@@ -19,6 +27,7 @@ function TabButton({ icon: Icon, label, active, onClick }) {
   return (
     <button
       onClick={onClick}
+      aria-current={active ? 'page' : undefined}
       onMouseEnter={() => setH(true)}
       onMouseLeave={() => setH(false)}
       style={{
@@ -39,15 +48,18 @@ function TabButton({ icon: Icon, label, active, onClick }) {
   )
 }
 
-function LeaderboardTab({ guildId, token }) {
+function LeaderboardTab({ guildId, token, onView }) {
   const [data, setData] = useState(null)
+  const [loadError, setLoadError] = useState(null)
   const [filter, setFilter] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     setLoading(true)
-    api(`/guilds/${guildId}/economy`, token).then(d => {
-      setData(d || [])
+    setLoadError(null)
+    api(`/guilds/${guildId}/economy`, token).then(res => {
+      if (res.ok) setData(res.data || [])
+      else setLoadError(res.error)
       setLoading(false)
     })
   }, [guildId])
@@ -59,6 +71,8 @@ function LeaderboardTab({ guildId, token }) {
       </div>
     )
   }
+
+  if (loadError || !data) return <LoadError what="the leaderboard" message={loadError} />
 
   const filtered = data.filter(r => r.user_id.includes(filter))
 
@@ -83,6 +97,7 @@ function LeaderboardTab({ guildId, token }) {
       }}>
         <Search size={13} style={{ color: 'var(--fg-4)', flexShrink: 0 }} />
         <input
+          aria-label="Filter by user ID"
           placeholder="Filter by user ID..."
           value={filter}
           onChange={e => setFilter(e.target.value)}
@@ -103,10 +118,10 @@ function LeaderboardTab({ guildId, token }) {
           {data.length === 0 ? "economy's quiet. someone should `;daily`." : 'No results matching your filter.'}
         </div>
       ) : (
-        <div style={{
-          borderRadius: 'var(--radius-lg)', overflow: 'hidden',
+        <div className="table-scroll" style={{
+          borderRadius: 'var(--radius-lg)',
           border: '1px solid var(--border-default)',
-        }}>
+        }}><div className="table-inner">
           {/* Table header */}
           <div style={{
             display: 'grid', gridTemplateColumns: '56px 1fr 120px 120px 130px 80px',
@@ -123,21 +138,21 @@ function LeaderboardTab({ guildId, token }) {
 
           {/* Rows */}
           {filtered.map((row, i) => (
-            <LeaderboardRow key={row.user_id} row={row} rank={i + 1} even={i % 2 === 0} guildId={guildId} token={token} />
+            <LeaderboardRow key={row.user_id} row={row} rank={i + 1} even={i % 2 === 0} onView={onView} />
           ))}
-        </div>
+        </div></div>
       )}
     </div>
   )
 }
 
-function LeaderboardRow({ row, rank, even, guildId, token }) {
+function LeaderboardRow({ row, rank, even, onView }) {
   const [h, setH] = useState(false)
 
   const rankStyle = rank <= 3 ? {
-    1: { color: '#fbbf24', fontWeight: 700 },
-    2: { color: '#94a3b8', fontWeight: 600 },
-    3: { color: '#d97706', fontWeight: 600 },
+    1: { color: 'var(--warning)', fontWeight: 700 },
+    2: { color: 'var(--fg-1)', fontWeight: 600 },
+    3: { color: 'var(--fg-2)', fontWeight: 600 },
   }[rank] : { color: 'var(--fg-3)' }
 
   return (
@@ -170,22 +185,24 @@ function LeaderboardRow({ row, rank, even, guildId, token }) {
       <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-semibold)', color: 'var(--fg-1)' }}>
         <span style={{ color: 'var(--accent)', marginRight: 2 }}>{'⌴'}</span> {fmt(row.total)}
       </span>
-      <a
-        href={`#lookup-${row.user_id}`}
+      <button
+        type="button"
+        onClick={() => onView(row.user_id)}
+        aria-label={`View ${row.user_id}`}
         style={{
-          fontSize: 'var(--text-xs)', color: 'var(--accent)',
-          textDecoration: 'none', cursor: 'pointer',
-          opacity: h ? 1 : 0.5, transition: 'opacity 100ms',
+          fontSize: 'var(--text-xs)', color: 'var(--accent)', textAlign: 'left',
+          cursor: 'pointer', padding: 0,
+          opacity: h ? 1 : 0.7, transition: 'opacity 100ms',
         }}
       >
         View
-      </a>
+      </button>
     </div>
   )
 }
 
-function UserLookupTab({ guildId, token }) {
-  const [userId, setUserId] = useState('')
+function UserLookupTab({ guildId, token, seedUserId }) {
+  const [userId, setUserId] = useState(seedUserId || '')
   const [userData, setUserData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [editWallet, setEditWallet] = useState('')
@@ -194,46 +211,61 @@ function UserLookupTab({ guildId, token }) {
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState(null)
 
-  async function lookup() {
-    if (!userId.trim()) return
+  // Coming from the leaderboard's View link: look the user up straight away.
+  useEffect(() => {
+    if (seedUserId) lookup(seedUserId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seedUserId])
+
+  async function lookup(idOverride) {
+    const id = (typeof idOverride === 'string' ? idOverride : userId).trim()
+    if (!id) return
     setLoading(true)
     setError(null)
     setUserData(null)
-    const data = await api(`/guilds/${guildId}/economy/${userId.trim()}`, token)
-    if (data) {
-      setUserData(data)
-      setEditWallet(String(data.wallet))
-      setEditBank(String(data.bank))
-    } else {
-      setError('User not found or no economy data.')
+    try {
+      const res = await api(`/guilds/${guildId}/economy/${encodeURIComponent(id)}`, token)
+      if (res.ok && res.data) {
+        setUserData(res.data)
+        setEditWallet(String(res.data.wallet))
+        setEditBank(String(res.data.bank))
+      } else if (res.status === 404) {
+        setError('User not found or no economy data.')
+      } else {
+        setError(res.error || 'Lookup failed.')
+      }
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   async function save() {
     setSaving(true)
     setSaved(false)
-    const w = parseInt(editWallet, 10)
-    const b = parseInt(editBank, 10)
-    if (isNaN(w) || isNaN(b)) {
-      setError('Values must be valid numbers.')
+    try {
+      const w = parseInt(editWallet, 10)
+      const b = parseInt(editBank, 10)
+      if (isNaN(w) || isNaN(b)) {
+        setError('Values must be valid numbers.')
+        return
+      }
+      setError(null)
+      const res = await api(`/guilds/${guildId}/economy/${encodeURIComponent(userId.trim())}`, token, {
+        method: 'PATCH',
+        body: JSON.stringify({ wallet: w, bank: b }),
+      })
+      if (res.ok && res.data) {
+        setUserData(res.data)
+        setEditWallet(String(res.data.wallet))
+        setEditBank(String(res.data.bank))
+        setSaved(true)
+        setTimeout(() => setSaved(false), 3000)
+      } else {
+        setError(res.error || 'Failed to save changes.')
+      }
+    } finally {
       setSaving(false)
-      return
     }
-    const result = await api(`/guilds/${guildId}/economy/${userId.trim()}`, token, {
-      method: 'PATCH',
-      body: JSON.stringify({ wallet: w, bank: b }),
-    })
-    if (result) {
-      setUserData(result)
-      setEditWallet(String(result.wallet))
-      setEditBank(String(result.bank))
-      setSaved(true)
-      setTimeout(() => setSaved(false), 3000)
-    } else {
-      setError('Failed to save changes.')
-    }
-    setSaving(false)
   }
 
   function adjust(field, amount) {
@@ -267,6 +299,7 @@ function UserLookupTab({ guildId, token }) {
         }}>
           <Hash size={13} style={{ color: 'var(--fg-4)', flexShrink: 0 }} />
           <input
+            aria-label="Discord user ID"
             placeholder="Enter user ID (e.g. 123456789012345678)"
             value={userId}
             onChange={e => setUserId(e.target.value)}
@@ -278,12 +311,12 @@ function UserLookupTab({ guildId, token }) {
           />
         </div>
         <button
-          onClick={lookup}
+          onClick={() => lookup()}
           disabled={loading || !userId.trim()}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-1-5)',
             height: 36, padding: '0 16px', borderRadius: 'var(--radius-md)',
-            background: 'var(--accent)', color: '#fff',
+            background: 'var(--accent)', color: 'var(--accent-fg)',
             fontSize: 'var(--text-sm)', fontWeight: 500, fontFamily: 'var(--font-body)',
             cursor: loading ? 'wait' : 'pointer',
             border: '1px solid rgba(0,0,0,0.18)',
@@ -298,9 +331,9 @@ function UserLookupTab({ guildId, token }) {
       </div>
 
       {error && (
-        <div style={{
+        <div role="alert" style={{
           padding: 'var(--space-3) var(--space-4)', borderRadius: 'var(--radius-md)',
-          background: 'var(--error-subtle)', border: '1px solid rgba(248,113,113,0.25)',
+          background: 'var(--error-subtle)', border: '1px solid var(--error-border)',
           color: 'var(--error)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-4)',
         }}>
           {error}
@@ -346,10 +379,10 @@ function UserLookupTab({ guildId, token }) {
           </div>
 
           {/* Edit fields */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: 'var(--space-4)' }}>
             {/* Wallet */}
             <div>
-              <label style={{
+              <label htmlFor="eco-wallet" style={{
                 display: 'flex', alignItems: 'center', gap: 'var(--space-1-5)',
                 fontSize: 'var(--text-xs)', fontWeight: 500, color: 'var(--fg-2)',
                 marginBottom: 'var(--space-2)', letterSpacing: '0.01em',
@@ -367,6 +400,7 @@ function UserLookupTab({ guildId, token }) {
                 }}>
                   <span style={{ color: 'var(--fg-4)', marginRight: 4, fontSize: 'var(--text-sm)' }}>{'⌴'}</span>
                   <input
+                    id="eco-wallet"
                     type="number"
                     value={editWallet}
                     onChange={e => { setEditWallet(e.target.value); setSaved(false) }}
@@ -383,7 +417,7 @@ function UserLookupTab({ guildId, token }) {
 
             {/* Bank */}
             <div>
-              <label style={{
+              <label htmlFor="eco-bank" style={{
                 display: 'flex', alignItems: 'center', gap: 'var(--space-1-5)',
                 fontSize: 'var(--text-xs)', fontWeight: 500, color: 'var(--fg-2)',
                 marginBottom: 'var(--space-2)', letterSpacing: '0.01em',
@@ -401,6 +435,7 @@ function UserLookupTab({ guildId, token }) {
                 }}>
                   <span style={{ color: 'var(--fg-4)', marginRight: 4, fontSize: 'var(--text-sm)' }}>{'⌴'}</span>
                   <input
+                    id="eco-bank"
                     type="number"
                     value={editBank}
                     onChange={e => { setEditBank(e.target.value); setSaved(false) }}
@@ -425,10 +460,10 @@ function UserLookupTab({ guildId, token }) {
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-2)',
                 height: 36, padding: '0 20px', borderRadius: 'var(--radius-md)',
                 background: saved ? 'var(--success-subtle)' : 'var(--accent)',
-                color: saved ? 'var(--success)' : '#fff',
+                color: saved ? 'var(--success)' : 'var(--accent-fg)',
                 fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-semibold)',
                 fontFamily: 'var(--font-body)', cursor: saving ? 'wait' : 'pointer',
-                border: saved ? '1px solid rgba(62,207,142,0.25)' : '1px solid rgba(0,0,0,0.2)',
+                border: saved ? '1px solid var(--success-border)' : '1px solid rgba(0,0,0,0.2)',
                 boxShadow: saved ? 'none' : '0 1px 3px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
                 transition: 'all 160ms var(--ease-default)',
                 opacity: saving ? 0.7 : 1,
@@ -450,13 +485,14 @@ function AdjustButton({ label, onClick, variant }) {
   return (
     <button
       onClick={onClick}
+      type="button"
       onMouseEnter={() => setH(true)}
       onMouseLeave={() => setH(false)}
       style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         height: 36, width: 48, borderRadius: 'var(--radius-md)',
         background: h ? (isPlus ? 'var(--success-subtle)' : 'var(--error-subtle)') : 'var(--surface-2)',
-        border: `1px solid ${h ? (isPlus ? 'rgba(62,207,142,0.25)' : 'rgba(248,113,113,0.25)') : 'var(--border-default)'}`,
+        border: `1px solid ${h ? (isPlus ? 'var(--success-border)' : 'var(--error-border)') : 'var(--border-default)'}`,
         color: h ? (isPlus ? 'var(--success)' : 'var(--error)') : 'var(--fg-3)',
         fontSize: 'var(--text-xs)', fontWeight: 500, fontFamily: 'var(--font-mono)',
         cursor: 'pointer', transition: 'all 100ms var(--ease-default)',
@@ -470,11 +506,14 @@ function AdjustButton({ label, onClick, variant }) {
 function ShopTab({ guildId, token }) {
   const [items, setItems] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
 
   useEffect(() => {
     setLoading(true)
-    api(`/guilds/${guildId}/shop`, token).then(d => {
-      setItems(d || [])
+    setLoadError(null)
+    api(`/guilds/${guildId}/shop`, token).then(res => {
+      if (res.ok) setItems(res.data || [])
+      else setLoadError(res.error)
       setLoading(false)
     })
   }, [guildId])
@@ -486,6 +525,8 @@ function ShopTab({ guildId, token }) {
       </div>
     )
   }
+
+  if (loadError || !items) return <LoadError what="the shop" message={loadError} />
 
   return (
     <div style={{ animation: 'fade-up 0.3s var(--ease-default) both' }}>
@@ -515,7 +556,7 @@ function ShopItem({ item }) {
       onMouseEnter={() => setH(true)}
       onMouseLeave={() => setH(false)}
       style={{
-        display: 'flex', alignItems: 'center', gap: 'var(--space-4)',
+        display: 'flex', alignItems: 'center', gap: 'var(--space-4)', flexWrap: 'wrap',
         padding: 'var(--space-4) var(--space-5)',
         borderRadius: 'var(--radius-lg)',
         border: '1px solid var(--border-default)',
@@ -570,15 +611,21 @@ function ShopItem({ item }) {
 export function Economy() {
   const { guildId } = useParams()
   const navigate = useNavigate()
-  const token = localStorage.getItem('sonder_token')
+  const token = useToken()
   const [guild, setGuild] = useState(null)
   const [tab, setTab] = useState('leaderboard')
+  const [seedUserId, setSeedUserId] = useState('')
+
+  function viewUser(id) {
+    setSeedUserId(id)
+    setTab('lookup')
+  }
 
   useEffect(() => {
     if (!token) { navigate('/dashboard'); return }
-    api(`/guilds/${guildId}/config`, token).then(data => {
-      if (!data) navigate('/dashboard')
-      else setGuild(data)
+    api(`/guilds/${guildId}/config`, token).then(res => {
+      if (!res.ok) navigate('/dashboard')
+      else setGuild(res.data)
     })
   }, [guildId])
 
@@ -597,12 +644,12 @@ export function Economy() {
   ]
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
+    <div className="dash-shell">
       {/* Noise overlay */}
       <div style={{ position: 'fixed', inset: 0, backgroundImage: NOISE_SVG, backgroundRepeat: 'repeat', pointerEvents: 'none', zIndex: 0, opacity: 0.5 }} />
 
       {/* Sidebar */}
-      <aside style={{
+      <aside className="dash-aside" style={{
         width: 'var(--sidebar-width)', flexShrink: 0,
         borderRight: '1px solid var(--border-subtle)',
         display: 'flex', flexDirection: 'column',
@@ -628,9 +675,9 @@ export function Economy() {
         </button>
 
         {/* Server identity */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2-5)', padding: '0 var(--space-2)', marginBottom: 'var(--space-6)' }}>
+        <div className="dash-hide-narrow" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2-5)', padding: '0 var(--space-2)', marginBottom: 'var(--space-6)' }}>
           {guild.icon ? (
-            <img src={guild.icon} style={{ width: 30, height: 30, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }} />
+            <img src={guild.icon} alt="" style={{ width: 30, height: 30, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }} />
           ) : (
             <div style={{
               width: 30, height: 30, borderRadius: 'var(--radius-md)',
@@ -651,14 +698,14 @@ export function Economy() {
         </div>
 
         {/* Section label */}
-        <div style={{
+        <div className="dash-hide-narrow" style={{
           fontSize: 10, fontWeight: 'var(--weight-semibold)', color: 'var(--fg-4)',
           padding: '0 var(--space-3)', marginBottom: 'var(--space-2)',
           textTransform: 'uppercase', letterSpacing: 'var(--tracking-caps)',
         }}>Sections</div>
 
         {/* Tab nav */}
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <nav className="dash-nav" aria-label="Economy sections">
           {tabs.map(t => (
             <SidebarNavItem key={t.id} icon={t.icon} label={t.label} active={tab === t.id} onClick={() => setTab(t.id)} />
           ))}
@@ -666,10 +713,10 @@ export function Economy() {
       </aside>
 
       {/* Main content */}
-      <main style={{ flex: 1, overflow: 'auto', padding: 'var(--space-10) var(--space-12)', position: 'relative', zIndex: 1 }}>
+      <main className="dash-main" style={{ flex: 1, overflow: 'auto', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: 720 }}>
-          {tab === 'leaderboard' && <LeaderboardTab guildId={guildId} token={token} />}
-          {tab === 'lookup' && <UserLookupTab guildId={guildId} token={token} />}
+          {tab === 'leaderboard' && <LeaderboardTab guildId={guildId} token={token} onView={viewUser} />}
+          {tab === 'lookup' && <UserLookupTab key={seedUserId} guildId={guildId} token={token} seedUserId={seedUserId} />}
           {tab === 'shop' && <ShopTab guildId={guildId} token={token} />}
         </div>
       </main>
@@ -682,6 +729,7 @@ function SidebarNavItem({ icon: Icon, label, active, onClick }) {
   return (
     <button
       onClick={onClick}
+      aria-current={active ? 'page' : undefined}
       onMouseEnter={() => setH(true)}
       onMouseLeave={() => setH(false)}
       style={{

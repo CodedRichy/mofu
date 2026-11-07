@@ -1,6 +1,6 @@
 const sizeMap = { xs: 20, sm: 24, md: 32, lg: 40, xl: 48 }
 
-export function Avatar({ src, initials, size = 'md', status, style, ...rest }) {
+export function Avatar({ src, initials, size = 'md', status, alt = '', style, ...rest }) {
   const px = sizeMap[size] || sizeMap.md
   const fontSize = px * 0.38
 
@@ -14,7 +14,7 @@ export function Avatar({ src, initials, size = 'md', status, style, ...rest }) {
         overflow: 'hidden',
       }}>
         {src ? (
-          <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img src={src} alt={alt} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
           <span style={{ fontSize, fontWeight: 600, color: 'var(--accent)', fontFamily: 'var(--font-body)' }}>
             {initials}

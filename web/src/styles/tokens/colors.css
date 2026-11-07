@@ -15,11 +15,11 @@
   --surface-active: rgb(255 255 255 / 0.07);
   --surface-selected: rgb(255 255 255 / 0.07);
 
-  /* text: white at decreasing opacity (secondary and tertiary both clear 4.5:1 on --bg) */
+  /* text: white at decreasing opacity (secondary and tertiary both clear 4.5:1 on --bg; fg-4 is the quietest readable tier, ~4:1) */
   --fg-1: oklch(0.985 0 0);
   --fg-2: rgb(255 255 255 / 0.66);
   --fg-3: rgb(255 255 255 / 0.5);
-  --fg-4: rgb(255 255 255 / 0.24);
+  --fg-4: rgb(255 255 255 / 0.42);
   --fg-inverse: oklch(0.14 0 0);
 
   /* the accent is white: solid white pills with near-black text */
@@ -54,7 +54,19 @@
   --info-subtle: oklch(0.82 0.12 220 / 0.13);
   --info-fg: oklch(0.2 0.04 220);
 
+  /* category hues for the command list (kept apart from the status colours) */
+  --cat-amber: oklch(0.8 0.13 55);
+  --cat-rose: oklch(0.72 0.17 10);
+
   --glass-bg: rgb(10 10 12 / 0.62);
   --glass-border: rgb(255 255 255 / 0.08);
   --glass-blur: 22px;
+}
+
+/* semantic hairlines for status chips (derived from the status hues, so they stay in sync) */
+:root {
+  --success-border: oklch(0.82 0.17 156 / 0.25);
+  --warning-border: oklch(0.86 0.15 85 / 0.25);
+  --error-border: oklch(0.7 0.2 27 / 0.28);
+  --info-border: oklch(0.82 0.12 220 / 0.25);
 }
