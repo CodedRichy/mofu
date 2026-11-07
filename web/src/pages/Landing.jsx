@@ -266,6 +266,7 @@ export function Landing() {
 
         <div className="ln-section ln-section--tight">
           <Link className="ln-link" to="/commands">See all 170 commands <ArrowRight size={16} aria-hidden="true" /></Link>
+          <p className="ln-sub ln-sub--small">All of the above is free. <Link to="/pricing">See pricing</Link>.</p>
         </div>
 
         <Reveal as="section" className="ln-section ln-final" aria-labelledby="ln-final">

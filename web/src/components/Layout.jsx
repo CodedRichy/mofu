@@ -11,6 +11,7 @@ const NAV_LINKS = [
   { path: '/commands', label: 'Commands' },
   { path: '/dashboard', label: 'Dashboard' },
   { path: '/status', label: 'Status' },
+  { path: '/pricing', label: 'Pricing' },
 ]
 
 function NavLink({ to, label, active, entranceDelay = 0 }) {
@@ -46,6 +47,7 @@ function LogoMark() {
   return (
     <Link
       to="/"
+      className="nav-logo"
       aria-label={`${BRAND} home`}
       onMouseEnter={() => setH(true)}
       onMouseLeave={() => setH(false)}
@@ -300,7 +302,7 @@ export function Layout({ children, bare = false, wide = false }) {
                 }}
               >
                 <LogIn size={13} style={{ position: 'relative' }} />
-                <span style={{ position: 'relative' }}>Login</span>
+                <span className="nav-login-t" style={{ position: 'relative' }}>Login</span>
               </a>
             )}
           </div>
@@ -317,6 +319,7 @@ export function Layout({ children, bare = false, wide = false }) {
           <span style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px' }}>
             <Link to="/commands" style={{ color: 'inherit', textDecoration: 'none' }}>Commands</Link>
             <Link to="/dashboard" style={{ color: 'inherit', textDecoration: 'none' }}>Dashboard</Link>
+            <Link to="/pricing" style={{ color: 'inherit', textDecoration: 'none' }}>Pricing</Link>
             <Link to="/switch" style={{ color: 'inherit', textDecoration: 'none' }}>Switch to {BRAND}</Link>
             <Link to="/terms" style={{ color: 'inherit', textDecoration: 'none' }}>Terms</Link>
             <Link to="/privacy" style={{ color: 'inherit', textDecoration: 'none' }}>Privacy</Link>

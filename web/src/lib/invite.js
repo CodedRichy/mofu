@@ -1,12 +1,9 @@
-// One source of truth for the bot invite link. Permissions are computed from named bits so a change is reviewable.
-// Removed vs the old 1375332592887: CreateInstantInvite, ManageWebhooks. Added: MoveMembers, MuteMembers, ManageGuildExpressions.
-const OLD_PERMISSIONS = 1375332592887n
-const REMOVE = (1n << 0n) | (1n << 29n)
-const ADD = (1n << 24n) | (1n << 22n) | (1n << 30n)
+// One source of truth for the bot invite link on the site. The permission value is the same minimum set the bot's
+// /invite command builds (src/commands/utility/invite.js, no Administrator); keep the two in step.
+export const INVITE_PERMISSIONS = '1374824819926'
 
-export const INVITE_PERMISSIONS = ((OLD_PERMISSIONS & ~REMOVE) | ADD).toString()
-
-export const CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID || ''
+// The application (client) id is public. VITE_DISCORD_CLIENT_ID overrides it, e.g. for a test app.
+export const CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID || '1513061919517315142'
 
 // null when VITE_DISCORD_CLIENT_ID is unset, so callers can render a warning instead of a wrong link.
 export const INVITE_URL = CLIENT_ID

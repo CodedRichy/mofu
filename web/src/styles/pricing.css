@@ -1,0 +1,106 @@
+/* Pricing + compare. Builds on landing.css (.ln tokens, eyebrow, h2, buttons). Prefix: pr-.
+   The one risk: Premium is drawn as an unfilled draft (dashed frame, an empty price slot) instead of a sales card,
+   so the layout itself says "not for sale" before anyone reads a word. */
+
+.pr { --pr-max: calc(var(--ln-max) + 2 * var(--ln-gutter)); }
+.pr > * { max-width: var(--pr-max); margin-left: auto; margin-right: auto; padding-left: var(--ln-gutter); padding-right: var(--ln-gutter); }
+.pr a:not(.ln-btn):not(.ln-textlink) { color: var(--fg-1); text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 3px; }
+.pr a:not(.ln-btn):not(.ln-textlink):hover { text-decoration-color: var(--fg-1); }
+.pr sup { font-size: 0.7em; margin-left: 2px; }
+.pr sup a { text-decoration: none !important; color: var(--halftone) !important; }
+
+/* ---- header ---- */
+.pr-top { padding-top: clamp(40px, 8vw, 104px); padding-bottom: clamp(32px, 5vw, 56px); }
+.pr-h1 { margin: 14px 0 0; font-size: clamp(40px, 6.4vw, 96px); line-height: 0.94; letter-spacing: -0.036em; font-weight: var(--weight-bold); max-width: 22ch; text-wrap: balance; }
+.pr-h1 span { display: block; color: var(--fg-3); }
+.pr-lede { max-width: 52ch; text-wrap: pretty; }
+
+/* ---- plans: one wide framed panel, one narrow unfinished draft ---- */
+.pr-plans { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: clamp(14px, 2vw, 24px); align-items: stretch; }
+.pr-free, .pr-later { border-radius: var(--radius-hero); padding: clamp(22px, 3.4vw, 48px); min-width: 0; }
+.pr-free { border: 1px solid var(--border-default); background: radial-gradient(ellipse 60% 70% at 0% 0%, var(--halftone-glow), transparent 70%), var(--surface-1); }
+.pr-later { border: 1.5px dashed var(--border-strong); background: transparent; display: flex; flex-direction: column; }
+.pr-plan-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; }
+.pr-plan-name { margin: 0; font-size: clamp(34px, 4vw, 56px); line-height: 1; letter-spacing: -0.04em; font-weight: var(--weight-semibold); }
+.pr-plan-name--muted { font-size: clamp(26px, 2.8vw, 38px); color: var(--fg-2); }
+.pr-plan-tag { margin: 0; padding: 5px 12px; border-radius: var(--radius-full); font-size: var(--text-xs); font-weight: var(--weight-semibold); background: var(--accent); color: var(--accent-fg); }
+.pr-later .pr-plan-tag { background: none; color: var(--fg-2); border: 1px solid var(--border-strong); }
+
+/* the free list reads like a ledger: name, then what it covers, on a hairline */
+.pr-ledger { list-style: none; margin: clamp(20px, 3vw, 32px) 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: clamp(20px, 3vw, 40px); }
+.pr-ledger li { display: grid; gap: 2px; padding: 12px 0; border-top: 1px solid var(--border-default); min-width: 0; }
+.pr-ledger b { color: var(--fg-1); font-weight: var(--weight-medium); font-size: var(--text-base); }
+.pr-ledger span { color: var(--fg-3); font-size: var(--text-sm); line-height: 1.45; }
+.pr-cta { margin-top: clamp(20px, 3vw, 32px); }
+.pr-add { padding: 0 26px; }
+
+/* the empty price slot */
+.pr-slot { margin: clamp(20px, 3vw, 32px) 0 0; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 16px 18px; border-radius: var(--radius-lg); background: repeating-linear-gradient(-45deg, transparent 0 7px, var(--surface-hover) 7px 8px); border: 1px solid var(--border-default); }
+.pr-slot-k { font-size: var(--text-xs); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--fg-3); }
+.pr-slot-v { font: var(--weight-medium) var(--text-lg)/1 var(--font-mono); color: var(--fg-2); }
+.pr-later-p { margin: 20px 0 0; color: var(--fg-2); font-size: var(--text-sm); }
+.pr-later-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; color: var(--fg-2); }
+.pr-later-list li { display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.pr-later-list li::before { content: ''; width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid var(--fg-3); }
+.pr-later-fine { margin-top: auto; padding-top: 24px; color: var(--fg-3); line-height: 1.55; }
+
+@media (max-width: 960px) { .pr-plans { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .pr-ledger { grid-template-columns: 1fr; } }
+
+/* ---- two short notes on one hairline band ---- */
+.pr-notes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(20px, 4vw, 64px); margin-top: clamp(48px, 7vw, 96px); }
+.pr-notes > div { border-top: 1px solid var(--border-strong); padding-top: 18px; }
+.pr-notes p { margin: 10px 0 0; color: var(--fg-2); line-height: 1.6; max-width: 56ch; }
+.pr-h3 { margin: 0; font-size: var(--text-xl); letter-spacing: -0.03em; font-weight: var(--weight-semibold); color: var(--fg-1); }
+@media (max-width: 760px) { .pr-notes { grid-template-columns: 1fr; } }
+
+/* ---- compare ---- */
+.pr-compare { margin-top: clamp(72px, 10vw, 140px); }
+.pr-checked { margin: 14px 0 0; max-width: 72ch; color: var(--fg-3); font-size: var(--text-sm); line-height: 1.6; }
+.pr-ext { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; margin-right: 10px; }
+.pr-tablehead { margin-top: clamp(36px, 5vw, 56px); }
+.pr-tablewrap { margin-top: 16px; border: 1px solid var(--border-default); border-radius: var(--radius-xl); background: var(--surface-1); overflow-x: auto; overscroll-behavior-x: contain; }
+.pr-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); line-height: 1.45; }
+.pr-table th, .pr-table td { text-align: left; vertical-align: top; padding: 13px 16px; border-top: 1px solid var(--border-default); }
+.pr-table thead th { border-top: 0; font-size: var(--text-xs); letter-spacing: var(--tracking-caps); text-transform: uppercase; font-weight: var(--weight-medium); color: var(--fg-3); background: var(--bg-subtle); }
+.pr-table tbody th { color: var(--fg-1); font-weight: var(--weight-medium); }
+.pr-table td { color: var(--fg-2); }
+.pr-table tr.is-us th, .pr-table tr.is-us td { background: var(--surface-hover); }
+.pr-table--prices td:nth-child(3) { color: var(--fg-1); font-variant-numeric: tabular-nums; }
+.pr-table--feat thead th:nth-child(2) { color: var(--fg-1); }
+.pr-table--feat td:nth-child(2) { background: var(--surface-hover); }
+.pr-table--feat th[scope='row'] { width: 34%; }
+
+/* marks: filled dot = has / lists it, ring = not yet (mofu) or not seen (others) */
+.pr-mark { display: inline-grid; grid-template-columns: 10px auto; column-gap: 8px; align-items: baseline; }
+.pr-mark i { width: 8px; height: 8px; border-radius: 50%; background: var(--fg-1); transform: translateY(-1px); }
+.pr-mark--n i { background: none; border: 1.5px solid var(--fg-4); }
+.pr-mark--part i { background: linear-gradient(90deg, var(--fg-1) 50%, transparent 50%); border: 1.5px solid var(--fg-1); }
+.pr-mark-l { color: var(--fg-1); }
+.pr-mark--n .pr-mark-l { color: var(--fg-4); }
+.pr-mark-n { grid-column: 2; color: var(--fg-3); font-size: var(--text-xs); margin-top: 2px; }
+.pr-txt { color: var(--fg-1); font-variant-numeric: tabular-nums; }
+
+/* phones: each row becomes a small block with its own labels, so nothing scrolls sideways */
+@media (max-width: 680px) {
+  .pr-tablewrap { overflow: visible; background: none; border: 0; border-radius: 0; }
+  .pr-table, .pr-table tbody, .pr-table tr, .pr-table th, .pr-table td { display: block; width: auto !important; }
+  .pr-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .pr-table tr { border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--surface-1); margin-bottom: 10px; padding: 4px 0; }
+  .pr-table tbody th { border-top: 0; padding: 10px 14px 6px; font-size: var(--text-base); }
+  .pr-table td { display: grid; grid-template-columns: 5.5em minmax(0, 1fr); gap: 10px; border-top: 0; padding: 4px 14px; }
+  .pr-table td:last-child { padding-bottom: 10px; }
+  .pr-table td::before { content: attr(data-l); color: var(--fg-3); font-size: var(--text-xs); padding-top: 2px; }
+  .pr-table--feat td:nth-child(2) { background: none; }
+  .pr-table tr.is-us th, .pr-table tr.is-us td { background: none; }
+  .pr-table tr.is-us { background: var(--surface-2); }
+  /* the price table's bot name already heads the block */
+  .pr-table--prices th[data-l]::before { content: none; }
+}
+
+/* ---- footnote + disclaimer ---- */
+.pr-foot { margin-top: clamp(48px, 7vw, 88px); padding-top: 18px; padding-bottom: clamp(24px, 4vw, 40px); display: grid; gap: 8px; }
+.pr-foot p { margin: 0; max-width: 80ch; color: var(--fg-3); font-size: var(--text-xs); line-height: 1.6; border-top: 1px solid var(--border-default); padding-top: 10px; }
+.pr-foot p:first-child { border-top: 0; padding-top: 0; }
+.pr-foot b { color: var(--fg-2); font-weight: var(--weight-medium); }
+.pr-foot :target, #pr-note-1:target { color: var(--fg-1); }

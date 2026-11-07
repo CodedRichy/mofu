@@ -106,6 +106,16 @@ img, video, svg {
   .nav-link { padding: 8px 9px !important; font-size: var(--text-sm) !important; }
   .nav-login { padding: 0 12px !important; }
 }
+/* four nav links: below 440px the logo keeps its size, the links tighten and Login shows only its icon */
+.nav-logo { flex: none; }
+@media (max-width: 440px) {
+  .nav-link, .nav-pill .nav-link { padding: 7px 6px !important; font-size: 13px !important; }
+  .nav-login { padding: 0 11px !important; }
+  .nav-login-t { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
+@media (max-width: 370px) {
+  .nav-link, .nav-pill .nav-link { padding: 6px 4px !important; font-size: 12px !important; }
+}
 
 /* keyboard focus on custom interactive elements */
 [role="button"]:focus-visible,

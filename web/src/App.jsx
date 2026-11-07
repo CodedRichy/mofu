@@ -8,6 +8,7 @@ import { Leveling } from './pages/Leveling'
 import { Economy } from './pages/Economy'
 import { Assistant } from './pages/Assistant'
 import { Status } from './pages/Status'
+import { Pricing } from './pages/Pricing'
 import { Terms } from './pages/Terms'
 import { Privacy } from './pages/Privacy'
 import { Switch } from './pages/Switch'
@@ -25,6 +26,7 @@ export function App() {
       <Route path="/dashboard/:guildId/economy" element={<Economy />} />
       <Route path="/assistant" element={<Assistant />} />
       <Route path="/status" element={<Status />} />
+      <Route path="/pricing" element={<Pricing />} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/switch" element={<Switch />} />
