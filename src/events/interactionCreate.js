@@ -1,6 +1,6 @@
 const { EmbedBuilder, Collection, ChannelType, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const log = require('../utils/logger');
-const { track, promptFeedback } = require('../utils/commandTracker');
+const { track } = require('../utils/commandTracker');
 const { colors } = require('../utils/constants');
 const { response, base } = require('../utils/embed');
 const config = require('../config');
@@ -52,6 +52,13 @@ module.exports = {
     const command = interaction.client.commands.get(interaction.commandName);
     if (!command) return;
 
+    // Enforce required permissions in code. Discord applies default_member_permissions itself, but a server
+    // admin can override that per command in Server Settings > Integrations, so never rely on it alone.
+    const requiredPerms = command.data.default_member_permissions;
+    if (requiredPerms && interaction.inGuild() && !interaction.memberPermissions?.has(BigInt(requiredPerms))) {
+      return interaction.reply({ embeds: [response({ client: interaction.client, description: 'You lack permission to use this command.', color: colors.error })], ephemeral: true });
+    }
+
     const cooldownAmount = (command.cooldown || 3) * 1000;
     if (!cooldowns.has(command.data.name)) cooldowns.set(command.data.name, new Collection());
     const timestamps = cooldowns.get(command.data.name);
@@ -69,7 +76,7 @@ module.exports = {
 
     try {
       await command.execute(interaction);
-      promptFeedback(interaction, interaction.commandName, 'slash');
+      track(interaction.commandName, { userId: interaction.user.id, guildId: interaction.guildId, type: 'slash', feedback: 'ok' });
     } catch (err) {
       track(interaction.commandName, { userId: interaction.user.id, guildId: interaction.guildId, type: 'slash', feedback: 'errored', error: err.message });
       log.error(`Command ${interaction.commandName} failed:`, err.message);
@@ -87,6 +94,8 @@ module.exports = {
 
 async function handleButton(interaction) {
   const { guild, user, customId } = interaction;
+
+  if (customId.startsWith('aiact:')) return require('../ai/actions').handleButton(interaction);
 
   if (customId === 'ticket_open') {
     if (!store.getConfig(guild.id, 'ticket_enabled')) return;

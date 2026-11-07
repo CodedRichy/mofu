@@ -2,13 +2,68 @@ const { Collection } = require('discord.js');
 const config = require('../config');
 const store = require('../database/store');
 const log = require('../utils/logger');
-const { track, promptFeedback } = require('../utils/commandTracker');
+const { track } = require('../utils/commandTracker');
 const xpStore = require('../database/xp');
 const { response } = require('../utils/embed');
 const { colors } = require('../utils/constants');
 const PrefixContext = require('../utils/prefixContext');
 const modlog = require('../utils/modlog');
-const { moderate } = require('../utils/ai');
+const { moderate, chatWithHistory } = require('../utils/ai');
+const { parseMuteIntent, proposeMute, usageHint } = require('../ai/actions');
+
+// conversational replies ("yo sonder ...", "@sonder ..."): per-user cooldown so nobody can burn the AI quota
+const CHAT_COOLDOWN_MS = 4000;
+const chatCooldown = new Map();
+setInterval(() => {
+  const cutoff = Date.now() - CHAT_COOLDOWN_MS;
+  for (const [id, t] of chatCooldown) if (t < cutoff) chatCooldown.delete(id);
+}, 60000).unref();
+
+// What Sonder knows when it answers a plain message: who is talking, who they mentioned (name, join date,
+// top roles: facts Discord already shows everyone), the time, and the last ~20 minutes of this channel.
+// Plain chat only. This text goes to the AI provider, so it is limited to 10 messages.
+async function buildChatContext(message, botId) {
+  const guild = message.guild;
+  const nameOf = (m) => m.member?.displayName || m.author?.username || 'someone';
+  const speaker = message.member?.displayName || message.author.username;
+
+  const lines = [
+    `server: ${guild.name} | channel: #${message.channel.name}`,
+    `now: ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC`,
+    `talking to you: ${speaker}`,
+  ];
+  if (guild.description) lines.push(`about this server: ${guild.description}`);
+  if (message.channel.topic) lines.push(`this channel's topic: ${message.channel.topic}`);
+  const notes = store.getConfig(guild.id, 'ai_notes');
+  if (Array.isArray(notes) && notes.length) lines.push(`facts the admins told you about this server (trust these):\n${notes.slice(0, 20).map((n) => `- ${String(n).slice(0, 200)}`).join('\n')}`);
+  for (const m of [...message.mentions.members.values()].filter((x) => x.id !== botId).slice(0, 5)) {
+    const roles = m.roles.cache.filter((r) => r.id !== guild.id).sort((a, b) => b.position - a.position).first(4).map((r) => r.name);
+    lines.push(`mentioned: ${m.displayName} (@${m.user.username}${m.user.bot ? ', a bot' : ''}), joined ${m.joinedAt ? m.joinedAt.toISOString().slice(0, 10) : 'unknown'}${roles.length ? `, roles: ${roles.join(', ')}` : ''}${m.isCommunicationDisabled() ? `, currently muted (timed out until ${m.communicationDisabledUntil.toISOString().slice(0, 16).replace('T', ' ')} UTC)` : ', not muted'}`);
+  }
+
+  let history = [];
+  try {
+    const recent = await message.channel.messages.fetch({ limit: 10, before: message.id });
+    history = [...recent.values()].reverse()
+      .filter((m) => Date.now() - m.createdTimestamp < 20 * 60 * 1000 && m.content)
+      .map((m) => (m.author.id === botId
+        ? { role: 'assistant', content: m.cleanContent.slice(0, 300) }
+        : { role: 'user', content: `${nameOf(m)}: ${m.cleanContent.slice(0, 300)}` }));
+  } catch {}
+
+  return { text: `${speaker}: ${message.cleanContent.slice(0, 1500)}`, history, context: lines.join('\n') };
+}
+
+// Who can invoke Sonder in plain text: administrators always; otherwise members holding a role set with
+// /airoles; with no roles configured, staff who can Manage Messages. Anyone else gets no reply at all.
+function canInvokeAi(message) {
+  const member = message.member;
+  if (!member) return false;
+  if (member.permissions.has('Administrator')) return true;
+  const allowed = store.getConfig(message.guild.id, 'ai_roles');
+  if (Array.isArray(allowed) && allowed.length > 0) return member.roles.cache.some((r) => allowed.includes(r.id));
+  return member.permissions.has('ManageMessages');
+}
 
 const cooldowns = new Collection();
 const spamTracker = new Map();
@@ -232,7 +287,42 @@ module.exports = {
 
     // Prefix commands
     const prefix = store.getConfig(message.guild.id, 'prefix') || config.discord.defaultPrefix;
-    if (!message.content.startsWith(prefix)) return;
+
+    // Conversational reply: any message containing the word "sonder" (or @mentioning the bot),
+    // from someone allowed to invoke it. Plain chat only: no tools, no actions, no pings.
+    if (!message.content.startsWith(prefix)) {
+      const botId = message.client.user.id;
+      const mentionRe = new RegExp(`<@!?${botId}>`, 'g');
+      const named = /\bsonder\b/i.test(message.content) || mentionRe.test(message.content);
+
+      if (named && canInvokeAi(message)) {
+        const last = chatCooldown.get(message.author.id) || 0;
+        if (Date.now() - last < CHAT_COOLDOWN_MS) return;
+        chatCooldown.set(message.author.id, Date.now());
+
+        // actions first: a parsed request goes through confirmation, everything else is chat
+        const intent = parseMuteIntent(message.content, botId);
+        if (intent) {
+          await proposeMute(message, intent);
+          return;
+        }
+        const hint = usageHint(message.content, botId);
+        if (hint) {
+          await message.reply({ content: hint, allowedMentions: { parse: [], repliedUser: false } }).catch(() => {});
+          return;
+        }
+
+        message.channel.sendTyping().catch(() => {});
+        const { text, history, context } = await buildChatContext(message, botId);
+        const reply = await chatWithHistory(text, history, context);
+        if (reply) {
+          await message.reply({ content: reply.slice(0, 1900), allowedMentions: { parse: [], repliedUser: false } }).catch(() => {});
+        } else {
+          log.warn('Conversational reply failed: no response from AI provider');
+        }
+      }
+      return;
+    }
 
     const args = message.content.slice(prefix.length).trim().split(/\s+/);
     const commandName = args.shift().toLowerCase();
@@ -295,8 +385,12 @@ module.exports = {
         await message.reply({ embeds: [response({ client: message.client, description: `Missing required argument: ${usage}`, color: colors.error })] });
         return;
       }
+      if (ctx._invalid.length) {
+        await message.reply({ embeds: [response({ client: message.client, description: ctx._invalid.join('\n'), color: colors.error })], allowedMentions: { parse: [], repliedUser: false } });
+        return;
+      }
       await command.execute(ctx);
-      promptFeedback(ctx, commandName, 'prefix');
+      track(commandName, { userId: message.author.id, guildId: message.guildId, type: 'prefix', feedback: 'ok' });
     } catch (err) {
       track(commandName, { userId: message.author.id, guildId: message.guildId, type: 'prefix', feedback: 'errored', error: err.message });
       log.error(`Prefix command ${commandName} failed:`, err.message);

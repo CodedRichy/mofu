@@ -35,6 +35,6 @@ module.exports = {
     }
 
     const enabled = store.getConfig(guildId, 'ai_automod');
-    return interaction.reply({ embeds: [response({ client: interaction.client, description: `**AI Automod:** ${enabled ? 'Enabled' : 'Disabled'}\n**Model:** Llama 3.3 70B (Groq)\n**Scans:** Toxicity, hate speech, spam, NSFW\n**Action:** Delete message + modlog`, color: colors.primary })] });
+    return interaction.reply({ embeds: [response({ client: interaction.client, description: `**AI Automod:** ${enabled ? 'Enabled' : 'Disabled'}\n**Model:** GPT-OSS 20B (Groq)\n**Scans:** Toxicity, hate speech, spam, NSFW\n**Action:** Delete message + modlog`, color: colors.primary })] });
   },
 };
