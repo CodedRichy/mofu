@@ -22,6 +22,8 @@ const client = new Client({
     GatewayIntentBits.GuildModeration,
   ],
   partials: [Partials.Message, Partials.Reaction, Partials.GuildMember],
+  // user-authored text (autoresponders, custom commands, prizes, reminders) can never ping @everyone/@here/roles by default
+  allowedMentions: { parse: ['users'], repliedUser: false },
 });
 
 // Load events

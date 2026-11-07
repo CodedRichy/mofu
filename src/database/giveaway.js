@@ -76,10 +76,18 @@ module.exports = {
 
   end(guildId, messageId) {
     const gw = this.get(guildId, messageId);
-    if (!gw) return null;
+    if (!gw || gw.ended) return null; // already ended (manual end + timer): announce only once
     gw.ended = true;
     stmts.update.run(JSON.stringify([...gw.entries]), 1, guildId, messageId);
     return gw;
+  },
+
+  // Undo end() when the announcement could not be made (e.g. guild not cached yet).
+  reopen(guildId, messageId) {
+    const gw = this.get(guildId, messageId);
+    if (!gw) return false;
+    stmts.update.run(JSON.stringify([...gw.entries]), 0, guildId, messageId);
+    return true;
   },
 
   pickWinners(gw, count) {

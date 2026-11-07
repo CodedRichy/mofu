@@ -3,6 +3,7 @@ const { colors } = require('../../utils/constants');
 const { base, response } = require('../../utils/embed');
 const { parse, format } = require('../../utils/duration');
 const giveawayDb = require('../../database/giveaway');
+const { setLongTimeout } = require('../../utils/longTimeout');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -62,7 +63,7 @@ module.exports = {
         hostId: interaction.user.id,
       });
 
-      setTimeout(() => endGiveaway(guild, msg.id, channel.id, interaction.client), ms);
+      setLongTimeout(() => endGiveaway(guild, msg.id, channel.id, interaction.client), ms);
 
     } else if (sub === 'end') {
       const messageId = interaction.options.getString('message_id');
@@ -121,6 +122,6 @@ async function endGiveaway(guild, messageId, channelId, client) {
   await msg.edit({ embeds: [embed], components: [row] }).catch(() => {});
 
   if (winners.length) {
-    await channel.send({ content: `🎉 Congratulations ${winners.map((w) => `<@${w}>`).join(', ')}! You won **${gw.prize}**!` });
+    await channel.send({ content: `🎉 Congratulations ${winners.map((w) => `<@${w}>`).join(', ')}! You won **${gw.prize}**!`, allowedMentions: { users: winners } });
   }
 }

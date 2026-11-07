@@ -2,6 +2,7 @@ const { Events, ActivityType } = require('discord.js');
 const log = require('../utils/logger');
 const { registerCommands } = require('../handlers/commandHandler');
 const giveawayDb = require('../database/giveaway');
+const { setLongTimeout } = require('../utils/longTimeout');
 const { response } = require('../utils/embed');
 const { colors } = require('../utils/constants');
 
@@ -15,7 +16,12 @@ module.exports = {
       status: 'online',
       activities: [{ type: ActivityType.Custom, name: 'custom', state: 'sonder.gg · /help' }],
     });
-    await registerCommands(client);
+    // A failed registration (429, bad id, network) must not stop the rest of startup.
+    try {
+      await registerCommands(client);
+    } catch (err) {
+      log.error('Slash command registration failed:', err?.message || err);
+    }
     restoreGiveaways(client);
     require('../database/reminders').startSweep(client);
     require('../utils/announceUpdate').announceUpdate(client);
@@ -36,7 +42,7 @@ function restoreGiveaways(client) {
     if (remaining <= 0) {
       endGiveaway(client, gw);
     } else {
-      setTimeout(() => endGiveaway(client, gw), remaining);
+      setLongTimeout(() => endGiveaway(client, gw), remaining);
       restored++;
     }
   }
@@ -65,5 +71,5 @@ async function endGiveaway(client, gw) {
     }).catch(() => {});
   }
 
-  channel.send({ content: `🎉 Congratulations ${winnerText}! You won **${ended.prize}**!` }).catch(() => {});
+  channel.send({ content: `🎉 Congratulations ${winnerText}! You won **${ended.prize}**!`, allowedMentions: { users: winners } }).catch(() => {});
 }

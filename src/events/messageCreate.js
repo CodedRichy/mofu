@@ -10,6 +10,8 @@ const PrefixContext = require('../utils/prefixContext');
 const modlog = require('../utils/modlog');
 const { moderate, chatWithHistory } = require('../utils/ai');
 const { parseMuteIntent, proposeMute, usageHint } = require('../ai/actions');
+const { parseMusicIntent } = require('../utils/musicIntent');
+const automod = require('../utils/automod');
 
 // conversational replies ("yo sonder ...", "@sonder ..."): per-user cooldown so nobody can burn the AI quota
 const CHAT_COOLDOWN_MS = 4000;
@@ -123,21 +125,8 @@ module.exports = {
       }
     }
 
-    // Antilink
-    const antilink = store.getConfig(message.guild.id, 'antilink');
-    if (antilink && !message.member.permissions.has('ManageMessages')) {
-      const urlRegex = /https?:\/\/[^\s]+/i;
-      if (urlRegex.test(message.content)) {
-        const whitelist = store.getConfig(message.guild.id, 'antilink_whitelist') || [];
-        const isWhitelisted = whitelist.some((d) => message.content.toLowerCase().includes(d));
-        if (!isWhitelisted) {
-          message.delete().catch(() => {});
-          message.channel.send({ embeds: [response({ client: message.client, description: `${message.author}, links are not allowed here.`, color: colors.error })] })
-            .then((m) => setTimeout(() => m.delete().catch(() => {}), 5000)).catch(() => {});
-          return;
-        }
-      }
-    }
+    // Antilink + word filter (shared with messageUpdate so edits cannot dodge them)
+    if (automod.enforce(message)) return;
 
     // Anti-spam — auto-timeout if 5+ messages in 3 seconds
     const antispam = store.getConfig(message.guild.id, 'antispam');
@@ -167,24 +156,12 @@ module.exports = {
       }
     }
 
-    // Word filter
-    const wordFilter = store.getConfig(message.guild.id, 'word_filter');
-    if (wordFilter?.length && !message.member.permissions.has('ManageMessages')) {
-      const lower = message.content.toLowerCase();
-      const matched = wordFilter.find((w) => lower.includes(w.toLowerCase()));
-      if (matched) {
-        message.delete().catch(() => {});
-        message.channel.send({ embeds: [response({ client: message.client, description: `${message.author}, that word is not allowed here.`, color: colors.error })] })
-          .then((m) => setTimeout(() => m.delete().catch(() => {}), 5000)).catch(() => {});
-        return;
-      }
-    }
-
     // AI automod — async content moderation
     const aiMod = store.getConfig(message.guild.id, 'ai_automod');
     if (aiMod && !message.member.permissions.has('ManageMessages') && message.content.length > 10) {
       moderate(message.content).then((result) => {
         if (result?.flagged) {
+          automod.markBotDeleted(message.id);
           message.delete().catch(() => {});
           message.channel.send({ embeds: [response({ client: message.client, description: `${message.author}, your message was removed by AI moderation.`, color: colors.error })] })
             .then((m) => setTimeout(() => m.delete().catch(() => {}), 5000)).catch(() => {});
@@ -290,10 +267,11 @@ module.exports = {
     // "sonder play <song>" / "sonder skip" etc. are music commands, not chat: rewrite to the prefix form
     // and let the normal command path run them (same permission checks, same output).
     if (!message.content.startsWith(prefix)) {
-      const m = message.content.match(/^\s*(?:(?:hey|yo)\s+)?(?:sonder|<@!?\d+>)[,:]?\s+(play|skip|pause|resume|stop|queue|shuffle|loop|volume|nowplaying)\b\s*(.*)$/is);
-      if (m && (!/^<@!?\d+>/.test(message.content.trim()) || new RegExp(`^\\s*<@!?${message.client.user.id}>`).test(message.content))) {
-        const verb = m[1].toLowerCase() === 'resume' ? 'pause' : m[1].toLowerCase();
-        message.content = `${prefix}${verb} ${m[2]}`.trim();
+      // Strict matcher (src/utils/musicIntent.js) plus the same eligibility as the AI path, so ordinary
+      // sentences ("sonder stop being weird") and random members never trigger playback commands.
+      const intent = parseMusicIntent(message.content, message.client.user.id);
+      if (intent && canInvokeAi(message)) {
+        message.content = `${prefix}${intent.verb} ${intent.args}`.trim();
       }
     }
 
@@ -376,14 +354,18 @@ module.exports = {
       timestamps.set(message.author.id, now);
       setTimeout(() => timestamps.delete(message.author.id), cooldownAmount);
 
-      // Warm the member cache for mentioned users so getUser/getMember resolve.
-      // Deduped and fetched in parallel; skipped entirely when on cooldown.
-      const uncached = new Set();
-      for (const m of message.content.matchAll(/<@!?(\d+)>/g)) {
-        if (!message.guild.members.cache.has(m[1])) uncached.add(m[1]);
-      }
-      if (uncached.size) {
-        await Promise.all([...uncached].map((id) => message.guild.members.fetch(id).catch(() => {})));
+      // Warm the caches for mentioned users and raw 17-20 digit ids so getUser/getMember resolve.
+      // Deduped and fetched in parallel; failures are tolerated (the id then fails validation in PrefixContext).
+      const wanted = new Set();
+      for (const m of message.content.matchAll(/<@!?(\d{17,20})>/g)) wanted.add(m[1]);
+      for (const a of args) if (/^\d{17,20}$/.test(a)) wanted.add(a);
+      const uncached = [...wanted].filter((id) => !message.guild.members.cache.has(id));
+      if (uncached.length) {
+        await Promise.all(uncached.map(async (id) => {
+          try { await message.guild.members.fetch(id); } catch {
+            if (!message.client.users.cache.has(id)) await message.client.users.fetch(id).catch(() => {});
+          }
+        }));
       }
 
       const ctx = new PrefixContext(message, args, command);

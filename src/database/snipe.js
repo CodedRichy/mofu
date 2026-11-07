@@ -1,7 +1,9 @@
 const Database = require('better-sqlite3');
 const path = require('path');
+const store = require('./store');
 
 const MAX_SNIPES = 10;
+const MAX_AGE_MS = 2 * 60 * 60 * 1000; // snipe data is short-lived on purpose
 
 const dbPath = path.join(__dirname, '..', '..', 'data', 'sonder.db');
 require('fs').mkdirSync(path.dirname(dbPath), { recursive: true });
@@ -23,23 +25,33 @@ db.exec(`
     timestamp INTEGER NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_snipes_channel ON snipes(guild_id, channel_id, type);
+  CREATE INDEX IF NOT EXISTS idx_snipes_chan_type ON snipes(channel_id, type, id);
 `);
 
 const stmts = {
   insert: db.prepare('INSERT INTO snipes (guild_id, channel_id, type, author_id, author_tag, content, attachment, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'),
-  get: db.prepare('SELECT * FROM snipes WHERE channel_id = ? AND type = ? ORDER BY id DESC LIMIT 1 OFFSET ?'),
+  get: db.prepare('SELECT * FROM snipes WHERE channel_id = ? AND type = ? AND timestamp >= ? ORDER BY id DESC LIMIT 1 OFFSET ?'),
   clearChannel: db.prepare('DELETE FROM snipes WHERE channel_id = ? AND type = ?'),
   clearAllChannel: db.prepare('DELETE FROM snipes WHERE channel_id = ?'),
   countByChannel: db.prepare('SELECT COUNT(*) as count FROM snipes WHERE channel_id = ? AND type = ?'),
+  deleteStale: db.prepare('DELETE FROM snipes WHERE timestamp < ?'),
   deleteOld: db.prepare('DELETE FROM snipes WHERE id IN (SELECT id FROM snipes WHERE channel_id = ? AND type = ? ORDER BY id DESC LIMIT -1 OFFSET ?)'),
 };
 
+// Sniping is opt-in per guild (config key snipe_enabled, default off): nothing is stored otherwise.
+function isEnabled(guildId) {
+  return !!guildId && store.getConfig(guildId, 'snipe_enabled') === true;
+}
+
 function insertAndCleanup(guildId, channelId, type, authorId, authorTag, content, attachment) {
+  if (!isEnabled(guildId)) return;
+  stmts.deleteStale.run(Date.now() - MAX_AGE_MS);
   stmts.insert.run(guildId, channelId, type, authorId, authorTag, content, attachment, Date.now());
   stmts.deleteOld.run(channelId, type, MAX_SNIPES);
 }
 
 module.exports = {
+  isEnabled,
   addDeleted(channelId, message) {
     const guildId = message.guild?.id || '';
     const attachments = [...message.attachments.values()].map((a) => a.url);
@@ -86,7 +98,7 @@ module.exports = {
   },
 
   getDeleted(channelId, index = 0) {
-    const row = stmts.get.get(channelId, 'delete', index);
+    const row = stmts.get.get(channelId, 'delete', Date.now() - MAX_AGE_MS, index);
     if (!row) return null;
     const data = JSON.parse(row.content);
     return {
@@ -98,7 +110,7 @@ module.exports = {
   },
 
   getEdited(channelId, index = 0) {
-    const row = stmts.get.get(channelId, 'edit', index);
+    const row = stmts.get.get(channelId, 'edit', Date.now() - MAX_AGE_MS, index);
     if (!row) return null;
     const data = JSON.parse(row.content);
     return {
@@ -110,7 +122,7 @@ module.exports = {
   },
 
   getReaction(channelId, index = 0) {
-    const row = stmts.get.get(channelId, 'reaction', index);
+    const row = stmts.get.get(channelId, 'reaction', Date.now() - MAX_AGE_MS, index);
     if (!row) return null;
     const data = JSON.parse(row.content);
     return {
@@ -123,7 +135,7 @@ module.exports = {
   },
 
   getPurged(channelId, index = 0) {
-    const row = stmts.get.get(channelId, 'purge', index);
+    const row = stmts.get.get(channelId, 'purge', Date.now() - MAX_AGE_MS, index);
     if (!row) return null;
     const data = JSON.parse(row.content);
     return {

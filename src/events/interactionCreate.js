@@ -8,6 +8,7 @@ const store = require('../database/store');
 const giveawayDb = require('../database/giveaway');
 
 const cooldowns = new Collection();
+const ticketLocks = new Set();
 
 const categoryEmojis = {
   moderation: '🛡️',
@@ -49,7 +50,14 @@ module.exports = {
     }
 
     if (interaction.isButton()) {
-      await handleButton(interaction);
+      try {
+        await handleButton(interaction);
+      } catch (err) {
+        log.error(`Button ${interaction.customId} failed:`, err?.stack || err?.message || err);
+        const reply = { embeds: [response({ client: interaction.client, description: 'Something went wrong. Try again in a moment.', color: colors.error })], ephemeral: true };
+        if (interaction.replied || interaction.deferred) await interaction.editReply(reply).catch(() => {});
+        else await interaction.reply(reply).catch(() => {});
+      }
       return;
     }
 
@@ -57,6 +65,11 @@ module.exports = {
 
     const command = interaction.client.commands.get(interaction.commandName);
     if (!command) return;
+
+    // Slash commands are written for servers; refuse cleanly in DMs instead of throwing on interaction.guild.
+    if (!interaction.guild) {
+      return interaction.reply({ embeds: [response({ client: interaction.client, description: 'This command only works in servers.', color: colors.error })], ephemeral: true });
+    }
 
     // Enforce required permissions in code. Discord applies default_member_permissions itself, but a server
     // admin can override that per command in Server Settings > Integrations, so never rely on it alone.
@@ -107,43 +120,66 @@ async function handleButton(interaction) {
   if (customId.startsWith('aiact:')) return require('../ai/actions').handleButton(interaction);
 
   if (customId === 'ticket_open') {
-    if (!store.getConfig(guild.id, 'ticket_enabled')) return;
+    if (!guild || !store.getConfig(guild.id, 'ticket_enabled')) return;
 
-    const existing = guild.channels.cache.find((c) => c.topic === `ticket-${user.id}` && c.name.startsWith('ticket-'));
-    if (existing) {
-      return interaction.reply({ embeds: [response({ client: interaction.client, description: `You already have an open ticket: ${existing}`, color: colors.error })], ephemeral: true });
+    // Defer first (channel creation can exceed 3s), then guard double clicks. The Set is keyed per guild+user
+    // and the existing-ticket check runs again after the await, so two fast clicks cannot make two tickets.
+    await interaction.deferReply({ ephemeral: true });
+    const lockKey = `${guild.id}:${user.id}`;
+    if (ticketLocks.has(lockKey)) {
+      return interaction.editReply({ embeds: [response({ client: interaction.client, description: 'Your ticket is already being created.', color: colors.error })] });
     }
+    ticketLocks.add(lockKey);
+    try {
+      const findExisting = () => guild.channels.cache.find((c) => c.topic === `ticket-${user.id}` && c.name.startsWith('ticket-'));
+      let existing = findExisting();
+      if (existing) {
+        return interaction.editReply({ embeds: [response({ client: interaction.client, description: `You already have an open ticket: ${existing}`, color: colors.error })] });
+      }
 
-    const supportRole = store.getConfig(guild.id, 'ticket_support_role');
-    const categoryId = store.getConfig(guild.id, 'ticket_category');
+      const supportRole = store.getConfig(guild.id, 'ticket_support_role');
+      const categoryId = store.getConfig(guild.id, 'ticket_category');
 
-    const channel = await guild.channels.create({
-      name: `ticket-${user.username}`,
-      type: ChannelType.GuildText,
-      parent: categoryId || null,
-      topic: `ticket-${user.id}`,
-      permissionOverwrites: [
-        { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-        { id: user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.AttachFiles] },
-        { id: interaction.client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels] },
-        ...(supportRole ? [{ id: supportRole, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }] : []),
-      ],
-    });
+      const channel = await guild.channels.create({
+        name: `ticket-${user.username}`,
+        type: ChannelType.GuildText,
+        parent: categoryId || null,
+        topic: `ticket-${user.id}`,
+        permissionOverwrites: [
+          { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+          { id: user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.AttachFiles] },
+          { id: interaction.client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels] },
+          ...(supportRole ? [{ id: supportRole, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }] : []),
+        ],
+      });
 
-    const embed = base(interaction.client, colors.primary)
-      .setAuthor({ name: 'Ticket Opened', iconURL: user.displayAvatarURL() })
-      .setDescription(`Welcome ${user}, a support member will be with you shortly.\nDescribe your issue and be patient.`);
+      const embed = base(interaction.client, colors.primary)
+        .setAuthor({ name: 'Ticket Opened', iconURL: user.displayAvatarURL() })
+        .setDescription(`Welcome ${user}, a support member will be with you shortly.
+Describe your issue and be patient.`);
 
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('ticket_close').setLabel('Close Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒'),
-      new ButtonBuilder().setCustomId('ticket_claim').setLabel('Claim').setStyle(ButtonStyle.Success).setEmoji('✋'),
-    );
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('ticket_close').setLabel('Close Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒'),
+        new ButtonBuilder().setCustomId('ticket_claim').setLabel('Claim').setStyle(ButtonStyle.Success).setEmoji('✋'),
+      );
 
-    await channel.send({ content: supportRole ? `<@&${supportRole}>` : '', embeds: [embed], components: [row] });
-    await interaction.reply({ embeds: [response({ client: interaction.client, description: `Ticket created: ${channel}`, color: colors.success })], ephemeral: true });
+      await channel.send({ content: supportRole ? `<@&${supportRole}>` : '', embeds: [embed], components: [row], allowedMentions: { users: [user.id], roles: supportRole ? [supportRole] : [] } });
+      await interaction.editReply({ embeds: [response({ client: interaction.client, description: `Ticket created: ${channel}`, color: colors.success })] });
+    } finally {
+      ticketLocks.delete(lockKey);
+    }
 
   } else if (customId === 'ticket_close') {
     if (!interaction.channel.name.startsWith('ticket-')) return;
+
+    // Only the opener, the support role, or staff (Manage Channels) may close.
+    const supportRoleId = store.getConfig(guild.id, 'ticket_support_role');
+    const isOpener = interaction.channel.topic === `ticket-${user.id}`;
+    const isStaff = interaction.member?.permissions?.has(PermissionFlagsBits.ManageChannels)
+      || (supportRoleId && interaction.member?.roles?.cache?.has(supportRoleId));
+    if (!isOpener && !isStaff) {
+      return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Only the ticket opener or support staff can close this ticket.', color: colors.error })], ephemeral: true });
+    }
 
     await interaction.reply({ embeds: [response({ client: interaction.client, description: `Ticket closed by ${user}. Deleting in 5 seconds...`, color: colors.muted })] });
 
@@ -192,7 +228,7 @@ async function handleButton(interaction) {
       return interaction.reply({ embeds: [response({ client: interaction.client, description: 'This giveaway has ended.', color: colors.error })], ephemeral: true });
     }
     if (gw.entries.has(user.id)) {
-      gw.entries.delete(user.id);
+      giveawayDb.removeEntry(guild.id, interaction.message.id, user.id);
       return interaction.reply({ embeds: [response({ client: interaction.client, description: 'You left the giveaway.', color: colors.muted })], ephemeral: true });
     }
     giveawayDb.addEntry(guild.id, interaction.message.id, user.id);

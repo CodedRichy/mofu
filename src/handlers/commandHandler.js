@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const { Collection, REST, Routes } = require('discord.js');
+const crypto = require('crypto');
+const { Collection, REST, Routes, InteractionContextType } = require('discord.js');
 const config = require('../config');
 const log = require('../utils/logger');
 
@@ -120,17 +121,40 @@ async function registerCommands(client) {
 
   const slashCommands = client.commands
     .filter((cmd) => !PREFIX_ONLY.has(cmd.data.name))
-    .map((cmd) => cmd.data.toJSON());
+    // Commands are written against interaction.guild: keep them out of DMs / group chats (the server-side
+    // equivalent of the interactionCreate guard). Commands that set their own contexts keep them.
+    .map((cmd) => {
+      const json = cmd.data.toJSON();
+      if (!json.contexts) json.contexts = [InteractionContextType.Guild];
+      return json;
+    });
 
   // Production: REGISTER_GLOBAL=1 registers once globally (works in every server, powers the profile's
   // featured commands) and wipes the per-guild copies so nothing shows twice. Global updates can take up
   // to an hour to propagate, so dev keeps the default guild-scoped mode below (instant).
   if (process.env.REGISTER_GLOBAL === '1') {
+    // Skip the whole dance when the command payload is unchanged since the last successful run: every
+    // restart would otherwise spend one global PUT plus one clearing PUT per guild (rate limit fuel).
+    const hashFile = path.join(__dirname, '..', '..', 'data', 'commands.hash');
+    const hash = 'global:' + crypto.createHash('sha256').update(JSON.stringify(slashCommands)).digest('hex');
+    let previous = '';
+    try { previous = fs.readFileSync(hashFile, 'utf-8').trim(); } catch { /* first run */ }
+    if (previous === hash) {
+      log.info('Global slash commands unchanged, skipping registration');
+      return;
+    }
     const data = await rest.put(Routes.applicationCommands(config.discord.clientId), { body: slashCommands });
     log.info(`Registered ${data.length} global slash commands`);
+    let clearFailed = false;
     await Promise.all(client.guilds.cache.map((guild) =>
       rest.put(Routes.applicationGuildCommands(config.discord.clientId, guild.id), { body: [] })
-        .catch((err) => log.warn(`Could not clear guild commands in ${guild.name}:`, err.message))));
+        .catch((err) => { clearFailed = true; log.warn(`Could not clear guild commands in ${guild.name}:`, err.message); })));
+    if (!clearFailed) {
+      try {
+        fs.mkdirSync(path.dirname(hashFile), { recursive: true });
+        fs.writeFileSync(hashFile, hash, 'utf-8');
+      } catch (err) { log.warn('Could not save commands.hash:', err.message); }
+    }
     return;
   }
 

@@ -8,7 +8,8 @@ module.exports = {
   execute(message) {
     if (!message.guild || message.author?.bot) return;
     if (!message.content && !message.attachments.size) return;
-    snipe.addDeleted(message.channel.id, message);
+    // Messages the bot removed itself (antilink, word filter, AI automod) are never sniped.
+    if (!require('../utils/automod').wasBotDeleted(message.id)) snipe.addDeleted(message.channel.id, message);
 
     const logCh = store.getConfig(message.guild.id, 'log_channel');
     if (!logCh || (store.getConfig(message.guild.id, 'log_message_delete') === false)) return;
