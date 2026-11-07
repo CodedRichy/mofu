@@ -10,6 +10,7 @@ import { Assistant } from './pages/Assistant'
 import { Status } from './pages/Status'
 import { Terms } from './pages/Terms'
 import { Privacy } from './pages/Privacy'
+import { Switch } from './pages/Switch'
 import { NotFound } from './pages/NotFound'
 
 export function App() {
@@ -26,6 +27,7 @@ export function App() {
       <Route path="/status" element={<Status />} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/privacy" element={<Privacy />} />
+      <Route path="/switch" element={<Switch />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   )
