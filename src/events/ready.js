@@ -1,4 +1,4 @@
-const { Events } = require('discord.js');
+const { Events, ActivityType } = require('discord.js');
 const log = require('../utils/logger');
 const { registerCommands } = require('../handlers/commandHandler');
 const giveawayDb = require('../database/giveaway');
@@ -11,8 +11,17 @@ module.exports = {
   async execute(client) {
     log.info(`Logged in as ${client.user.tag}`);
     log.info(`Serving ${client.guilds.cache.size} servers`);
+    client.user.setPresence({
+      status: 'online',
+      activities: [{ type: ActivityType.Custom, name: 'custom', state: 'sonder.gg · /help' }],
+    });
     await registerCommands(client);
     restoreGiveaways(client);
+
+    // Enforce the data-retention promise: purge servers that removed the bot over 30 days ago.
+    const retention = require('../database/retention');
+    retention.sweep(client);
+    setInterval(() => retention.sweep(client), 6 * 60 * 60 * 1000).unref();
   },
 };
 

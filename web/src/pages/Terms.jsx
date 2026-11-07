@@ -13,7 +13,7 @@ export function Terms() {
         </h1>
 
         <div style={{ fontSize: 'var(--text-base)', color: 'var(--fg-3)', lineHeight: 1.8, display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-          <p style={{ color: 'var(--fg-4)', fontSize: 'var(--text-sm)' }}>Last updated: June 2026</p>
+          <p style={{ color: 'var(--fg-4)', fontSize: 'var(--text-sm)' }}>Last updated: November 2026</p>
 
           <section>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-semibold)', color: 'var(--fg-2)', marginBottom: 'var(--space-2)' }}>1. acceptance</h2>

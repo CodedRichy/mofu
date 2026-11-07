@@ -97,26 +97,50 @@ function saveEconomy(guildId, userId, wallet, bank) {
   stmts.upsertEconomy.run(guildId, userId, wallet, bank, wallet, bank);
 }
 
+const configCache = new Map();
+
 module.exports = {
   db,
 
+  // Write-through cache of raw JSON strings (null = known missing). Only this module writes the config table.
+  // Raw strings, parsed per read, so callers that mutate a returned array/object can't corrupt the cache.
   getConfig(guildId, key) {
-    const row = stmts.getConfig.get(guildId, key);
-    if (!row) return null;
-    try { return JSON.parse(row.value); } catch { return row.value; }
+    const ck = `${guildId}\u0000${key}`;
+    let raw = configCache.get(ck);
+    if (raw === undefined) {
+      const row = stmts.getConfig.get(guildId, key);
+      raw = row ? row.value : null;
+      configCache.set(ck, raw);
+    }
+    if (raw === null) return null;
+    try { return JSON.parse(raw); } catch { return raw; }
+  },
+
+  // Drop cached config for a guild (used after rows are deleted directly in SQL, e.g. the retention purge).
+  clearConfigCache(guildId) {
+    const prefix = `${guildId}\u0000`;
+    for (const k of configCache.keys()) if (k.startsWith(prefix)) configCache.delete(k);
   },
 
   setConfig(guildId, key, value) {
+    const ck = `${guildId}\u0000${key}`;
     if (value === null || value === undefined) {
       stmts.deleteConfig.run(guildId, key);
+      configCache.set(ck, null);
     } else {
-      stmts.setConfig.run(guildId, key, JSON.stringify(value));
+      const raw = JSON.stringify(value);
+      stmts.setConfig.run(guildId, key, raw);
+      configCache.set(ck, raw);
     }
   },
 
   addWarning(guildId, userId, warning) {
-    const timestamp = new Date().toISOString();
-    const info = stmts.addWarning.run(guildId, userId, warning.moderator || null, warning.reason || null, timestamp);
+    // an import may carry the original date; anything unparseable falls back to now
+    const given = warning.timestamp ? new Date(warning.timestamp) : null;
+    const timestamp = given && !Number.isNaN(given.getTime()) ? given.toISOString() : new Date().toISOString();
+    // Callers have used both `moderator` and `moderatorId`; accept either so the issuer is never lost.
+    const moderator = warning.moderator || warning.moderatorId || null;
+    const info = stmts.addWarning.run(guildId, userId, moderator, warning.reason || null, timestamp);
     return info.lastInsertRowid;
   },
 
@@ -124,6 +148,7 @@ module.exports = {
     return stmts.getWarnings.all(guildId, userId).map((w) => ({
       id: w.id,
       moderator: w.moderator,
+      moderatorId: w.moderator, // alias: /warn list reads this name
       reason: w.reason,
       timestamp: w.timestamp,
     }));
