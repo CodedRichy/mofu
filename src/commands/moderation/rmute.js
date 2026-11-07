@@ -2,6 +2,7 @@ const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { colors } = require('../../utils/constants');
 const { response, modAction } = require('../../utils/embed');
 const modlog = require('../../utils/modlog');
+const { reasonError } = require('../../utils/modguard');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -28,6 +29,8 @@ module.exports = {
 
     if (sub === 'add') {
       const reason = interaction.options.getString('reason') || 'No reason provided';
+      const reasonErr = reasonError(reason);
+      if (reasonErr) return interaction.reply({ embeds: [response({ client: interaction.client, description: reasonErr, color: colors.error })], ephemeral: true });
 
       const botMember = interaction.guild.members.me;
       if (member.roles.highest.position >= interaction.member.roles.highest.position) {
