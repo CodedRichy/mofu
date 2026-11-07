@@ -17,6 +17,7 @@ function NavLink({ to, label, active, entranceDelay = 0 }) {
   return (
     <Link
       to={to}
+      className="nav-link"
       onMouseEnter={() => setH(true)}
       onMouseLeave={() => setH(false)}
       style={{
@@ -63,7 +64,7 @@ function LogoMark() {
           : '0 0 0 1px rgba(255, 255, 255, 0.06)',
         transition: 'box-shadow 280ms var(--ease-default)',
       }} />
-      <span style={{
+      <span className="nav-word" style={{
         fontFamily: 'var(--font-display)',
         fontSize: 'var(--text-lg)',
         fontWeight: 'var(--weight-bold)',
@@ -272,6 +273,7 @@ export function Layout({ children, bare = false }) {
             ) : (
               <a
                 href={loginUrl}
+                className="nav-login"
                 onMouseEnter={() => setLoginHover(true)}
                 onMouseLeave={() => setLoginHover(false)}
                 style={{

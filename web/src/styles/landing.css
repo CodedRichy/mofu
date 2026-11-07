@@ -3,7 +3,7 @@
 
 .ln { --ln-gutter: clamp(16px, 4vw, 40px); --ln-max: 1160px; }
 
-.ln a { color: inherit; }
+:where(.ln a) { color: inherit; }
 .ln :focus-visible { outline: 2px solid var(--border-focus); outline-offset: 3px; border-radius: var(--radius-full); }
 
 /* ---- reveal (fade + 10px rise, no overshoot; off for reduced motion) ---- */
@@ -54,7 +54,7 @@
 .ln-hero > * { position: relative; }
 .ln-h1 {
   margin: 20px 0 0; font-size: var(--text-5xl); line-height: 1.02; letter-spacing: -0.045em; font-weight: var(--weight-medium);
-  max-width: 11ch; text-wrap: balance;
+  max-width: 12ch; text-wrap: balance;
 }
 .ln-h1 span { color: var(--fg-3); }
 .ln-lede { margin: 22px 0 0; max-width: 46ch; font-size: var(--text-md); line-height: 1.6; color: var(--fg-2); }
@@ -83,7 +83,7 @@
   margin-top: 8px; border-radius: var(--radius-lg); padding: 14px 16px; background: oklch(0.985 0 0); color: oklch(0.2 0 0);
   font-size: var(--text-sm); line-height: 1.55;
 }
-.ln-embed b { font-weight: var(--weight-semibold); }
+.ln-embed b { display: block; font-weight: var(--weight-semibold); margin-bottom: 2px; }
 .ln-embed small { display: block; margin-top: 6px; color: oklch(0.45 0 0); font-size: var(--text-xs); }
 .ln-embed--done { background: var(--surface-2); color: var(--fg-1); border: 1px solid var(--border-default); }
 .ln-embed--done small { color: var(--fg-3); }
@@ -100,13 +100,13 @@
 .ln-sub { margin: 16px 0 0; max-width: 52ch; color: var(--fg-2); font-size: var(--text-md); line-height: 1.6; }
 
 /* ---- stats strip ---- */
-.ln-stats { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--border-default); border-radius: var(--radius-xl); overflow: hidden; background: var(--surface-1); }
+.ln-stats { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--border-default); border-radius: var(--radius-xl); overflow: hidden; background: var(--surface-1); }
 .ln-stat { padding: clamp(18px, 3vw, 28px); }
 .ln-stat + .ln-stat { border-left: 1px solid var(--border-default); }
 .ln-stat-n { font-size: clamp(28px, 4vw, 44px); letter-spacing: -0.04em; font-weight: var(--weight-medium); font-variant-numeric: tabular-nums; line-height: 1; }
 .ln-stat-l { margin-top: 8px; font-size: var(--text-sm); color: var(--fg-3); }
 @media (max-width: 560px) {
-  .ln-stats { grid-template-columns: 1fr; }
+  .ln-stats { grid-auto-flow: row; }
   .ln-stat + .ln-stat { border-left: 0; border-top: 1px solid var(--border-default); }
 }
 
@@ -118,7 +118,7 @@
 .ln-step p { color: var(--fg-2); line-height: 1.6; }
 .ln-step code { white-space: nowrap; }
 @media (max-width: 720px) {
-  .ln-step { grid-template-columns: 40px 1fr; }
+  .ln-step { grid-template-columns: 40px 1fr; row-gap: 6px; padding: 22px 0; }
   .ln-step p { grid-column: 2; }
 }
 
@@ -143,3 +143,9 @@
 .ln-final .ln-h2 { margin-left: auto; margin-right: auto; max-width: 16ch; }
 .ln-final .ln-cta { justify-content: center; }
 .ln-end { height: clamp(56px, 9vw, 112px); }
+
+/* ---- chat chrome: channel header and timestamps so the mock reads as Discord ---- */
+.ln-chan { display: flex; align-items: center; gap: 8px; margin: calc(-1 * clamp(14px, 2.4vw, 22px)) calc(-1 * clamp(14px, 2.4vw, 22px)) 0; padding: 12px clamp(14px, 2.4vw, 22px); border-bottom: 1px solid var(--border-default); font-size: var(--text-sm); color: var(--fg-2); }
+.ln-chan b { color: var(--fg-1); font-weight: var(--weight-medium); }
+.ln-chan span { color: var(--fg-3); }
+.ln-time { font-size: var(--text-xs); color: var(--fg-3); font-weight: var(--weight-normal); }

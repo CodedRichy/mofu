@@ -1,3 +1,10 @@
+@import './tokens/colors.css';
+@import './tokens/typography.css';
+@import './tokens/spacing.css';
+@import './tokens/effects.css';
+@import './tokens/animations.css';
+@import './base.css';
+
 /* Switzer, self-hosted: no third-party font request, so nothing about a visit leaves our domain. */
 @font-face {
   font-family: 'Switzer';
@@ -21,9 +28,3 @@
   font-display: swap;
 }
 
-@import './tokens/colors.css';
-@import './tokens/typography.css';
-@import './tokens/spacing.css';
-@import './tokens/effects.css';
-@import './tokens/animations.css';
-@import './base.css';

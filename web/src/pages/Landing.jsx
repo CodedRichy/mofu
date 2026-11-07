@@ -14,7 +14,7 @@ function Reveal({ children, delay = 0, as: Tag = 'div', className = '', ...rest 
   const [seen, setSeen] = useState(false)
   useEffect(() => {
     const el = ref.current
-    if (!el || typeof IntersectionObserver === 'undefined') { setSeen(true); return }
+    if (!el || typeof IntersectionObserver === 'undefined' || new URLSearchParams(window.location.search).has('static')) { setSeen(true); return }
     const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setSeen(true); io.disconnect() } }, { threshold: 0.12 })
     io.observe(el)
     return () => io.disconnect()
@@ -56,6 +56,7 @@ const ROWS = [
 
 export function Landing() {
   const stats = useStats()
+  const statItems = [[stats?.guilds, 'servers'], [stats?.members, 'members served'], [stats?.commands, 'commands']].filter(([n]) => typeof n === 'number')
 
   return (
     <Layout>
@@ -77,17 +78,18 @@ export function Landing() {
             </div>
 
             <div className="ln-chat" role="img" aria-label="Example: a moderator asks Sonder to mute a member and confirms with a button">
+              <div className="ln-chan" aria-hidden="true"><span>#</span><b>mod-chat</b></div>
               <div className="ln-msg">
                 <div className="ln-avatar" aria-hidden="true">R</div>
                 <div>
-                  <div className="ln-who">riri</div>
+                  <div className="ln-who">riri <span className="ln-time">Today at 9:41 PM</span></div>
                   <div className="ln-said">sonder mute <span className="ln-mention">@alex</span> 10m spamming links</div>
                 </div>
               </div>
               <div className="ln-msg">
                 <div className="ln-avatar"><img src="/logo.jpg" alt="" /></div>
                 <div>
-                  <div className="ln-who">sonder <span className="ln-app">APP</span></div>
+                  <div className="ln-who">sonder <span className="ln-app">APP</span> <span className="ln-time">Today at 9:41 PM</span></div>
                   <div className="ln-embed">
                     <b>Mute @alex for 10 minutes?</b>
                     Reason: spamming links. Only riri can confirm.
@@ -99,7 +101,7 @@ export function Landing() {
               <div className="ln-msg">
                 <div className="ln-avatar"><img src="/logo.jpg" alt="" /></div>
                 <div>
-                  <div className="ln-who">sonder <span className="ln-app">APP</span></div>
+                  <div className="ln-who">sonder <span className="ln-app">APP</span> <span className="ln-time">Today at 9:42 PM</span></div>
                   <div className="ln-embed ln-embed--done">
                     <b>Muted @alex</b>
                     10 minutes, via Sonder AI, logged as case #41.
@@ -111,13 +113,15 @@ export function Landing() {
           </section>
         </div>
 
-        <Reveal as="section" className="ln-section">
-          <div className="ln-stats">
-            <div className="ln-stat"><div className="ln-stat-n">{fmt(stats?.guilds)}</div><div className="ln-stat-l">servers</div></div>
-            <div className="ln-stat"><div className="ln-stat-n">{fmt(stats?.members)}</div><div className="ln-stat-l">members served</div></div>
-            <div className="ln-stat"><div className="ln-stat-n">{fmt(stats?.commands)}</div><div className="ln-stat-l">commands</div></div>
-          </div>
-        </Reveal>
+        {statItems.length > 1 && (
+          <Reveal as="section" className="ln-section">
+            <div className="ln-stats">
+              {statItems.map(([n, l]) => (
+                <div className="ln-stat" key={l}><div className="ln-stat-n">{fmt(n)}</div><div className="ln-stat-l">{l}</div></div>
+              ))}
+            </div>
+          </Reveal>
+        )}
 
         <section className="ln-section">
           <Reveal>

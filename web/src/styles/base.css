@@ -99,3 +99,10 @@ img, video, svg {
   max-width: 100%;
   display: block;
 }
+
+/* narrow screens: keep the nav inside the viewport (logo mark only, tighter links) */
+@media (max-width: 520px) {
+  .nav-word { display: none; }
+  .nav-link { padding: 8px 9px !important; font-size: var(--text-sm) !important; }
+  .nav-login { padding: 0 12px !important; }
+}
