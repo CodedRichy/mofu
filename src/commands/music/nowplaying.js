@@ -19,8 +19,8 @@ module.exports = {
 
     const embed = base(interaction.client, colors.primary)
       .setAuthor({ name: 'Now Playing' })
-      .setDescription(`**[${track.title}](${track.url})**\n${track.author}\n\n${progress}`)
-      .setThumbnail(track.thumbnail);
+      .setDescription(`**[${track.title}](${track.url})**\n${track.author}${progress ? `\n\n${progress}` : ''}`)
+      .setThumbnail(track.thumbnail || null);
 
     await interaction.reply({ embeds: [embed] });
   },

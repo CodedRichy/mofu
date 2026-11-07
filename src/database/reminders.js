@@ -38,25 +38,39 @@ module.exports = {
     const expiresAt = now + duration;
     const info = stmts.add.run(guildId, channelId, userId, message, expiresAt, now);
     const id = Number(info.lastInsertRowid);
-
-    const timeout = setTimeout(() => {
-      const cb = callbacks.get(id);
-      if (cb) cb();
-      callbacks.delete(id);
-      callbacks.delete(`_timeout_${id}`);
-      // Remove from DB after firing
-      stmts.removeById.run(id);
-    }, duration);
-
-    // Store timeout reference so we can cancel it
-    callbacks.set(id, null);
-    callbacks.set(`_timeout_${id}`, timeout);
-
+    // Delivery is done by startSweep() reading the table, not by an in-memory timer: timers vanish on restart
+    // and overflow past ~24.8 days, the table does neither.
     return { id, expiresAt };
   },
 
-  setCallback(id, callback) {
-    callbacks.set(id, callback);
+  // Kept for callers that still pass a callback; delivery no longer depends on it.
+  setCallback() {},
+
+  // Deliver every due reminder, then delete it. Runs on boot (catching up anything missed while down) and every 15s.
+  async deliverDue(client) {
+    for (const r of this.getDueReminders()) {
+      // delete first: a crash mid-delivery drops one reminder rather than repeating it forever
+      stmts.removeById.run(r.id);
+      try {
+        const { response } = require('../utils/embed');
+        const { colors } = require('../utils/constants');
+        const late = Date.now() - r.remindAt > 60000 ? ' (delivered late: the bot was offline)' : '';
+        const payload = {
+          content: `<@${r.userId}>`,
+          embeds: [response({ client, description: `**Reminder:** ${r.message}${late}`, color: colors.primary })],
+          allowedMentions: { users: [r.userId] },
+        };
+        const ch = await client.channels.fetch(r.channelId).catch(() => null);
+        if (ch?.send) await ch.send(payload).catch(() => ch.client.users.send(r.userId, payload).catch(() => {}));
+        else await client.users.send(r.userId, payload).catch(() => {});
+      } catch { /* one bad reminder must not stop the rest */ }
+    }
+  },
+
+  startSweep(client) {
+    const run = () => this.deliverDue(client).catch(() => {});
+    run();
+    return setInterval(run, 15000).unref();
   },
 
   remove(id, userId) {

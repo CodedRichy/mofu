@@ -37,7 +37,7 @@ module.exports = {
         return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Reminders can be at most **7 days**.', color: colors.error })], ephemeral: true });
       }
 
-      const { id, expiresAt } = reminders.add(interaction.user.id, interaction.channel.id, message, duration);
+      const { id, expiresAt } = reminders.add(interaction.user.id, interaction.channel.id, message, duration, interaction.guild?.id || '');
 
       reminders.setCallback(id, () => {
         const ch = interaction.client.channels.cache.get(interaction.channel.id);

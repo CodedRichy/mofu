@@ -25,6 +25,7 @@ module.exports = {
     }
 
     queue.delete();
+    require('../../music/card').clear(interaction.guild.id, 'Record stopped.', interaction.client);
     await interaction.reply({ embeds: [response({ client: interaction.client, description: 'Stopped playback and cleared queue.', color: colors.muted })] });
   },
 };

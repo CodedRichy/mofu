@@ -76,7 +76,7 @@ module.exports = {
       const embed = base(interaction.client, colors.success)
         .setAuthor({ name: 'Added to queue' })
         .setDescription(`**[${track.title}](${track.url})**\n${track.author} · ${track.duration}`)
-        .setThumbnail(track.thumbnail);
+        .setThumbnail(track.thumbnail || null);
 
       await interaction.editReply({ embeds: [embed] });
     } catch (err) {

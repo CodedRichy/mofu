@@ -203,6 +203,9 @@ class PrefixContext {
 
   async editReply(data) {
     if (typeof data === 'string') data = { content: data };
+    // The deferred placeholder ("hold that thought..") is plain message content; an edit that omits `content` keeps it,
+    // so every embed reply ended up under stray text. Clear it unless the caller set content on purpose.
+    if (!('content' in data)) data = { ...data, content: null };
     if (this._lastReply) return this._lastReply.edit(data);
     return this.message.reply(data);
   }

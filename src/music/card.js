@@ -14,6 +14,7 @@ const DISC = ['◐', '◓', '◑', '◒']; // half-filled circles: reads as a tu
 const LOOP_LABEL = { [QueueRepeatMode.OFF]: 'off', [QueueRepeatMode.TRACK]: 'track', [QueueRepeatMode.QUEUE]: 'queue', [QueueRepeatMode.AUTOPLAY]: 'autoplay' };
 
 const live = new Map(); // guildId -> { message, timer, frame, busy, trackId }
+const startSeq = new Map(); // guildId -> latest start() call number
 
 const fmtMs = (ms) => {
   const s = Math.max(0, Math.floor((ms || 0) / 1000));
@@ -88,11 +89,18 @@ async function start(queue) {
   const old = live.get(guildId);
   if (old) { clearInterval(old.timer); old.message.delete().catch(() => {}); live.delete(guildId); }
 
+  // Rapid skips fire several playerStart events before the first send resolves. Only the newest start may own the
+  // card: any older one removes the message it just posted instead of leaving an orphan with live buttons.
+  const mySeq = (startSeq.get(guildId) || 0) + 1;
+  startSeq.set(guildId, mySeq);
+
   let message;
   try { message = await channel.send(buildCard(client, queue, 0)); } catch (err) { log.warn(`now-playing card failed: ${err.message}`); return; }
+  if (startSeq.get(guildId) !== mySeq) { message.delete().catch(() => {}); return; }
 
   const st = { message, frame: 0, busy: false, timer: null };
   const tick = async () => {
+    if (live.get(guildId) !== st) return; // replaced or cleared: never touch another card's state
     const q = useQueue(guildId);
     if (!q?.currentTrack) return clear(guildId, 'Record stopped.', client);
     if (!q.node.isPaused() && !st.busy) {

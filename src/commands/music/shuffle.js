@@ -25,6 +25,6 @@ module.exports = {
     }
 
     queue.tracks.shuffle(); require('../../music/card').refresh(queue);
-    await interaction.reply({ embeds: [response({ client: interaction.client, description: `Shuffled **${queue.tracks.size}** tracks.`, color: colors.success })] });
+    await interaction.reply({ embeds: [response({ client: interaction.client, description: queue.tracks.size < 2 ? 'Nothing to shuffle: fewer than two tracks are queued.' : `Shuffled **${queue.tracks.size}** tracks.`, color: colors.success })] });
   },
 };

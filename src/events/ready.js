@@ -17,6 +17,7 @@ module.exports = {
     });
     await registerCommands(client);
     restoreGiveaways(client);
+    require('../database/reminders').startSweep(client);
     require('../utils/announceUpdate').announceUpdate(client);
 
     // Enforce the data-retention promise: purge servers that removed the bot over 30 days ago.
