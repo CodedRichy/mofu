@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Plus } from 'lucide-react'
+import { ArrowRight, ShieldCheck, MessageSquareText, Music2, Trophy, Swords, Timer } from 'lucide-react'
 import { Layout } from '../components/Layout'
 import '../styles/landing.css'
 
@@ -8,14 +8,44 @@ import { INVITE_URL } from '../lib/invite'
 
 // With no VITE_DISCORD_CLIENT_ID there is no valid invite: render an inert button (and, in dev, say why)
 // rather than silently sending visitors to /dashboard.
+function Mascot() {
+  return <span className="ln-mascot" aria-hidden="true"><img src="/logo.jpg" alt="" /></span>
+}
+
+// Halftone dot-matrix art, generated (no image fetch): dot radius follows a smooth field of overlapping blobs,
+// so it reads as a printed halftone. Deterministic, so it renders the same every time.
+const HCOLS = 110, HROWS = 64
+const BLOBS = [[0.72, 0.38, 0.30, 1], [0.92, 0.82, 0.26, 0.9], [0.50, 0.95, 0.30, 0.8], [0.58, 0.10, 0.16, 0.7], [1.0, 0.15, 0.2, 0.8]]
+function HalftoneArt() {
+  const dots = []
+  for (let y = 0; y < HROWS; y++) {
+    for (let x = 0; x < HCOLS; x++) {
+      const u = x / (HCOLS - 1), v = y / (HROWS - 1)
+      let f = 0
+      for (const [bx, by, br, bw] of BLOBS) {
+        const d = Math.hypot((u - bx) * 1.6, v - by) / br
+        f += bw * Math.exp(-d * d * 1.6)
+      }
+      f += 0.08 * Math.sin(u * 17 + v * 9) * f
+      const r = Math.min(0.5, Math.max(0, (f - 0.16) * 0.55))
+      if (r > 0.06) dots.push(<circle key={x + '-' + y} cx={x + 0.5} cy={y + 0.5} r={r} />)
+    }
+  }
+  return (
+    <svg className="ln-halftone" viewBox={`0 0 ${HCOLS} ${HROWS}`} preserveAspectRatio="xMaxYMid slice" aria-hidden="true" focusable="false">
+      {dots}
+    </svg>
+  )
+}
+
 function AddToDiscord() {
   if (INVITE_URL) {
-    return <a className="ln-btn ln-btn--primary" href={INVITE_URL}><Plus size={18} aria-hidden="true" />Add to Discord</a>
+    return <a className="ln-btn ln-btn--primary" href={INVITE_URL}>Add to Discord<Mascot /></a>
   }
   return (
     <>
       <span className="ln-btn ln-btn--primary" role="link" aria-disabled="true" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
-        <Plus size={18} aria-hidden="true" />Add to Discord
+        Add to Discord<Mascot />
       </span>
       {import.meta.env.DEV && (
         <p role="alert" style={{ flexBasis: '100%', margin: '8px 0 0', fontSize: 13, color: 'var(--warning)' }}>
@@ -63,12 +93,12 @@ const STEPS = [
 ]
 
 const ROWS = [
-  ['Moderation you can read', 'Every action lands in a case log with the moderator, the reason and the time. AI-initiated actions are tagged "via Sonder AI".'],
-  ['Chat that does things, safely', 'A parser, not the model, decides what runs. Permissions and role hierarchy are checked when it is proposed and again when you press confirm.'],
-  ['Music that starts fast', 'Query to first audio in about a second. Queue, loop, shuffle and volume work as slash or prefix commands.'],
-  ['Leveling and economy', 'XP, rank cards, balances and shops, with the guard rails that stop negative-amount exploits.'],
-  ['Protection', 'Anti-nuke attribution from the audit log, booster-role limits and automod, all configurable per server.'],
-  ['Your data, on a timer', 'Leave and we delete your server\'s rows after 30 days. Nothing else is kept.'],
+  [ShieldCheck, 'Moderation you can read', 'Every action lands in a case log with the moderator, the reason and the time. AI-initiated actions are tagged "via Sonder AI".'],
+  [MessageSquareText, 'Chat that does things, safely', 'A parser, not the model, decides what runs. Permissions and role hierarchy are checked when it is proposed and again when you press confirm.'],
+  [Music2, 'Music that starts fast', 'Query to first audio in about a second. Queue, loop, shuffle and volume work as slash or prefix commands.'],
+  [Trophy, 'Leveling and economy', 'XP, rank cards, balances and shops, with the guard rails that stop negative-amount exploits.'],
+  [Swords, 'Protection', 'Anti-nuke attribution from the audit log, booster-role limits and automod, all configurable per server.'],
+  [Timer, 'Your data, on a timer', 'Leave and we delete your server\'s rows after 30 days. Nothing else is kept.'],
 ]
 
 export function Landing() {
@@ -80,6 +110,8 @@ export function Landing() {
       <main className="ln">
         <div className="ln-hero-wrap">
           <section className="ln-hero">
+            <div className="ln-glow" aria-hidden="true" />
+            <HalftoneArt />
             <div>
               <span className="ln-pill"><span className="ln-dot" aria-hidden="true" />Online and answering</span>
               <h1 className="ln-h1">The bot you talk to. <span>Not the other way round.</span></h1>
@@ -163,8 +195,9 @@ export function Landing() {
             <h2 className="ln-h2">Everything a server needs, one bot.</h2>
           </Reveal>
           <dl className="ln-rows">
-            {ROWS.map(([t, d], i) => (
+            {ROWS.map(([Icon, t, d], i) => (
               <Reveal as="div" key={t} className="ln-row" delay={i * 40}>
+                <span className="ln-ico" aria-hidden="true"><Icon size={18} strokeWidth={1.75} /></span>
                 <dt>{t}</dt>
                 <dd>{d}</dd>
               </Reveal>

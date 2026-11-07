@@ -2,6 +2,11 @@
    white embeds in Discord). Surfaces and text alpha follow the quey.gg approach: depth from stacked surfaces
    and hairlines, not from colour. Chroma stays ~0 on purpose; the only colour is semantic (status). */
 :root {
+  /* the one art colour: teal halftone + glow behind the hero (quey.gg reference). Art only, never text or UI state. */
+  --halftone: oklch(0.78 0.12 205);
+  --halftone-dim: oklch(0.5 0.09 215);
+  --halftone-glow: oklch(0.45 0.09 215 / 0.35);
+
   /* surfaces, darkest to lightest */
   --bg: oklch(0.1 0.003 270);
   --bg-subtle: oklch(0.13 0.003 270);
