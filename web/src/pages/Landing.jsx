@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, ShieldCheck, MessageSquareText, Music2, Trophy, Swords, Timer } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { Layout } from '../components/Layout'
+import { ChatDemo } from '../components/landing/ChatDemo'
+import { MusicCard, usePlayer } from '../components/landing/MusicPlayer'
+import { Switcher } from '../components/landing/Switcher'
+import { Capabilities } from '../components/landing/Capabilities'
+import { Embed, BotIcon, clock } from '../components/landing/Discord'
 import '../styles/landing.css'
 
 import { INVITE_URL } from '../lib/invite'
 
-// With no VITE_DISCORD_CLIENT_ID there is no valid invite: render an inert button (and, in dev, say why)
-// rather than silently sending visitors to /dashboard.
 function Mascot() {
   return <span className="ln-mascot" aria-hidden="true"><img src="/logo.jpg" alt="" /></span>
 }
@@ -38,22 +41,14 @@ function HalftoneArt() {
   )
 }
 
+// With no VITE_DISCORD_CLIENT_ID there is no valid invite: an inert button, and (dev only) a note under the CTA row.
 function AddToDiscord() {
-  if (INVITE_URL) {
-    return <a className="ln-btn ln-btn--primary" href={INVITE_URL}>Add to Discord<Mascot /></a>
-  }
-  return (
-    <>
-      <span className="ln-btn ln-btn--primary" role="link" aria-disabled="true" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
-        Add to Discord<Mascot />
-      </span>
-      {import.meta.env.DEV && (
-        <p role="alert" style={{ flexBasis: '100%', margin: '8px 0 0', fontSize: 13, color: 'var(--warning)' }}>
-          Dev warning: VITE_DISCORD_CLIENT_ID is not set, so the invite link is disabled. Copy web/.env.example to web/.env and set it.
-        </p>
-      )}
-    </>
-  )
+  if (INVITE_URL) return <a className="ln-btn ln-btn--primary" href={INVITE_URL}>Add to Discord<Mascot /></a>
+  return <span className="ln-btn ln-btn--primary is-off" role="link" aria-disabled="true">Add to Discord<Mascot /></span>
+}
+function DevNote() {
+  if (INVITE_URL || !import.meta.env.DEV) return null
+  return <p className="ln-devnote" role="note">Dev only: VITE_DISCORD_CLIENT_ID is not set, so the invite button is disabled. Set it in web/.env.</p>
 }
 
 function Reveal({ children, delay = 0, as: Tag = 'div', className = '', ...rest }) {
@@ -85,85 +80,73 @@ function useStats() {
 
 const fmt = (n) => (typeof n === 'number' ? n.toLocaleString('en-US') : '-')
 
-const STEPS = [
-  ['Add Sonder', 'One click, and it asks only for the permissions its features need.'],
-  ['Run /migrate scan', 'It finds the bot you are replacing, spots prefix clashes, and suggests where your log channels belong.'],
-  ['Import your history', 'Bring warnings across from a CSV export with /import, with a dry run before anything is written.'],
-  ['Talk to it', 'Say "sonder mute @alex 10m spam" in chat. It shows exactly what it will do and waits for your button press.'],
-]
+// Each one checked against src/commands (leveling.js incl. voice XP, economy/*, welcome.js, goodbye.js,
+// reactionrole.js, customcommand.js, moderation/*, music/*).
+const INCLUDED = ['Leveling', 'Voice XP', 'Economy', 'Music', 'Moderation', 'Welcome & goodbye', 'Reaction roles', 'Custom commands']
 
-const ROWS = [
-  [ShieldCheck, 'Moderation you can read', 'Every action lands in a case log with the moderator, the reason and the time. AI-initiated actions are tagged "via Sonder AI".'],
-  [MessageSquareText, 'Chat that does things, safely', 'A parser, not the model, decides what runs. Permissions and role hierarchy are checked when it is proposed and again when you press confirm.'],
-  [Music2, 'Music that starts fast', 'Query to first audio in about a second. Queue, loop, shuffle and volume work as slash or prefix commands.'],
-  [Trophy, 'Leveling and economy', 'XP, rank cards, balances and shops, with the guard rails that stop negative-amount exploits.'],
-  [Swords, 'Protection', 'Anti-nuke attribution from the audit log, booster-role limits and automod, all configurable per server.'],
-  [Timer, 'Your data, on a timer', 'Leave and we delete your server\'s rows after 30 days. Nothing else is kept.'],
-]
+// /aiactions as the bot sends it (src/commands/config/aiactions.js): an ephemeral response() embed
+const STATUS = { executed: 'done', cancelled: 'cancelled', expired: 'expired', rejected: 'refused', failed: 'failed', proposed: 'waiting' }
+function AuditReply({ rows }) {
+  return (
+    <div className="ln-audit">
+      <div className="sw-cmdline"><span className="cd-ravatar" aria-hidden="true">M</span><b>Moderator</b><span>used</span><span className="dc-cmd">/aiactions</span></div>
+      <div className="sw-bot"><BotIcon size={32} /><div aria-live="polite">
+        <div className="cd-who">sonder <span className="cd-app">APP</span><span className="cd-time">Today at {clock()}</span></div>
+        {rows.length === 0
+          ? <Embed color="muted" at={clock()}>Nobody has asked Sonder to do anything in chat yet.</Embed>
+          : (
+            <Embed color="primary" at={clock()}>
+              <b>Last {rows.length} chat actions</b>
+              {rows.map((r) => (
+                <div className="ln-audit-row" key={r.n}>
+                  <code className="dc-code">#{r.n}</code> <b>{r.kind}</b>{r.durMs ? ` for ${Math.round(r.durMs / 60000)}m` : ''} <span className="dc-mention">@{r.target}</span> asked by <span className="dc-mention">@Moderator</span> {'·'} {STATUS[r.status]} {'·'} just now
+                  <div className="ln-audit-why">reason: {r.reason || 'none'}</div>
+                </div>
+              ))}
+            </Embed>
+          )}
+        <div className="sw-only">Only you can see this {'·'} Dismiss message</div>
+      </div></div>
+    </div>
+  )
+}
 
 export function Landing() {
   const stats = useStats()
   const statItems = [[stats?.guilds, 'servers'], [stats?.members, 'members served'], [stats?.commands, 'commands']].filter(([n]) => typeof n === 'number')
+  const [player, act] = usePlayer()
+  const [audit, setAudit] = useState([])
+  const [prefill, setPrefill] = useState(null)
 
   return (
     <Layout>
       <main className="ln">
         <div className="ln-hero-wrap">
-          <section className="ln-hero">
+          <section className="ln-hero" aria-labelledby="ln-h1">
             <div className="ln-glow" aria-hidden="true" />
             <HalftoneArt />
-            <div>
-              <span className="ln-pill"><span className="ln-dot" aria-hidden="true" />Online and answering</span>
-              <h1 className="ln-h1">The bot you talk to. <span>Not the other way round.</span></h1>
+            <div className="ln-hero-copy">
+              <h1 className="ln-h1" id="ln-h1">Switch bots. Keep your server. <span>Then just tell it what to do.</span></h1>
               <p className="ln-lede">
-                Sonder moderates, plays music, runs levels and an economy, and takes plain-language requests with a confirm
-                button on anything that can hurt. Built to be a drop-in replacement for the bot you have now.
+                Sonder runs next to the bot you have now, finds its prefix and channels, and brings your warnings over.
+                Ask it in plain words; anything that can hurt waits for a moderator's button.
               </p>
               <div className="ln-cta">
                 <AddToDiscord />
                 <Link className="ln-btn ln-btn--ghost" to="/commands">Browse commands <ArrowRight size={18} aria-hidden="true" /></Link>
               </div>
-              <p className="ln-fine">Free to start. No card, no vote walls.</p>
-            </div>
-
-            <div className="ln-chat" role="img" aria-label="Example: a moderator asks Sonder to mute a member and confirms with a button">
-              <div className="ln-chan" aria-hidden="true"><span>#</span><b>mod-chat</b></div>
-              <div className="ln-msg">
-                <div className="ln-avatar" aria-hidden="true">R</div>
-                <div>
-                  <div className="ln-who">riri <span className="ln-time">Today at 9:41 PM</span></div>
-                  <div className="ln-said">sonder mute <span className="ln-mention">@alex</span> 10m spamming links</div>
-                </div>
-              </div>
-              <div className="ln-msg">
-                <div className="ln-avatar"><img src="/logo.jpg" alt="" /></div>
-                <div>
-                  <div className="ln-who">sonder <span className="ln-app">APP</span> <span className="ln-time">Today at 9:41 PM</span></div>
-                  <div className="ln-embed">
-                    <b>Mute @alex for 10 minutes?</b>
-                    Reason: spamming links. Only riri can confirm.
-                    <small>Expires in 2 minutes</small>
-                  </div>
-                  <div className="ln-btns"><span className="ln-fake ln-fake--danger">Confirm</span><span className="ln-fake ln-fake--quiet">Cancel</span></div>
-                </div>
-              </div>
-              <div className="ln-msg">
-                <div className="ln-avatar"><img src="/logo.jpg" alt="" /></div>
-                <div>
-                  <div className="ln-who">sonder <span className="ln-app">APP</span> <span className="ln-time">Today at 9:42 PM</span></div>
-                  <div className="ln-embed ln-embed--done">
-                    <b>Muted @alex</b>
-                    10 minutes, via Sonder AI, logged as case #41.
-                    <small>Moderation log</small>
-                  </div>
-                </div>
+              <DevNote />
+              <div className="ln-free">
+                <span className="ln-free-l">Free in Sonder today</span>
+                <ul className="ln-pills">{INCLUDED.map((f) => <li key={f}>{f}</li>)}</ul>
               </div>
             </div>
+            <ChatDemo player={player} act={act} setAudit={setAudit} prefill={prefill} />
           </section>
         </div>
 
         {statItems.length > 1 && (
-          <Reveal as="section" className="ln-section">
+          <Reveal as="section" className="ln-section ln-section--tight" aria-label="Live numbers">
             <div className="ln-stats">
               {statItems.map(([n, l]) => (
                 <div className="ln-stat" key={l}><div className="ln-stat-n">{fmt(n)}</div><div className="ln-stat-l">{l}</div></div>
@@ -172,64 +155,76 @@ export function Landing() {
           </Reveal>
         )}
 
-        <section className="ln-section">
+        <section className="ln-section" aria-labelledby="ln-switch">
           <Reveal>
             <div className="ln-eyebrow">Switching</div>
-            <h2 className="ln-h2">Moved in an afternoon.</h2>
-            <p className="ln-sub">You should not have to rebuild a server to try a better bot.</p>
+            <h2 className="ln-h2" id="ln-switch">Switch without starting over.</h2>
+            <p className="ln-sub">Keep your old bot running. Sonder finds it, avoids its prefix, reuses its channels and imports your warnings. Turn the old one off when you are ready.</p>
           </Reveal>
-          <ol className="ln-steps">
-            {STEPS.map(([t, d], i) => (
-              <Reveal as="li" key={t} className="ln-step" delay={i * 60}>
-                <span className="ln-step-n">{String(i + 1).padStart(2, '0')}</span>
-                <h3>{t}</h3>
-                <p>{d}</p>
-              </Reveal>
-            ))}
-          </ol>
+          <Reveal delay={60}>
+            <Switcher onTry={() => setPrefill({ text: 'sonder mute @member 10m for spamming links', n: Date.now() })} />
+          </Reveal>
         </section>
 
-        <section className="ln-section">
-          <Reveal>
-            <div className="ln-eyebrow">What it does</div>
-            <h2 className="ln-h2">Everything a server needs, one bot.</h2>
-          </Reveal>
-          <dl className="ln-rows">
-            {ROWS.map(([Icon, t, d], i) => (
-              <Reveal as="div" key={t} className="ln-row" delay={i * 40}>
-                <span className="ln-ico" aria-hidden="true"><Icon size={18} strokeWidth={1.75} /></span>
-                <dt>{t}</dt>
-                <dd>{d}</dd>
-              </Reveal>
-            ))}
-          </dl>
-          <Link className="ln-link" to="/commands">See every command <ArrowRight size={16} aria-hidden="true" /></Link>
-        </section>
-
-        <section className="ln-section">
+        <section className="ln-section" aria-labelledby="ln-safe">
           <Reveal className="ln-panel">
             <div>
               <div className="ln-eyebrow">Safe by construction</div>
-              <h2 className="ln-h2">It asks before it acts.</h2>
+              <h2 className="ln-h2" id="ln-safe">It asks before it acts.</h2>
               <p className="ln-sub">
-                The model only writes the reply. Actions are matched by code, checked against the invoker's own permissions,
-                rate limited, and recorded in an audit table you can read with /aiactions.
+                The model only writes replies. Actions are matched by code, checked against the asker's own
+                permissions and role when proposed and again on the button press, rate limited, and written to an
+                audit table you read with <code className="dc-code">/aiactions</code>.
               </p>
+              <p className="ln-sub ln-sub--small">This reply follows what you do in the demo at the top.</p>
             </div>
-            <div className="ln-term" aria-label="Example audit output">
-              <div><i>/aiactions</i></div>
-              <div><b>mute</b> @alex 10m <i>executed</i></div>
-              <div><b>warn</b> @sam <i>cancelled</i></div>
-              <div><b>kick</b> @jo <i>rejected: role above yours</i></div>
-            </div>
+            <AuditReply rows={audit} />
           </Reveal>
         </section>
 
-        <Reveal as="section" className="ln-section ln-final">
-          <h2 className="ln-h2">Try it in your server.</h2>
+        <section className="ln-section" aria-labelledby="ln-what">
+          <Reveal>
+            <div className="ln-eyebrow">What it does</div>
+            <h2 className="ln-h2" id="ln-what">Everything a server needs, one bot.</h2>
+          </Reveal>
+          <Reveal delay={60}><Capabilities /></Reveal>
+          <Link className="ln-link" to="/commands">See every command <ArrowRight size={16} aria-hidden="true" /></Link>
+        </section>
+
+        <section className="ln-section" aria-labelledby="ln-music">
+          <div className="ln-music">
+            <Reveal className="ln-music-copy">
+              <div className="ln-eyebrow">Music</div>
+              <h2 className="ln-h2" id="ln-music">A record player, right in the channel.</h2>
+              <p className="ln-sub">
+                One live card per server, kept up to date while the song plays. Pause lifts the needle, the loop mode
+                sits on its button. Say <code className="dc-code">sonder play</code> and a song, or use <code className="dc-code">/play</code>.
+              </p>
+              <p className="ln-sub ln-sub--small">The card's real buttons, with mock tracks. Songs you play in the demo above join this queue.</p>
+            </Reveal>
+            <Reveal delay={80} className="ln-music-chan">
+              <div className="ln-chanbar"><span>#</span>music</div>
+              <div className="cd-msg">
+                <div className="cd-avatar"><img src="/logo.jpg" alt="" /></div>
+                <div className="cd-main">
+                  <div className="cd-who">sonder <span className="cd-app">APP</span><span className="cd-time">Today at {player.at}</span></div>
+                  <MusicCard player={player} act={act} />
+                  {player.ended && <button type="button" className="ln-restart" onClick={() => act('reset')}>Restart the demo queue</button>}
+                </div>
+              </div>
+            </Reveal>
+          </div>
+        </section>
+
+        <Reveal as="section" className="ln-section ln-final" aria-labelledby="ln-final">
+          <img className="ln-final-cat" src="/logo.jpg" alt="" />
+          <h2 className="ln-h2" id="ln-final">Add it next to your current bot.</h2>
+          <p className="ln-sub">Run <code className="dc-code">/migrate scan</code>. Nothing changes until you say so.</p>
           <div className="ln-cta">
             <AddToDiscord />
+            <Link className="ln-btn ln-btn--ghost" to="/commands">Browse commands <ArrowRight size={18} aria-hidden="true" /></Link>
           </div>
+          <DevNote />
         </Reveal>
         <div className="ln-end" />
       </main>
