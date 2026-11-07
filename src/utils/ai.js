@@ -70,6 +70,7 @@ async function chat(messages, { maxTokens = 512, temperature = 0.7, model = MODE
           ? { max_tokens: Math.max(maxTokens, 80), reasoning_effort: 'low', include_reasoning: false }
           : { max_tokens: maxTokens }),
       }),
+      signal: AbortSignal.timeout(15000),
     });
 
     if (!res.ok) {

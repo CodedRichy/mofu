@@ -39,3 +39,22 @@ test('bad choice is rejected, wrong-case choice is normalized', () => {
 test('string length limit is enforced', () => {
   assert.match(ctxFor(['5', 'fast', 'this note is far too long'])._invalid[0], /at most 10 characters/);
 });
+
+test('sloppy numbers are rejected, not truncated', () => {
+  for (const bad of ['1k', '1,000', '5e3', '1_0', '12abc', '1.5']) {
+    assert.match(ctxFor([bad])._invalid[0], /must be a number/, bad);
+  }
+  assert.strictEqual(ctxFor(['+7']).options.getInteger('amount'), 7);
+});
+
+const userCmd = { data: new SlashCommandBuilder().setName('u').setDescription('u').addUserOption((o) => o.setName('target').setDescription('t')) };
+const msgWith = (cached) => ({ ...fakeMessage, client: { users: { cache: new Map(cached.map((i) => [i, { id: i }])) } } });
+
+test('unresolved user ids are invalid, resolved ones pass', () => {
+  const id = '123456789012345678';
+  assert.match(new PrefixContext(msgWith([]), [id], userCmd)._invalid[0], /Could not find that user/);
+  assert.match(new PrefixContext(msgWith([]), ['garbage'], userCmd)._invalid[0], /Could not find that user/);
+  const ok = new PrefixContext(msgWith([id]), [`<@${id}>`], userCmd);
+  assert.deepStrictEqual(ok._invalid, []);
+  assert.strictEqual(ok.options.getUser('target').id, id);
+});

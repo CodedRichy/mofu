@@ -7,6 +7,8 @@ const log = require('../../utils/logger');
 // Strip the noise YouTube titles carry so the lyrics search matches: "(Official Video)", "[HD]", "ft. ..." etc.
 function cleanTitle(s) {
   return String(s || '')
+    .replace(/\s+-\s+Topic\s*$/i, '')
+    .replace(/\s*VEVO\s*$/i, '')
     .replace(/[(\[][^)\]]*(official|video|audio|lyrics?|visualizer|hd|4k|remaster)[^)\]]*[)\]]/gi, ' ')
     .replace(/\b(official\s+(music\s+)?(video|audio)|lyric\s+video)\b/gi, ' ')
     .replace(/\s+/g, ' ')
@@ -26,7 +28,7 @@ module.exports = {
 
     if (!query) {
       return interaction.reply({
-        embeds: [response({ client: interaction.client, description: 'Nothing is playing. Try `;lyrics artist song`.', color: colors.muted })],
+        embeds: [response({ client: interaction.client, description: 'Nothing is playing. Try `/lyrics artist song`.', color: colors.muted })],
         ephemeral: true,
       });
     }

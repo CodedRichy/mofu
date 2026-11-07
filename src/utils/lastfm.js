@@ -13,11 +13,29 @@ async function call(method, params = {}) {
     if (v != null) url.searchParams.set(k, v);
   }
 
-  const res = await fetch(url.toString());
-  if (!res.ok) return null;
-  const data = await res.json();
-  if (data.error) return null;
+  // Last.fm being slow/down must not read as "user not found": throw a typed error the commands can report.
+  let res;
+  try {
+    res = await fetch(url.toString(), { signal: AbortSignal.timeout(5000) });
+  } catch (err) {
+    throw unavailable(err.name === 'TimeoutError' ? 'timeout' : err.message);
+  }
+  if (res.status >= 500 || res.status === 429) throw unavailable(`HTTP ${res.status}`);
+  let data = null;
+  try { data = await res.json(); } catch { /* non-JSON body */ }
+  if (data?.error) {
+    // 6 = user/param not found; 8, 11, 16, 29 = Last.fm side trouble or rate limit
+    if ([8, 11, 16, 29].includes(data.error)) throw unavailable(`error ${data.error}`);
+    return null;
+  }
+  if (!res.ok || !data) return null;
   return data;
+}
+
+function unavailable(reason) {
+  const e = new Error(`Last.fm unavailable: ${reason}`);
+  e.code = 'LASTFM_UNAVAILABLE';
+  return e;
 }
 
 module.exports = {

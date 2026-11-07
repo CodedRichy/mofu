@@ -6,7 +6,7 @@ function validateOption(opt, val) {
   if (val === null || val === undefined) {
     // an Integer/Number that was supplied but did not parse
     if (opt.type === ApplicationCommandOptionType.Integer || opt.type === ApplicationCommandOptionType.Number) {
-      return { error: `\`${opt.name}\` must be a number.` };
+      return { error: `\`${opt.name}\` must be a number (digits only, no commas or suffixes like \`1k\`).` };
     }
     return null;
   }
@@ -94,31 +94,40 @@ class PrefixContext {
       switch (opt.type) {
         case ApplicationCommandOptionType.User: {
           const raw = args.shift();
-          const id = raw.replace(/[<@!>]/g, '');
-          this._parsed[opt.name] = { id, raw };
+          const m = /^<@!?(\d{17,20})>$/.exec(raw) || /^(\d{17,20})$/.exec(raw);
+          const cache = this.client?.users?.cache;
+          if (!m || (cache && !cache.has(m[1]))) { this._invalid.push(`Could not find that user (\`${opt.name}\`). Mention them or use their ID.`); continue; }
+          this._parsed[opt.name] = { id: m[1], raw };
           break;
         }
         case ApplicationCommandOptionType.Channel: {
           const raw = args.shift();
-          const id = raw.replace(/[<#>]/g, '');
-          this._parsed[opt.name] = { id, raw };
+          const m = /^<#(\d{17,20})>$/.exec(raw) || /^(\d{17,20})$/.exec(raw);
+          const cache = this.guild?.channels?.cache;
+          if (!m || (cache && !cache.has(m[1]))) { this._invalid.push(`Could not find that channel (\`${opt.name}\`). Mention it or use its ID.`); continue; }
+          this._parsed[opt.name] = { id: m[1], raw };
           break;
         }
         case ApplicationCommandOptionType.Role: {
           const raw = args.shift();
-          const id = raw.replace(/[<@&>]/g, '');
-          this._parsed[opt.name] = { id, raw };
+          const m = /^<@&(\d{17,20})>$/.exec(raw) || /^(\d{17,20})$/.exec(raw);
+          const cache = this.guild?.roles?.cache;
+          if (!m || (cache && !cache.has(m[1]))) { this._invalid.push(`Could not find that role (\`${opt.name}\`). Mention it or use its ID.`); continue; }
+          this._parsed[opt.name] = { id: m[1], raw };
           break;
         }
         case ApplicationCommandOptionType.Integer: {
-          // Keep 0 (e.g. `slowmode 0`); only unparseable input becomes null.
-          const n = parseInt(args.shift());
-          this._parsed[opt.name] = Number.isNaN(n) ? null : n;
+          // Strict: optional sign + digits only. "1k", "1,000", "5e3" are rejected instead of silently becoming 1/1/5.
+          // Keep 0 (e.g. `slowmode 0`); only unparseable input becomes null (reported by validateOption).
+          const t = args.shift();
+          const n = /^[+-]?\d+$/.test(t) ? Number(t) : NaN;
+          this._parsed[opt.name] = Number.isSafeInteger(n) ? n : null;
           break;
         }
         case ApplicationCommandOptionType.Number: {
-          const n = parseFloat(args.shift());
-          this._parsed[opt.name] = Number.isNaN(n) ? null : n;
+          const t = args.shift();
+          const n = /^[+-]?(\d+\.?\d*|\.\d+)$/.test(t) ? Number(t) : NaN;
+          this._parsed[opt.name] = Number.isFinite(n) ? n : null;
           break;
         }
         case ApplicationCommandOptionType.Boolean: {

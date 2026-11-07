@@ -56,6 +56,19 @@ module.exports = {
     ),
 
   async execute(interaction) {
+    try {
+      return await run(interaction);
+    } catch (err) {
+      if (err?.code !== 'LASTFM_UNAVAILABLE') throw err;
+      const payload = { embeds: [response({ client: interaction.client, description: 'Last.fm is having trouble right now, try again in a minute.', color: colors.error })] };
+      if (interaction.deferred || interaction.replied) return interaction.editReply(payload);
+      return interaction.reply({ ...payload, ephemeral: true });
+    }
+  },
+};
+
+async function run(interaction) {
+  {
     if (!config.lastfm.apiKey) {
       return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Last.fm API key not configured.', color: colors.error })], ephemeral: true });
     }
@@ -64,12 +77,13 @@ module.exports = {
 
     if (sub === 'set') {
       const username = interaction.options.getString('username');
+      await interaction.deferReply();
       const profile = await lastfm.getProfile(username);
       if (!profile) {
-        return interaction.reply({ embeds: [response({ client: interaction.client, description: `Last.fm user \`${username}\` not found.`, color: colors.error })], ephemeral: true });
+        return interaction.editReply({ embeds: [response({ client: interaction.client, description: `Last.fm user \`${username}\` not found.`, color: colors.error })] });
       }
       store.setConfig(interaction.guild.id, `lastfm_${interaction.user.id}`, username);
-      return interaction.reply({ embeds: [response({ client: interaction.client, description: `Last.fm linked to **${username}** (${Number(profile.playcount).toLocaleString()} scrobbles)`, color: colors.success })] });
+      return interaction.editReply({ embeds: [response({ client: interaction.client, description: `Last.fm linked to **${username}** (${Number(profile.playcount).toLocaleString()} scrobbles) in this server. Run \`fm set\` again in other servers you use me in.`, color: colors.success })] });
     }
 
     const targetUser = interaction.options.getUser('user') || interaction.user;
@@ -163,5 +177,7 @@ module.exports = {
       if (profile.image) embed.setThumbnail(profile.image);
       return interaction.editReply({ embeds: [embed] });
     }
-  },
-};
+
+    return interaction.editReply({ embeds: [response({ client: interaction.client, description: 'Usage: `fm set <username>`, `fm np [user]`, `fm topartists|topalbums|toptracks [period]`, `fm recent`, `fm profile [user]`.', color: colors.muted })] });
+  }
+}

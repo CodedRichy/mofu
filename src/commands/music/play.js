@@ -43,6 +43,18 @@ module.exports = {
       return interaction.reply({ embeds: [response({ client: interaction.client, description: `Already playing in ${botVc}. Join that channel or wait.`, color: colors.error })], ephemeral: true });
     }
 
+    // Say exactly what is missing instead of the generic "couldn't find or play that" after a failed join.
+    const perms = channel.permissionsFor(interaction.guild.members.me);
+    const missing = [];
+    if (!perms?.has('Connect')) missing.push('Connect');
+    if (!perms?.has('Speak')) missing.push('Speak');
+    if (missing.length) {
+      return interaction.reply({ embeds: [response({ client: interaction.client, description: `I'm missing **${missing.join(' and ')}** in ${channel}. Give me ${missing.length > 1 ? 'those permissions' : 'that permission'} there and try again.`, color: colors.error })], ephemeral: true });
+    }
+    if (channel.userLimit && channel.members.size >= channel.userLimit && !botVc && !perms.has('MoveMembers')) {
+      return interaction.reply({ embeds: [response({ client: interaction.client, description: `${channel} is full (${channel.userLimit} members). I can't join it.`, color: colors.error })], ephemeral: true });
+    }
+
     await interaction.deferReply();
 
     const player = useMainPlayer();
