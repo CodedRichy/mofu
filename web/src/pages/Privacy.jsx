@@ -1,4 +1,5 @@
 import { Layout } from '../components/Layout'
+import { BRAND } from '../lib/brand'
 
 export function Privacy() {
   return (
@@ -17,11 +18,11 @@ export function Privacy() {
 
           <section>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-semibold)', color: 'var(--fg-2)', marginBottom: 'var(--space-2)' }}>what we collect</h2>
-            <p>Sonder stores the minimum data needed to function:</p>
+            <p>{BRAND} stores the minimum data needed to function:</p>
             <ul style={{ marginTop: 'var(--space-2)', paddingLeft: 'var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
               <li><strong style={{ color: 'var(--fg-2)' }}>Server config</strong> — settings you configure (welcome messages, modlog channels, prefix, automod rules)</li>
               <li><strong style={{ color: 'var(--fg-2)' }}>Moderation data</strong> — warnings, notes, and modlog entries for your server</li>
-              <li><strong style={{ color: 'var(--fg-2)' }}>Chat action log</strong> — when someone asks Sonder to mute, warn or kick in chat, we record who asked, who it was about, the reason, the outcome, and the first 300 characters of the request. Server admins can read it with /aiactions. It is deleted with the rest of the server's data</li>
+              <li><strong style={{ color: 'var(--fg-2)' }}>Chat action log</strong> — when someone asks {BRAND} to mute, warn or kick in chat, we record who asked, who it was about, the reason, the outcome, and the first 300 characters of the request. Server admins can read it with /aiactions. It is deleted with the rest of the server's data</li>
               <li><strong style={{ color: 'var(--fg-2)' }}>Economy & XP</strong> — balances, inventory, and experience points per user per server</li>
               <li><strong style={{ color: 'var(--fg-2)' }}>User IDs</strong> — Discord user and server IDs to associate data with the correct accounts</li>
             </ul>
@@ -42,25 +43,25 @@ export function Privacy() {
             <p>Some features send message text to a third-party AI provider (Groq) for processing:</p>
             <ul style={{ marginTop: 'var(--space-2)', paddingLeft: 'var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
               <li><strong style={{ color: 'var(--fg-2)' }}>AI commands</strong> (ask, vibe, sentiment, summarize, roast, persona) send the text they act on</li>
-              <li><strong style={{ color: 'var(--fg-2)' }}>Talking to Sonder</strong> — when a message contains the word "sonder" or mentions the bot, that message plus the last few messages in the channel are sent so it can reply in context. It cannot see anything else</li>
+              <li><strong style={{ color: 'var(--fg-2)' }}>Talking to {BRAND}</strong> — when a message contains the word "{BRAND}" (or its old name, "sonder", while the rename settles) or mentions the bot, that message plus the last few messages in the channel are sent so it can reply in context. It cannot see anything else</li>
               <li><strong style={{ color: 'var(--fg-2)' }}>AI moderation</strong> is off by default. If a server admin turns it on, messages from members without Manage Messages are sent to be checked</li>
             </ul>
-            <p style={{ marginTop: 'var(--space-2)' }}>Sonder does not store this text after the response. Groq processes it under its own terms and privacy policy. Bot actions requested in chat (like a mute) are never decided by the AI: they are parsed by code, checked against the requester's real permissions, and need a button confirmation.</p>
+            <p style={{ marginTop: 'var(--space-2)' }}>{BRAND} does not store this text after the response. Groq processes it under its own terms and privacy policy. Bot actions requested in chat (like a mute) are never decided by the AI: they are parsed by code, checked against the requester's real permissions, and need a button confirmation.</p>
           </section>
 
           <section>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-semibold)', color: 'var(--fg-2)', marginBottom: 'var(--space-2)' }}>deleted and edited messages</h2>
-            <p>To power the snipe commands, Sonder keeps the last 10 deleted and last 10 edited messages per channel (text, author, and attachment link) until newer ones replace them. Server admins can clear a channel's buffer, and it is deleted with the rest of the server's data.</p>
+            <p>To power the snipe commands, {BRAND} keeps the last 10 deleted and last 10 edited messages per channel (text, author, and attachment link) until newer ones replace them. Server admins can clear a channel's buffer, and it is deleted with the rest of the server's data.</p>
           </section>
 
           <section>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-semibold)', color: 'var(--fg-2)', marginBottom: 'var(--space-2)' }}>data retention</h2>
-            <p>Server data is retained as long as Sonder is in your server. When Sonder is removed, all of that server's data (settings, moderation records, economy, XP, reminders, snipe buffer, everything keyed to the server) is kept for 30 days in case of accidental removal, then permanently deleted automatically. Re-adding Sonder within the 30 days restores it and cancels the deletion.</p>
+            <p>Server data is retained as long as {BRAND} is in your server. When {BRAND} is removed, all of that server's data (settings, moderation records, economy, XP, reminders, snipe buffer, everything keyed to the server) is kept for 30 days in case of accidental removal, then permanently deleted automatically. Re-adding {BRAND} within the 30 days restores it and cancels the deletion.</p>
           </section>
 
           <section>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-semibold)', color: 'var(--fg-2)', marginBottom: 'var(--space-2)' }}>your rights</h2>
-            <p>You can request deletion of all data associated with your server by removing Sonder and contacting us. Server owners can view stored data through the dashboard.</p>
+            <p>You can request deletion of all data associated with your server by removing {BRAND} and contacting us. Server owners can view stored data through the dashboard.</p>
           </section>
 
           <section>

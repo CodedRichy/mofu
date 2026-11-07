@@ -5,6 +5,7 @@ import { NOISE_SVG } from '../components/Layout'
 import { api } from '../lib/api'
 import { useToken } from '../lib/auth'
 import { useListText } from '../lib/listText'
+import { BRAND } from '../lib/brand'
 
 function NavItem({ icon: Icon, label, active, onClick }) {
   const [h, setH] = useState(false)
@@ -454,7 +455,7 @@ export function GuildConfig() {
       <main className="dash-main" style={{ flex: 1, overflow: 'auto', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: 640 }}>
           {tab === 'general' && (
-            <Panel title="General" description="the basics. prefix, identity, how sonder shows up.">
+            <Panel title="General" description={`the basics. prefix, identity, how ${BRAND} shows up.`}>
               <SectionCard title="Prefix">
                 <Field label="Command Prefix" value={cfg.prefix} onChange={v => update('prefix', v)} hint="Default: ;" icon={Hash} />
               </SectionCard>
@@ -511,7 +512,7 @@ export function GuildConfig() {
           )}
 
           {tab === 'logging' && (
-            <Panel title="Logging" description="sonder remembers everything. choose what gets written down.">
+            <Panel title="Logging" description={`${BRAND} remembers everything. choose what gets written down.`}>
               <SectionCard title="Channels">
                 <Field label="Modlog Channel" value={cfg.modlog_channel} onChange={v => update('modlog_channel', v || null)} icon={Hash} hint="Mod actions (ban, kick, mute, warn) posted here" />
                 <Field label="Audit Log Channel" value={cfg.audit_log_channel} onChange={v => update('audit_log_channel', v || null)} icon={Hash} hint="Server events (role changes, channel edits, deletions)" />
@@ -521,7 +522,7 @@ export function GuildConfig() {
           )}
 
           {tab === 'ai' && (
-            <Panel title="AI Features" description="the part that makes sonder, sonder.">
+            <Panel title="AI Features" description={`the part that makes ${BRAND}, ${BRAND}.`}>
               <SectionCard>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-5)' }}>
                   <div style={{
@@ -540,7 +541,7 @@ export function GuildConfig() {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
                   {[
-                    { cmd: '/ask', desc: 'Ask Sonder AI any question' },
+                    { cmd: '/ask', desc: `Ask ${BRAND} AI any question` },
                     { cmd: '/summarize', desc: 'Summarize recent channel conversation' },
                     { cmd: '/sentiment', desc: 'Analyze message sentiment in channel' },
                   ].map(({ cmd, desc }) => (
@@ -582,7 +583,7 @@ export function GuildConfig() {
           )}
 
           {tab === 'automod' && (
-            <Panel title="Automod" description="automated protection. sonder watches so you don't have to.">
+            <Panel title="Automod" description={`automated protection. ${BRAND} watches so you don't have to.`}>
               {!automod && automodError ? (
                 <Notice>{"Couldn't load automod settings. " + automodError}</Notice>
               ) : !automod ? (
@@ -731,7 +732,7 @@ export function GuildConfig() {
           )}
 
           {tab === 'commands' && (
-            <Panel title="Custom Commands" description="your words, sonder's voice.">
+            <Panel title="Custom Commands" description={`your words, ${BRAND}'s voice.`}>
               <Notice>{cmdError}</Notice>
               <SectionCard title="Add Command">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>

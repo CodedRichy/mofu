@@ -5,28 +5,31 @@ import { Layout } from '../components/Layout'
 import { ChatDemo } from '../components/landing/ChatDemo'
 import { MusicCard, usePlayer } from '../components/landing/MusicPlayer'
 import { Switcher } from '../components/landing/Switcher'
-import { Capabilities } from '../components/landing/Capabilities'
+import { TicketsMock, LoggingMock, LoggingSettings, LeaderboardMock, VoiceMock, LastfmMock, AntinukeMock, AntinukeAlert } from '../components/landing/Modules'
 import { Embed, BotIcon, clock } from '../components/landing/Discord'
 import '../styles/landing.css'
 
 import { INVITE_URL } from '../lib/invite'
+import { BRAND } from '../lib/brand'
 
 function Mascot() {
   return <span className="ln-mascot" aria-hidden="true"><img src="/logo.jpg" alt="" /></span>
 }
 
 // Halftone dot-matrix art, generated (no image fetch): dot radius follows a smooth field of overlapping blobs,
-// so it reads as a printed halftone. Deterministic, so it renders the same every time.
-const HCOLS = 110, HROWS = 64
-const BLOBS = [[0.72, 0.38, 0.30, 1], [0.92, 0.82, 0.26, 0.9], [0.50, 0.95, 0.30, 0.8], [0.58, 0.10, 0.16, 0.7], [1.0, 0.15, 0.2, 0.8]]
-function HalftoneArt() {
+// so it reads as a printed halftone. Deterministic, so it renders the same every time. It sits behind the chat
+// card, centred on it: the blobs ring the card's corners so dots show in the margin around it, and the CSS mask
+// fades the field out before the hero card's edge. Built once at module load, not on every render.
+const HCOLS = 84, HROWS = 72
+const BLOBS = [[0.86, 0.06, 0.30, 1], [0.92, 0.9, 0.28, 0.9], [0.1, 0.94, 0.3, 0.85], [0.03, 0.4, 0.2, 0.55], [0.3, 0.02, 0.2, 0.5], [0.5, 0.5, 0.6, 0.3]]
+const DOTS = (() => {
   const dots = []
   for (let y = 0; y < HROWS; y++) {
     for (let x = 0; x < HCOLS; x++) {
       const u = x / (HCOLS - 1), v = y / (HROWS - 1)
       let f = 0
       for (const [bx, by, br, bw] of BLOBS) {
-        const d = Math.hypot((u - bx) * 1.6, v - by) / br
+        const d = Math.hypot((u - bx) * (HCOLS / HROWS), v - by) / br
         f += bw * Math.exp(-d * d * 1.6)
       }
       f += 0.08 * Math.sin(u * 17 + v * 9) * f
@@ -34,9 +37,12 @@ function HalftoneArt() {
       if (r > 0.06) dots.push(<circle key={x + '-' + y} cx={x + 0.5} cy={y + 0.5} r={r} />)
     }
   }
+  return dots
+})()
+function HalftoneArt() {
   return (
-    <svg className="ln-halftone" viewBox={`0 0 ${HCOLS} ${HROWS}`} preserveAspectRatio="xMaxYMid slice" aria-hidden="true" focusable="false">
-      {dots}
+    <svg className="ln-halftone" viewBox={`0 0 ${HCOLS} ${HROWS}`} preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+      {DOTS}
     </svg>
   )
 }
@@ -84,6 +90,39 @@ const fmt = (n) => (typeof n === 'number' ? n.toLocaleString('en-US') : '-')
 // reactionrole.js, customcommand.js, moderation/*, music/*).
 const INCLUDED = ['Leveling', 'Voice XP', 'Economy', 'Music', 'Moderation', 'Welcome & goodbye', 'Reaction roles', 'Custom commands']
 
+// One full-width band per module: number, eyebrow, headline, a line of copy, then the mock. Sides alternate.
+function Mod({ n, id, eyebrow, title, text, list, side, children }) {
+  return (
+    <section className="ln-mod" aria-labelledby={id}>
+      <div className="ln-mod-in">
+        <Reveal className="ln-mod-copy">
+          <div className="ln-eyebrow"><span className="ln-mod-n">{n}</span>{eyebrow}</div>
+          <h2 className="ln-h2" id={id}>{title}</h2>
+          <p className="ln-sub">{text}</p>
+          {list && <ul className="ln-mod-list">{list.map((x, i) => <li key={i}><span>{x}</span></li>)}</ul>}
+          {side && <div className="ln-mod-side">{side}</div>}
+        </Reveal>
+        <Reveal delay={80} className="ln-mod-mock">{children}</Reveal>
+      </div>
+    </section>
+  )
+}
+
+// Proof strip: checkable facts about the bot, not usage numbers (pre-launch). 85 / 170 come from commands.json,
+// which scripts/gen-commands.mjs builds from src/commands; the invite has no Administrator bit (lib/invite.js).
+const PROOF = [
+  ['170', 'commands, 85 of them slash'],
+  ['No', 'Administrator permission asked for'],
+  ['30 days', 'after removal, your server data is deleted'],
+  ['Every', 'chat action waits for a moderator\'s button'],
+  ['CSV', 'import for warnings from your old bot'],
+  ['One', 'live music card per server'],
+]
+function Proof() {
+  const row = (hidden) => PROOF.map(([b, t]) => <li key={(hidden ? 'h' : '') + t} aria-hidden={hidden || undefined}><b>{b}</b> {t}</li>)
+  return <div className="ln-proof"><ul aria-label={`What ${BRAND} does`}>{row(false)}{row(true)}</ul></div>
+}
+
 // /aiactions as the bot sends it (src/commands/config/aiactions.js): an ephemeral response() embed
 const STATUS = { executed: 'done', cancelled: 'cancelled', expired: 'expired', rejected: 'refused', failed: 'failed', proposed: 'waiting' }
 function AuditReply({ rows }) {
@@ -91,9 +130,9 @@ function AuditReply({ rows }) {
     <div className="ln-audit">
       <div className="sw-cmdline"><span className="cd-ravatar" aria-hidden="true">M</span><b>Moderator</b><span>used</span><span className="dc-cmd">/aiactions</span></div>
       <div className="sw-bot"><BotIcon size={32} /><div aria-live="polite">
-        <div className="cd-who">sonder <span className="cd-app">APP</span><span className="cd-time">Today at {clock()}</span></div>
+        <div className="cd-who">{BRAND} <span className="cd-app">APP</span><span className="cd-time">Today at {clock()}</span></div>
         {rows.length === 0
-          ? <Embed color="muted" at={clock()}>Nobody has asked Sonder to do anything in chat yet.</Embed>
+          ? <Embed color="muted" at={clock()}>Nobody has asked {BRAND} to do anything in chat yet.</Embed>
           : (
             <Embed color="primary" at={clock()}>
               <b>Last {rows.length} chat actions</b>
@@ -119,29 +158,36 @@ export function Landing() {
   const [prefill, setPrefill] = useState(null)
 
   return (
-    <Layout>
+    <Layout wide>
       <main className="ln">
-        <div className="ln-hero-wrap">
-          <section className="ln-hero" aria-labelledby="ln-h1">
-            <div className="ln-glow" aria-hidden="true" />
-            <HalftoneArt />
-            <div className="ln-hero-copy">
-              <h1 className="ln-h1" id="ln-h1">Switch bots. Keep your server. <span>Then just tell it what to do.</span></h1>
-              <p className="ln-lede">
-                Sonder runs next to the bot you have now, finds its prefix and channels, and brings your warnings over.
-                Ask it in plain words; anything that can hurt waits for a moderator's button.
-              </p>
-              <div className="ln-cta">
-                <AddToDiscord />
-                <Link className="ln-btn ln-btn--ghost" to="/commands">Browse commands <ArrowRight size={18} aria-hidden="true" /></Link>
-              </div>
-              <DevNote />
-              <div className="ln-free">
-                <span className="ln-free-l">Free in Sonder today</span>
-                <ul className="ln-pills">{INCLUDED.map((f) => <li key={f}>{f}</li>)}</ul>
-              </div>
+        <header className="ln-top">
+          <div className="ln-aura" aria-hidden="true" />
+          <figure className="ln-cat"><img src="/logo.jpg" alt={`${BRAND}, a white cat`} width="136" height="136" /></figure>
+          <h1 className="ln-h1" id="ln-h1">Tell it what to do. <span>It asks before it acts.</span></h1>
+          <p className="ln-lede">
+            {BRAND} runs moderation, music, levels and logging for your Discord server. Ask in plain words; nothing that can hurt runs until a moderator presses the button.
+          </p>
+          <div className="ln-cta">
+            <AddToDiscord />
+            <Link className="ln-textlink" to="/commands">Browse commands <ArrowRight size={17} aria-hidden="true" /></Link>
+          </div>
+          <DevNote />
+          <Proof />
+        </header>
+
+        <div className="ln-stage-wrap">
+          <section className="ln-stage" aria-labelledby="ln-try">
+            <div className="ln-stage-copy">
+              <div className="ln-eyebrow">Live demo</div>
+              <h2 className="ln-h2" id="ln-try">Say it. Check it. Press it.</h2>
+              <p className="ln-sub">You are a moderator in this channel. Ask {BRAND} to mute someone: it shows the exact command, who can confirm and when the offer runs out, then waits for your button.</p>
+              <ul className="ln-pills" aria-label={`Free in ${BRAND} today`}>{INCLUDED.map((f) => <li key={f}>{f}</li>)}</ul>
             </div>
-            <ChatDemo player={player} act={act} setAudit={setAudit} prefill={prefill} />
+            <div className="ln-hero-demo">
+              <div className="ln-glow" aria-hidden="true" />
+              <HalftoneArt />
+              <ChatDemo player={player} act={act} setAudit={setAudit} prefill={prefill} />
+            </div>
           </section>
         </div>
 
@@ -159,62 +205,68 @@ export function Landing() {
           <Reveal>
             <div className="ln-eyebrow">Switching</div>
             <h2 className="ln-h2" id="ln-switch">Switch without starting over.</h2>
-            <p className="ln-sub">Keep your old bot running. Sonder finds it, avoids its prefix, reuses its channels and imports your warnings. Turn the old one off when you are ready.</p>
+            <p className="ln-sub">Keep your old bot running. {BRAND} finds it, avoids its prefix, reuses its channels and imports your warnings. Turn the old one off when you are ready.</p>
           </Reveal>
           <Reveal delay={60}>
-            <Switcher onTry={() => setPrefill({ text: 'sonder mute @member 10m for spamming links', n: Date.now() })} />
+            <Switcher onTry={() => setPrefill({ text: `${BRAND} mute @member 10m for spamming links`, n: Date.now() })} />
           </Reveal>
         </section>
 
-        <section className="ln-section" aria-labelledby="ln-safe">
-          <Reveal className="ln-panel">
-            <div>
-              <div className="ln-eyebrow">Safe by construction</div>
-              <h2 className="ln-h2" id="ln-safe">It asks before it acts.</h2>
-              <p className="ln-sub">
-                The model only writes replies. Actions are matched by code, checked against the asker's own
-                permissions and role when proposed and again on the button press, rate limited, and written to an
-                audit table you read with <code className="dc-code">/aiactions</code>.
-              </p>
-              <p className="ln-sub ln-sub--small">This reply follows what you do in the demo at the top.</p>
-            </div>
+        <div className="ln-mods">
+          <Mod n="01" id="ln-safe" eyebrow="Moderation + chat actions" title="It asks before it acts."
+            text={<>The model only writes replies. Mute, unmute, warn and kick are matched by code, checked against the asker's own permissions and role when proposed and again on the button press, and written to an audit table you read with <code className="dc-code">/aiactions</code>.</>}
+            list={['This reply follows what you do in the demo above.', 'Every mod action posts to your mod log with the moderator and the reason.']}>
             <AuditReply rows={audit} />
-          </Reveal>
-        </section>
-
-        <section className="ln-section" aria-labelledby="ln-what">
-          <Reveal>
-            <div className="ln-eyebrow">What it does</div>
-            <h2 className="ln-h2" id="ln-what">Everything a server needs, one bot.</h2>
-          </Reveal>
-          <Reveal delay={60}><Capabilities /></Reveal>
-          <Link className="ln-link" to="/commands">See every command <ArrowRight size={16} aria-hidden="true" /></Link>
-        </section>
-
-        <section className="ln-section" aria-labelledby="ln-music">
-          <div className="ln-music">
-            <Reveal className="ln-music-copy">
-              <div className="ln-eyebrow">Music</div>
-              <h2 className="ln-h2" id="ln-music">A record player, right in the channel.</h2>
-              <p className="ln-sub">
-                One live card per server, kept up to date while the song plays. Pause lifts the needle, the loop mode
-                sits on its button. Say <code className="dc-code">sonder play</code> and a song, or use <code className="dc-code">/play</code>.
-              </p>
-              <p className="ln-sub ln-sub--small">The card's real buttons, with mock tracks. Songs you play in the demo above join this queue.</p>
-            </Reveal>
-            <Reveal delay={80} className="ln-music-chan">
+          </Mod>
+          <Mod n="02" id="ln-tickets" eyebrow="Tickets" title="A button, a private channel, a transcript."
+            text="Post the panel with /ticket setup. Each ticket is a private channel that only the opener and your support role can see."
+            list={[<>Claim it, then close it with the button</>, <>On close, a <code>.txt</code> transcript goes to your ticket log channel</>, <>Set a category with <code>/ticket category</code></>]}>
+            <TicketsMock />
+          </Mod>
+          <Mod n="03" id="ln-logs" eyebrow="Logging" title="See what was deleted, edited and who joined voice."
+            text={<>Create a private <code className="dc-code">#mofu-logs</code> channel with <code className="dc-code">/logging create</code>, and switch each kind on or off with <code className="dc-code">/logging toggle</code>.</>}
+            side={<LoggingSettings />}>
+            <LoggingMock />
+          </Mod>
+          <Mod n="04" id="ln-levels" eyebrow="Levels" title="XP for talking, and for time in voice."
+            text="Ranks, level-up messages, role rewards and XP multipliers. The leaderboard shows the top ten and where you stand."
+            list={[<><code>/rank</code>, <code>/xpleaderboard</code>, <code>/levelrole</code></>, 'No-XP channels and roles, voice XP, multipliers']}>
+            <LeaderboardMock />
+          </Mod>
+          <Mod n="05" id="ln-voice" eyebrow="VoiceMaster" title="Join one channel, get your own."
+            text="Members join the create channel and get a voice channel of their own, which is deleted when it empties. If the owner leaves, the next person inside takes over."
+            list={[<>Owners run <code>/voice</code> lock, unlock, rename, limit, permit, reject, claim and info</>]}>
+            <VoiceMock />
+          </Mod>
+          <Mod n="06" id="ln-music" eyebrow="Music" title="A record player, right in the channel."
+            text={<>One live card per server, kept up to date while the song plays. Pause lifts the needle, the loop mode sits on its button. Say <code className="dc-code">{BRAND} play</code> and a song, or use <code className="dc-code">/play</code>.</>}
+            list={["The card's real buttons, with mock tracks.", 'Songs you play in the demo above join this queue.']}>
+            <div className="ln-music-chan">
               <div className="ln-chanbar"><span>#</span>music</div>
               <div className="cd-msg">
                 <div className="cd-avatar"><img src="/logo.jpg" alt="" /></div>
                 <div className="cd-main">
-                  <div className="cd-who">sonder <span className="cd-app">APP</span><span className="cd-time">Today at {player.at}</span></div>
+                  <div className="cd-who">{BRAND} <span className="cd-app">APP</span><span className="cd-time">Today at {player.at}</span></div>
                   <MusicCard player={player} act={act} />
                   {player.ended && <button type="button" className="ln-restart" onClick={() => act('reset')}>Restart the demo queue</button>}
                 </div>
               </div>
-            </Reveal>
-          </div>
-        </section>
+            </div>
+          </Mod>
+          <Mod n="07" id="ln-fm" eyebrow="Last.fm" title="What everyone is listening to."
+            text={<>Link your account once with <code className="dc-code">;fm set</code>, then <code className="dc-code">;fm</code> shows the track you are playing now, or the last one you played.</>}>
+            <LastfmMock />
+          </Mod>
+          <Mod n="08" id="ln-nuke" eyebrow="Antinuke" title="Catches mass deletes, bans and kicks."
+            text="If anyone but the owner or the whitelist passes a limit inside 10 seconds, they are banned, their roles are stripped, and the bot tries to undo what they did. Set each limit from 2 to 10."
+            side={<AntinukeAlert />}>
+            <AntinukeMock />
+          </Mod>
+        </div>
+
+        <div className="ln-section ln-section--tight">
+          <Link className="ln-link" to="/commands">See all 170 commands <ArrowRight size={16} aria-hidden="true" /></Link>
+        </div>
 
         <Reveal as="section" className="ln-section ln-final" aria-labelledby="ln-final">
           <img className="ln-final-cat" src="/logo.jpg" alt="" />

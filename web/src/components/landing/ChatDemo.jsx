@@ -3,8 +3,9 @@ import { SendHorizontal, RotateCcw, Hash, CornerUpRight } from 'lucide-react'
 import { parseAction, parseMusic, usageHint, durationMs, formatMs } from './demoParse'
 import { MusicCard, musicCommand, AddedToQueue } from './MusicPlayer'
 import { Embed, DButton, Md, MemberIcon, BotIcon, clock, relative } from './Discord'
+import { BRAND, TRIGGERS } from '../../lib/brand'
 
-// A working mock of Sonder in a Discord channel. Requests go through a copy of the bot's parsers (demoParse.js);
+// A working mock of the bot in a Discord channel. Requests go through a copy of the bot's parsers (demoParse.js);
 // checks, card layouts and wording follow src/ai/actions.js and src/utils/embed.js. Nothing leaves the browser.
 
 const ME = { id: '221034718840209408', name: 'Moderator', role: 'Mods', pos: 3 }
@@ -23,14 +24,15 @@ const MAX_MUTE = 2419200000
 const MAX_LEN = 2000 // Discord's message limit
 
 export const EXAMPLES = [
-  'sonder mute @member 10m for spamming links',
-  'sonder play ocean static',
-  'sonder what can you do',
-  'sonder warn @member2 for caps spam',
-  'sonder kick @admin',
+  `${BRAND} mute @member 10m for spamming links`,
+  `${BRAND} play ocean static`,
+  `${BRAND} what can you do`,
+  `${BRAND} warn @member2 for caps spam`,
+  `${BRAND} kick @admin`,
 ]
+const NAMED = new RegExp(`\\b(?:${TRIGGERS.join('|')})\\b`, 'i')
 
-const CAN_DO = "i moderate (mute, warn, kick, ban, purge, case history), play music in voice, run levels and an economy, and handle setup like welcome messages, logging, tickets and reaction roles. say `sonder mute @someone 10m for spam` and i'll show you exactly what i'll do before anything happens. everything else: `/help`"
+const CAN_DO = `i moderate (mute, warn, kick, ban, purge, case history), play music in voice, run levels and an economy, and handle setup like welcome messages, logging, tickets and reaction roles. say \`${BRAND} mute @someone 10m for spam\` and i'll show you exactly what i'll do before anything happens. everything else: \`/help\``
 const clip = (s, n) => (s.length > n ? `${s.slice(0, n - 3)}...` : s)
 
 function resolveName(name, gone) {
@@ -140,8 +142,8 @@ export function ChatDemo({ player, act, setAudit, prefill }) {
     if (!text) return
     push({ who: 'me', type: 'said', text })
     const replyTo = clip(text, 60)
-    if (!/\bsonder\b/i.test(text)) {
-      later(() => push({ who: 'sys', type: 'note', text: 'Sonder only answers messages that say its name. Start with "sonder".' }), DELAY)
+    if (!NAMED.test(text)) {
+      later(() => push({ who: 'sys', type: 'note', text: `${BRAND} only answers messages that say its name. Start with "${BRAND}".` }), DELAY)
       return
     }
     const music = parseMusic(text)
@@ -195,7 +197,7 @@ export function ChatDemo({ player, act, setAudit, prefill }) {
     if (m.kind === 'unmute') w.muted.delete(m.targetId)
     if (m.kind === 'kick') { w.gone.add(m.targetId); w.muted.delete(m.targetId) }
     if (m.kind === 'warn') { w.warns[m.targetId] = (w.warns[m.targetId] || 0) + 1; extra = `Warning #${w.warns[m.targetId]}` }
-    const entry = { kind: m.kind, target, reason: `${m.reason} (via Sonder AI, confirmed by ${ME.name})`, dur: m.dur, extra, at: clock() }
+    const entry = { kind: m.kind, target, reason: `${m.reason} (via ${BRAND} AI, confirmed by ${ME.name})`, dur: m.dur, extra, at: clock() }
     setMsgs((xs) => [...xs.map((x) => (x.id === id ? { ...x, status: 'done', entry } : x)), { id: nid(), at: clock(), who: 'sys', type: 'logged' }])
     setModlog((xs) => [...xs, { id: nid(), ...entry }])
     setUnseen((u) => u + 1)
@@ -297,7 +299,7 @@ export function ChatDemo({ player, act, setAudit, prefill }) {
           </div>
         ) : (
           <div className="cd-log" aria-label="Moderation log">
-            {modlog.length === 0 && <p className="cd-empty">This is the start of #mod-log. Confirm an action in #mod-chat and Sonder posts it here.</p>}
+            {modlog.length === 0 && <p className="cd-empty">This is the start of #mod-log. Confirm an action in #mod-chat and {BRAND} posts it here.</p>}
             {modlog.map((e) => (
               <div className="cd-msg" key={e.id}>
                 <Avatar bot />
@@ -313,7 +315,7 @@ export function ChatDemo({ player, act, setAudit, prefill }) {
 
       <p className="sr-only" role="status" aria-live="polite">{announce}</p>
       <form className="cd-form" onSubmit={submit}>
-        <div className="cd-typing" aria-hidden={!typing}>{typing && <><span className="cd-dots"><i /><i /><i /></span><b>sonder</b> is typing...</>}</div>
+        <div className="cd-typing" aria-hidden={!typing}>{typing && <><span className="cd-dots"><i /><i /><i /></span><b>{BRAND}</b> is typing...</>}</div>
         <div className="cd-input">
           <label htmlFor="cd-in" className="sr-only">Message #mod-chat</label>
           <input id="cd-in" ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} placeholder="Message #mod-chat" autoComplete="off" spellCheck="false" maxLength={MAX_LEN} />
@@ -322,7 +324,7 @@ export function ChatDemo({ player, act, setAudit, prefill }) {
         <div className="cd-chips" role="group" aria-label="Example messages, sent when pressed">
           <span className="cd-try">Try</span>
           {EXAMPLES.map((x) => (
-            <button type="button" key={x} className="cd-chip" onClick={() => { setTab('chat'); send(x) }}>{x.replace(/^sonder /, '')}</button>
+            <button type="button" key={x} className="cd-chip" onClick={() => { setTab('chat'); send(x) }}>{x.slice(BRAND.length + 1)}</button>
           ))}
         </div>
         <p className="cd-fine">Runs in your browser on a copy of the bot's parser rules. You are a moderator here; @admin outranks you.</p>
@@ -337,7 +339,7 @@ function Avatar({ bot }) {
     : <div className="cd-avatar cd-avatar--me" aria-hidden="true">M</div>
 }
 function Who({ bot, at }) {
-  return <div className="cd-who">{bot ? <>sonder <span className="cd-app">APP</span></> : ME.name}<span className="cd-time">Today at {at}</span></div>
+  return <div className="cd-who">{bot ? <>{BRAND} <span className="cd-app">APP</span></> : ME.name}<span className="cd-time">Today at {at}</span></div>
 }
 
 // src/utils/embed.js modAction: author = ACTION + target avatar, target thumbnail, Member/Moderator/Reason lines
@@ -387,7 +389,7 @@ function Proposal({ m, now, onResolve }) {
   if (m.status === 'done') return <ModAction e={m.entry} />
   if (m.status !== 'open') {
     return (
-      <Embed color="muted" author={m.status === 'cancelled' ? 'CANCELLED' : 'EXPIRED'} footer="via Sonder AI" at={m.at}>
+      <Embed color="muted" author={m.status === 'cancelled' ? 'CANCELLED' : 'EXPIRED'} footer={`via ${BRAND} AI`} at={m.at}>
         <b>Action</b> {m.kind}<br />
         <b>Target</b> <span className="dc-mention">@{target.name}</span><br />
         {m.dur && <><b>Duration</b> {m.dur}<br /></>}

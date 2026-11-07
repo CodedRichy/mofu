@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ShieldCheck, MessageSquareText, Music2, Trophy, Swords, Timer, Plus } from 'lucide-react'
 import { Embed, MemberIcon, clock } from './Discord'
+import { BRAND } from '../../lib/brand'
 
 // Capability rows that open to show the real reply. Each embed copies its builder:
 // /history (src/commands/moderation/history.js), refusal (actions.js say -> response error),
@@ -17,7 +18,7 @@ const ROWS = [
     ex: () => (
       <Embed color="primary" author="member" authorIcon={<MemberIcon name="member" />} thumb={<MemberIcon name="member" size={80} />} at={clock()}
         fields={[{ name: '⚠️ Warnings', value: <>
-          <code className="dc-code">#14</code> spamming links (via Sonder AI)<br />{'▸'} <span className="dc-mention">@Moderator</span> {'•'} 2 days ago<br />
+          <code className="dc-code">#14</code> spamming links (via {BRAND} AI)<br />{'▸'} <span className="dc-mention">@Moderator</span> {'•'} 2 days ago<br />
           <code className="dc-code">#9</code> caps spam (imported)<br />{'▸'} <span className="dc-mention">@Moderator</span> {'•'} 3 months ago
         </> }]}>
         <b>2</b> warnings {'·'} <b>0</b> notes
@@ -27,13 +28,13 @@ const ROWS = [
   {
     icon: MessageSquareText, t: 'Chat that does things, safely',
     d: 'Mute, unmute, warn and kick from plain words. Code, not the model, decides what runs, and it checks your permissions twice.',
-    cmd: 'sonder kick @admin',
+    cmd: `${BRAND} kick @admin`,
     ex: () => <Embed color="error" at={clock()}>you can't kick someone with a higher or equal role.</Embed>,
   },
   {
     icon: Music2, t: 'A record player in chat',
-    d: 'Play from a search or a link. Queue, loop, shuffle, volume and lyrics, from slash, prefix or "sonder play".',
-    cmd: 'sonder loop track',
+    d: `Play from a search or a link. Queue, loop, shuffle, volume and lyrics, from slash, prefix or "${BRAND} play".`,
+    cmd: `${BRAND} loop track`,
     ex: () => <Embed color="success" at={clock()}>Loop mode set to <b>track</b></Embed>,
   },
   {
@@ -59,11 +60,11 @@ const ROWS = [
   },
   {
     icon: Timer, t: 'Your data, on a timer',
-    d: "Remove Sonder and your server's rows are deleted 30 days later. Add it back inside the window and nothing is lost.",
+    d: `Remove ${BRAND} and your server's rows are deleted 30 days later. Add it back inside the window and nothing is lost.`,
     cmd: null,
     ex: () => (
       <ol className="cp-tl">
-        <li><b>Day 0</b> Sonder is removed from the server</li>
+        <li><b>Day 0</b> {BRAND} is removed from the server</li>
         <li><b>Day 1-29</b> Add it back and everything is still there</li>
         <li><b>Day 30</b> Every row stored for that server is deleted</li>
       </ol>

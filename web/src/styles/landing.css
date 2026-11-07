@@ -1,9 +1,9 @@
 /* Landing page. Composition borrowed from quey.gg (framed hero card, pills, hairline borders); white on near-black
-   to match Sonder's avatar, teal halftone as the one art colour. All values come from tokens.
+   to match mofu's avatar, teal halftone as the one art colour. All values come from tokens.
    Prefixes: ln- page, cd- chat demo, dc- Discord replica primitives, sw- switching stepper, cp- capabilities. */
 
 .ln {
-  --ln-gutter: clamp(16px, 4vw, 40px); --ln-max: 1200px; --ln-ease: var(--ease-default, cubic-bezier(.22, 1, .36, 1));
+  --ln-gutter: var(--page-gutter); --ln-max: var(--page-max); --ln-ease: var(--ease-default, cubic-bezier(.22, 1, .36, 1));
   /* one focus colour for the whole page: near-white, well over 3:1 on every surface here */
   --ln-ring: oklch(0.9 0 0);
   /* Discord-like greys, in the same family as the page surfaces */
@@ -39,33 +39,132 @@
 .ln-btn--primary:hover .ln-mascot { transform: rotate(-8deg); }
 .ln-devnote { margin-top: 10px; max-width: 46ch; font-size: var(--text-xs); line-height: 1.5; color: var(--warning); }
 
-/* ---- hero: a framed card inset from the viewport edge ---- */
-.ln-hero-wrap { padding: 8px var(--ln-gutter) 0; }
-.ln-hero {
-  position: relative; overflow: hidden; max-width: var(--ln-max); margin: 0 auto;
-  border: 1px solid var(--border-default); border-radius: var(--radius-hero);
-  background: var(--gradient-bg-top), var(--surface-1);
-  padding: clamp(22px, 4.5vw, 56px);
-  display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: clamp(28px, 4vw, 52px); align-items: center;
+/* ---- hero: a framed card inset from the viewport edge ----
+   The wrap fills the first screen under the nav with the same space above and below the card (--page-top), so the
+   card's bottom edge lands just above the fold instead of leaving a dead band. On very tall windows the fill is capped
+   (about 0.62 of the card's width) and the next section shows underneath. Type and the chat height follow the card's
+   own width (cqi) and the window height (svh), so the hero reflows from 390px to 2560px instead of sitting fixed. */
+/* First screen: the cat, one soft glow behind it, a two-line headline, one line under it, the CTA pair and the
+   proof strip, all centred. The demo stage starts right under it, so its top edge shows above the fold. */
+/* fills the first screen so the demo stage starts below the fold after a deliberate gap, never half-cut at the edge */
+.ln-top {
+  position: relative; isolation: isolate; overflow-x: clip; text-align: center; display: grid; justify-items: center; align-content: center;
+  min-height: calc(100svh - var(--topbar-height));
+  padding: clamp(28px, 6svh, 72px) var(--ln-gutter) clamp(40px, 8svh, 96px);
 }
-.ln-glow { position: absolute; inset: auto -10% -35% 25%; height: 90%; pointer-events: none; background: radial-gradient(ellipse 60% 55% at 60% 55%, var(--halftone-glow), transparent 70%); filter: blur(30px); }
-.ln-halftone {
-  position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; fill: var(--halftone); opacity: 0.9;
-  mask-image: linear-gradient(100deg, transparent 40%, #000 72%); -webkit-mask-image: linear-gradient(100deg, transparent 40%, #000 72%);
+.ln-aura {
+  position: absolute; z-index: -1; left: 50%; top: clamp(-40px, -2svh, 0px); width: min(1100px, 130vw); aspect-ratio: 1.6;
+  transform: translateX(-50%); pointer-events: none;
+  background: radial-gradient(closest-side, var(--halftone-glow), transparent 100%); opacity: 0.85; filter: blur(20px);
 }
-.ln-hero > :not(.ln-glow):not(.ln-halftone) { position: relative; min-width: 0; }
-.ln-h1 { margin: 0; font-size: clamp(40px, 5.4vw, 78px); line-height: 0.95; letter-spacing: -0.05em; font-weight: var(--weight-semibold); max-width: 12ch; text-wrap: balance; }
-.ln-h1 span { color: var(--fg-3); display: block; margin-top: 0.08em; font-size: 0.62em; line-height: 1; letter-spacing: -0.04em; }
-.ln-lede { margin: 22px 0 0; max-width: 44ch; font-size: var(--text-md); line-height: 1.6; color: var(--fg-2); }
-.ln-cta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
-.ln-free { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border-default); }
-.ln-free-l { font-size: var(--text-xs); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--fg-3); }
-.ln-pills { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
-.ln-pills li { padding: 6px 12px; border-radius: var(--radius-full); background: var(--accent); color: var(--accent-fg); font-size: var(--text-xs); font-weight: var(--weight-semibold); }
+.ln-cat {
+  margin: 0; width: clamp(88px, 12svh, 136px); aspect-ratio: 1; border-radius: 50%; overflow: hidden;
+  box-shadow: 0 0 0 6px var(--surface-1), 0 0 0 7px var(--border-strong), 0 24px 80px -12px var(--halftone-glow);
+  transition: transform 500ms var(--ln-ease);
+}
+.ln-cat img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ln-cat:hover { transform: rotate(-6deg); }
+.ln-h1 {
+  margin: clamp(20px, 3.4svh, 36px) 0 0; font-size: clamp(42px, min(7.6vw, 11svh), 120px); line-height: 0.92;
+  letter-spacing: -0.034em; word-spacing: 0.06em; font-weight: var(--weight-bold); text-wrap: balance;
+}
+.ln-h1 span { display: block; color: var(--fg-3); }
+.ln-lede { margin: clamp(14px, 2.4svh, 24px) 0 0; max-width: 62ch; font-size: clamp(var(--text-md), 1.3vw, 20px); line-height: 1.5; color: var(--fg-2); text-wrap: balance; }
+.ln-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; margin-top: clamp(20px, 3.4svh, 32px); }
+.ln-top .ln-cta { justify-content: center; }
+.ln-top .ln-devnote { margin-left: auto; margin-right: auto; }
+.ln-textlink { display: inline-flex; align-items: center; gap: 6px; height: 44px; color: var(--fg-1); text-decoration: none; font-weight: var(--weight-medium); }
+.ln-textlink svg { transition: transform 200ms var(--ln-ease); }
+.ln-textlink:hover svg { transform: translateX(3px); }
 
+/* proof strip: facts only (no server names, no counts we can't show). Scrolls slowly; still and wrapped for reduced motion. */
+.ln-proof { width: min(100%, 980px); margin-top: clamp(28px, 5svh, 52px); overflow: hidden; mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }
+.ln-proof ul { list-style: none; margin: 0; padding: 0; display: flex; width: max-content; animation: ln-marquee 48s linear infinite; }
+.ln-proof:hover ul { animation-play-state: paused; }
+.ln-proof li { display: inline-flex; align-items: center; gap: 10px; padding: 0 22px; white-space: nowrap; font-size: var(--text-sm); color: var(--fg-2); }
+.ln-proof li b { color: var(--fg-1); font-weight: var(--weight-semibold); }
+.ln-proof li::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--halftone); }
+@keyframes ln-marquee { to { transform: translateX(-50%); } }
+
+/* the demo stage: a framed card, halftone ringing the chat card, a short caption beside it */
+.ln-stage-wrap { padding: 0 var(--ln-gutter); }
+.ln-stage {
+  --hero-pad: clamp(16px, 3.6vw, 56px);
+  position: relative; overflow: hidden; max-width: var(--ln-max); margin: 0 auto; padding: var(--hero-pad);
+  border: 1px solid var(--border-default); border-radius: var(--radius-hero); background: var(--gradient-bg-top), var(--surface-1);
+  display: grid; grid-template-columns: minmax(0, 0.62fr) minmax(0, 1.38fr); gap: clamp(24px, 4vw, 64px); align-items: center;
+}
+.ln-stage > * { position: relative; min-width: 0; }
+.ln-stage-copy { display: grid; gap: 14px; align-content: center; }
+.ln-stage-copy .ln-h2 { font-size: clamp(30px, 3.4vw, 48px); margin: 0; }
+.ln-stage-copy .ln-sub { margin: 0; }
+.ln-pills { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.ln-pills li { padding: 6px 12px; border-radius: var(--radius-full); background: var(--accent); color: var(--accent-fg); font-size: var(--text-xs); font-weight: var(--weight-semibold); }
+.ln-hero-demo { position: relative; }
+.ln-hero-demo > .cd { position: relative; width: 100%; }
+.ln-glow, .ln-halftone { position: absolute; top: calc(-1 * var(--hero-pad)); left: calc(-1 * var(--hero-pad)); pointer-events: none; }
+.ln-glow, .ln-halftone { width: calc(100% + 2 * var(--hero-pad)); height: calc(100% + 2 * var(--hero-pad)); max-width: none; }
+.ln-glow { background: radial-gradient(ellipse 46% 44% at 50% 56%, var(--halftone-glow), transparent 72%); filter: blur(30px); }
+.ln-halftone {
+  fill: var(--halftone); opacity: 0.85;
+  mask-image: radial-gradient(ellipse 60% 60% at 50% 50%, #000 50%, transparent 100%); -webkit-mask-image: radial-gradient(ellipse 60% 60% at 50% 50%, #000 50%, transparent 100%);
+}
 @media (max-width: 960px) {
-  .ln-hero { grid-template-columns: 1fr; }
-  .ln-halftone { opacity: 0.5; mask-image: linear-gradient(180deg, transparent 30%, #000 95%); -webkit-mask-image: linear-gradient(180deg, transparent 30%, #000 95%); }
+  .ln-stage { grid-template-columns: 1fr; }
+  .ln-halftone { opacity: 0.55; }
+}
+
+/* floating nav pill (Layout wide): tighter on phones so it never touches Login */
+@media (max-width: 520px) {
+  .nav-pill { padding: 2px !important; gap: 0 !important; }
+  .nav-pill .nav-link { padding: 7px 9px !important; font-size: var(--text-sm) !important; }
+}
+
+/* ---- one section per module: copy beside a faithful mock, sides alternating ---- */
+.ln-mods { margin-top: clamp(64px, 9vw, 120px); border-top: 1px solid var(--border-default); }
+.ln-mod { border-bottom: 1px solid var(--border-default); }
+.ln-mod-in {
+  max-width: calc(var(--ln-max) + 2 * var(--ln-gutter)); margin: 0 auto; padding: clamp(48px, 7vw, 104px) var(--ln-gutter);
+  display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: clamp(28px, 5vw, 80px); align-items: center;
+}
+.ln-mod:nth-child(even) .ln-mod-copy { order: 2; }
+.ln-mod-copy .ln-h2 { font-size: clamp(30px, 3.6vw, 52px); }
+.ln-mod-n { font-variant-numeric: tabular-nums; color: var(--halftone); margin-right: 10px; }
+.ln-mod-list { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 8px; color: var(--fg-2); font-size: var(--text-sm); }
+.ln-mod-list li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.ln-mod-list li::before { content: ''; width: 6px; height: 6px; margin-top: 6px; border-radius: 50%; background: var(--halftone); }
+.ln-mod-list code { font-family: var(--font-mono); font-size: 0.92em; color: var(--fg-1); }
+.ln-chan { border: 1px solid var(--border-default); border-radius: var(--radius-2xl); background: var(--dc-bg); padding: 0 clamp(12px, 2vw, 20px) clamp(14px, 2vw, 20px); min-width: 0; display: grid; gap: 14px; }
+.ln-chan > .ln-chanbar { margin-bottom: 0; }
+.ln-mod-side { margin-top: 28px; }
+.ln-mod-mock, .ln-mod-copy { min-width: 0; }
+.ln-mockstack { display: grid; gap: 14px; min-width: 0; }
+.ln-eph { color: var(--fg-3); }
+.ln-file { display: inline-flex; align-items: center; gap: 8px; margin-top: 8px; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--dc-line); background: var(--dc-embed); font-size: var(--text-sm); color: var(--dc-link); }
+.ln-lb-top + .ln-lb-top { margin-top: 6px; }
+.ln-quote { border-left: 3px solid var(--dc-line); padding-left: 8px; margin-top: 2px; }
+/* voice channel list, as in Discord's sidebar */
+.ln-vc { border: 1px solid var(--border-default); border-radius: var(--radius-xl); background: var(--dc-bg); padding: 12px; display: grid; gap: 4px; max-width: 340px; }
+.ln-vc-cat { font-size: 11px; letter-spacing: 0.04em; color: var(--fg-3); font-weight: var(--weight-semibold); padding: 0 8px 4px; }
+.ln-vc-ch { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 8px; border: 0; border-radius: 6px; background: none; color: var(--fg-2); font: var(--weight-medium) var(--text-sm)/1.2 var(--font-body); text-align: left; cursor: pointer; }
+.ln-vc-ch:hover:not(:disabled) { background: var(--surface-hover); color: var(--fg-1); }
+.ln-vc-ch:disabled { cursor: default; }
+.ln-vc-ch.is-on { color: var(--fg-1); background: var(--surface-active); cursor: default; }
+.ln-vc-hint { margin-left: auto; font-size: 11px; color: var(--halftone); font-weight: var(--weight-normal); }
+.ln-vc-new { display: grid; gap: 4px; animation: cd-in 320ms var(--ln-ease) both; }
+.ln-vc-user { display: flex; align-items: center; gap: 8px; padding: 2px 8px 2px 32px; font-size: var(--text-sm); color: var(--fg-2); }
+.ln-vc-own { font-size: 10px; padding: 1px 6px; border-radius: 4px; background: var(--surface-3); color: var(--fg-2); }
+/* antinuke threshold control: the slash command's two options */
+.ln-an-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 12px 14px; border-radius: var(--radius-lg); border: 1px solid var(--border-default); background: var(--surface-2); font-size: var(--text-sm); }
+.ln-an-f { display: inline-flex; align-items: center; gap: 8px; color: var(--fg-3); }
+.ln-an-f select { height: 32px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--border-default); background: var(--dc-bg); color: var(--fg-1); font: inherit; }
+.ln-an-step { display: inline-flex; align-items: center; border: 1px solid var(--border-default); border-radius: var(--radius-full); overflow: hidden; }
+.ln-an-step button { width: 32px; height: 32px; border: 0; background: var(--dc-bg); color: var(--fg-1); cursor: pointer; font: inherit; }
+.ln-an-step button:disabled { opacity: 0.35; cursor: default; }
+.ln-an-step output { min-width: 32px; text-align: center; color: var(--fg-1); font-variant-numeric: tabular-nums; }
+@media (max-width: 880px) {
+  .ln-mod-in { grid-template-columns: 1fr; }
+  .ln-mod:nth-child(even) .ln-mod-copy { order: 0; }
 }
 
 /* =================== Discord replica primitives =================== */
@@ -190,10 +289,10 @@
 @media (max-width: 560px) { .cd-reset span:not(.sr-only) { display: none; } .cd-reset { padding: 0 9px; } }
 
 /* =================== sections =================== */
-.ln-section { max-width: var(--ln-max); margin: 0 auto; padding: clamp(64px, 9vw, 120px) var(--ln-gutter) 0; }
+.ln-section { max-width: calc(var(--ln-max) + 2 * var(--ln-gutter)); margin: 0 auto; padding: clamp(64px, 9vw, 120px) var(--ln-gutter) 0; }
 .ln-section--tight { padding-top: clamp(24px, 4vw, 40px); }
 .ln-eyebrow { font-size: var(--text-xs); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--fg-3); }
-.ln-h2 { margin: 12px 0 0; font-size: clamp(34px, 4.8vw, 62px); line-height: 0.98; letter-spacing: -0.05em; font-weight: var(--weight-semibold); max-width: 18ch; text-wrap: balance; }
+.ln-h2 { margin: 12px 0 0; font-size: clamp(34px, 4.8vw, 62px); line-height: 0.98; letter-spacing: -0.035em; word-spacing: 0.05em; font-weight: var(--weight-semibold); max-width: 18ch; text-wrap: balance; }
 .ln-sub { margin: 16px 0 0; max-width: 54ch; color: var(--fg-2); font-size: var(--text-md); line-height: 1.6; }
 .ln-sub--small { font-size: var(--text-sm); color: var(--fg-3); }
 
@@ -305,5 +404,9 @@
   .ln-reveal { opacity: 1; transform: none; transition: none; }
   .cd-msg, .cd-sys, .ln-audit-row, .sw-panel, .cp-more { animation: none; }
   .cd-dots i { animation: none; }
+  .ln-proof { mask-image: none; -webkit-mask-image: none; }
+  .ln-proof ul { animation: none; width: auto; flex-wrap: wrap; justify-content: center; row-gap: 8px; }
+  .ln-proof li[aria-hidden='true'] { display: none; }
+  .ln-cat { transition: none; }
   .sw-step::before, .sw-txt span, .cp-plus, .ln-mascot, .ln-final-cat, .ln-btn { transition: none; }
 }

@@ -2,7 +2,10 @@
 // Sources: src/ai/actions.js (parseMuteIntent, parseSimple, usageHint) and src/utils/musicIntent.js.
 // Trimmed word lists; the rules (verb position, explicit target, no questions, reason only after
 // "for/because/cuz/since", 30m default) are the same. If those files change, change this too.
+// The bot answers to its name (BRAND) and, during the rename, the old one: both are in TRIGGERS.
+import { BRAND, TRIGGERS } from '../../lib/brand'
 
+const TRIG = TRIGGERS.join('|')
 const UNIT = { s: 's', sec: 's', secs: 's', second: 's', seconds: 's', m: 'm', min: 'm', mins: 'm', minute: 'm', minutes: 'm', h: 'h', hr: 'h', hrs: 'h', hour: 'h', hours: 'h', d: 'd', day: 'd', days: 'd', w: 'w', week: 'w', weeks: 'w' }
 const MUTE_VERB = /\b(?:mute|timeout|time\s*out|silence|shush)\b/i
 const UNMUTE_VERB = /\bun[-\s]?(?:mute|time\s*out|timeout)\b/i
@@ -15,16 +18,17 @@ const NAME_AFTER = {
   kick: /\bkick\s+@?([^\s<>@,.!?]{3,32})/i,
 }
 const DURATION = /\b(\d+)\s*(seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h|days?|d|weeks?|w)\b/i
-const NAME_STOP = new Set('someone somebody anyone everyone people user member him her them this that me myself you it the and for now please pls again how what why when who can could should would does did command commands your my our their all here there is was are be to of in on at by with from about if not no do button mic level time chat channel server bot sonder music lol lmao bro dude hey yo'.split(' '))
+const NAME_STOP = new Set('someone somebody anyone everyone people user member him her them this that me myself you it the and for now please pls again how what why when who can could should would does did command commands your my our their all here there is was are be to of in on at by with from about if not no do button mic level time chat channel server bot music lol lmao bro dude hey yo'.split(' ').concat(TRIGGERS))
 const FOLLOW_BLOCK = new Set('your yours my his her their our its is was are were be been being button buttons mic the a an to of in on at with if but because when how why what who not dont never'.split(' '))
-const PREFIX_FILLER = /^(?:(?:hey|yo|hi|hello|ok|okay|so|and|then|just|kindly|quickly|now|please|pls|plz|bot|sonder|go ahead and|(?:can|could|would|will)\s+(?:you|u|ya)|(?:i\s+)?(?:want|need|wanna|would like|id like)\s+(?:you\s+)?to)(?:\s+|$))+/
+const PREFIX_FILLER = new RegExp(String.raw`^(?:(?:hey|yo|hi|hello|ok|okay|so|and|then|just|kindly|quickly|now|please|pls|plz|bot|${TRIG}|go ahead and|(?:can|could|would|will)\s+(?:you|u|ya)|(?:i\s+)?(?:want|need|wanna|would like|id like)\s+(?:you\s+)?to)(?:\s+|$))+`)
 const looksLikeName = (n) => /^[\p{L}\p{N}_.-]+$/u.test(n) && !/^\d/.test(n)
 
 function inCommandPosition(content, verbAt, verbLen) {
   let before = content.slice(0, verbAt).replace(/<@!?\d+>/g, ' @m ').toLowerCase()
-  const named = before.lastIndexOf('sonder')
+  let named = -1, namedLen = 0
+  for (const t of TRIGGERS) { const i = before.lastIndexOf(t); if (i > named) { named = i; namedLen = t.length } }
   if (named >= 0 && /@m[\s,:]*$/.test(before.slice(0, named))) return false
-  if (named >= 0) before = before.slice(named + 6)
+  if (named >= 0) before = before.slice(named + namedLen)
   before = before.replace(/[^a-z0-9@'\s]/g, ' ').replace(/'/g, '').replace(/\s+/g, ' ').trim()
   if (before) {
     let rest = before
@@ -75,13 +79,13 @@ export function parseAction(content) {
 }
 
 const HINTS = {
-  mute: 'mute who? `sonder mute @someone 10m reason`',
-  timeout: 'timeout who? `sonder mute @someone 10m reason`',
-  unmute: 'unmute who? `sonder unmute @someone`',
-  warn: 'warn who? `sonder warn @someone reason`',
-  kick: 'kick who? `sonder kick @someone reason`',
+  mute: `mute who? \`${BRAND} mute @someone 10m reason\``,
+  timeout: `timeout who? \`${BRAND} mute @someone 10m reason\``,
+  unmute: `unmute who? \`${BRAND} unmute @someone\``,
+  warn: `warn who? \`${BRAND} warn @someone reason\``,
+  kick: `kick who? \`${BRAND} kick @someone reason\``,
 }
-const HINT_FILLER = new Set(['sonder', 'yo', 'hey', 'hi', 'hello', 'please', 'pls', 'plz', 'can', 'you', 'could', 'now', 'just'])
+const HINT_FILLER = new Set([...TRIGGERS,'yo', 'hey', 'hi', 'hello', 'please', 'pls', 'plz', 'can', 'you', 'could', 'now', 'just'])
 export function usageHint(content) {
   if (/<@!?\d+>/.test(content)) return null
   const words = content.toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/).filter((w) => w && !HINT_FILLER.has(w))
@@ -105,9 +109,10 @@ const VERB_PHRASES = {
 const CLAUSE_MARKERS = [/,\s*(?:i|you|we|he|she|they|it|that|this|but|and|so|because|why|what)\b/i, /\sbeing\s/i, /\slike\s/i, /\sso\s/i, /\sbecause\s/i, /\sbut\s/i, /\sif\s/i, /\swhen\s/i, /\?\s*$/]
 const norm = (w) => w.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '')
 
+const MUSIC_CALL = new RegExp(String.raw`^\s*(?:(?:hey|yo)\s+)?(?:${TRIG})[,:]?\s+(play|skip|pause|resume|stop|queue|shuffle|loop|volume|nowplaying)\b(.*)$`, 'is')
 export function parseMusic(content) {
   if (typeof content !== 'string' || !content || content.length > 300) return null
-  const m = content.match(/^\s*(?:(?:hey|yo)\s+)?sonder[,:]?\s+(play|skip|pause|resume|stop|queue|shuffle|loop|volume|nowplaying)\b(.*)$/is)
+  const m = content.match(MUSIC_CALL)
   if (!m) return null
   const verb = m[1].toLowerCase()
   const rest = m[2].trim().replace(/\s*(?:please|pls|plz|now)?\s*[.!]*\s*$/i, '').trim()

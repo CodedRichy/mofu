@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Send, Bot, Plus, LogIn, Sparkles, Trash2 } from 'lucide-react'
 import { Layout, NOISE_SVG } from '../components/Layout'
 import { useToken, loginUrl as buildLoginUrl } from '../lib/auth'
+import { BRAND } from '../lib/brand'
 
 function ChatInput({ onSend, disabled }) {
   const [val, setVal] = useState('')
@@ -35,7 +36,7 @@ function ChatInput({ onSend, disabled }) {
           ref={textRef}
           value={val} onChange={e => setVal(e.target.value)} onKeyDown={handleKey}
           onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
-          rows={1} placeholder="Ask Sonder anything..." disabled={disabled}
+          rows={1} placeholder={`Ask ${BRAND} anything...`} disabled={disabled}
           style={{
             display: 'block', width: '100%', background: 'transparent', border: 'none', outline: 'none',
             padding: 'var(--space-3) var(--space-4) var(--space-1-5)',
@@ -63,7 +64,7 @@ function ChatInput({ onSend, disabled }) {
         </div>
       </div>
       <p style={{ textAlign: 'center', fontSize: 'var(--text-xs)', color: 'var(--fg-4)', marginTop: 'var(--space-2)' }}>
-        Sonder AI can make mistakes. Verify important information.
+        {BRAND} AI can make mistakes. Verify important information.
       </p>
     </div>
   )
@@ -95,9 +96,9 @@ function MessageBubble({ msg }) {
           overflow: 'hidden', flexShrink: 0,
           border: '1px solid var(--border-subtle)',
         }}>
-          <img src="/logo.jpg" alt="Sonder" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img src="/logo.jpg" alt={BRAND} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
-        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-semibold)', color: 'var(--fg-1)', lineHeight: '26px', fontFamily: 'var(--font-display)' }}>Sonder</span>
+        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-semibold)', color: 'var(--fg-1)', lineHeight: '26px', fontFamily: 'var(--font-display)' }}>{BRAND}</span>
       </div>
       <div style={{ paddingLeft: 36 }}>
         {msg.content.split('\n').map((line, i) => {
@@ -137,7 +138,7 @@ export function Assistant() {
               overflow: 'hidden', border: '1px solid var(--border-accent)',
               boxShadow: 'var(--shadow-accent-lg)',
             }}>
-              <img src="/logo.jpg" alt="Sonder" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img src="/logo.jpg" alt={BRAND} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
           </div>
 
@@ -158,7 +159,7 @@ export function Assistant() {
             letterSpacing: 'var(--tracking-tight)', marginBottom: 'var(--space-2)',
             animation: 'reveal 0.6s var(--ease-default) 0.15s both',
           }}>
-            Sonder AI Assistant
+            {BRAND} AI Assistant
           </h1>
           <p style={{
             fontSize: 'var(--text-base)', color: 'var(--fg-3)', lineHeight: 1.6,
@@ -238,8 +239,8 @@ export function Assistant() {
         }}>
           <div style={{ padding: 'var(--space-3) var(--space-3) var(--space-2)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', padding: '0 var(--space-1)', marginBottom: 'var(--space-3)' }}>
-              <img src="/logo.jpg" alt="Sonder" style={{ width: 22, height: 22, borderRadius: 'var(--radius-sm)', objectFit: 'cover' }} />
-              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 'var(--weight-semibold)', fontSize: 'var(--text-base)', color: 'var(--fg-1)' }}>Sonder AI</span>
+              <img src="/logo.jpg" alt={BRAND} style={{ width: 22, height: 22, borderRadius: 'var(--radius-sm)', objectFit: 'cover' }} />
+              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 'var(--weight-semibold)', fontSize: 'var(--text-base)', color: 'var(--fg-1)' }}>{BRAND} AI</span>
             </div>
             <button
               onClick={() => setMessages([])}
@@ -313,7 +314,7 @@ export function Assistant() {
                   width: 44, height: 44, borderRadius: 'var(--radius-lg)', overflow: 'hidden',
                   border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)',
                 }}>
-                  <img src="/logo.jpg" alt="Sonder" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src="/logo.jpg" alt={BRAND} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
                 <p style={{ color: 'var(--fg-3)', fontSize: 'var(--text-md)', fontFamily: 'var(--font-display)', fontWeight: 'var(--weight-medium)' }}>What can I help with?</p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginTop: 'var(--space-4)', maxWidth: 400, justifyContent: 'center' }}>
@@ -342,7 +343,7 @@ export function Assistant() {
             {typing && (
               <div style={{ display: 'flex', gap: 'var(--space-2-5)', alignItems: 'flex-start', margin: 'var(--space-4) 0' }}>
                 <div style={{ width: 26, height: 26, borderRadius: 'var(--radius-md)', overflow: 'hidden', flexShrink: 0, border: '1px solid var(--border-subtle)' }}>
-                  <img src="/logo.jpg" alt="Sonder" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src="/logo.jpg" alt={BRAND} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
                 <div style={{ paddingTop: 8, display: 'flex', gap: 4 }}>
                   {[0, 1, 2].map(i => (

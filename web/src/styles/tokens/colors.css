@@ -1,4 +1,4 @@
-/* Sonder palette: layered near-black surfaces, white as the one accent (matches the white cat avatar and the
+/* mofu palette: layered near-black surfaces, white as the one accent (matches the white cat avatar and the
    white embeds in Discord). Surfaces and text alpha follow the quey.gg approach: depth from stacked surfaces
    and hairlines, not from colour. Chroma stays ~0 on purpose; the only colour is semantic (status). */
 :root {

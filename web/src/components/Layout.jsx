@@ -3,6 +3,7 @@ import { useLocation, useNavigate, Link } from 'react-router-dom'
 import { LogIn, LogOut, ChevronRight } from 'lucide-react'
 import { useToken, clearToken, loginUrl as buildLoginUrl } from '../lib/auth'
 import { api } from '../lib/api'
+import { BRAND } from '../lib/brand'
 
 const NOISE_SVG = `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E")`
 
@@ -45,6 +46,7 @@ function LogoMark() {
   return (
     <Link
       to="/"
+      aria-label={`${BRAND} home`}
       onMouseEnter={() => setH(true)}
       onMouseLeave={() => setH(false)}
       style={{
@@ -55,7 +57,7 @@ function LogoMark() {
         animation: 'fade-up 450ms var(--ease-default) 0ms both',
       }}
     >
-      <img src="/logo.jpg" alt="Sonder" style={{
+      <img src="/logo.jpg" alt="" style={{
         width: 36, height: 36,
         borderRadius: 'var(--radius-lg)',
         objectFit: 'cover',
@@ -70,12 +72,14 @@ function LogoMark() {
         fontWeight: 'var(--weight-bold)',
         color: 'var(--fg-1)',
         letterSpacing: 'var(--tracking-tight)',
-      }}>sonder</span>
+      }}>{BRAND}</span>
     </Link>
   )
 }
 
-export function Layout({ children, bare = false }) {
+// wide: marketing pages whose framed cards use --page-max / --page-gutter; the nav and footer edges follow them.
+export function Layout({ children, bare = false, wide = false }) {
+  const edge = wide ? { maxWidth: 'var(--page-max)', pad: 'var(--page-gutter)' } : { maxWidth: 1120, pad: 'var(--space-6)' }
   const location = useLocation()
   const navigate = useNavigate()
   const token = useToken()
@@ -169,7 +173,7 @@ export function Layout({ children, bare = false }) {
           backdropFilter: scrolled ? 'blur(var(--glass-blur))' : 'none',
           WebkitBackdropFilter: scrolled ? 'blur(var(--glass-blur))' : 'none',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: '0 var(--space-6)',
+          padding: `0 ${edge.pad}`,
           transition: 'background 400ms var(--ease-default), backdrop-filter 400ms var(--ease-default)',
         }}>
 
@@ -205,11 +209,12 @@ export function Layout({ children, bare = false }) {
         </div>
 
         {/* Content */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', maxWidth: 1120, position: 'relative' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', maxWidth: edge.maxWidth, position: 'relative' }}>
           <LogoMark />
 
           {/* Center: links + sliding pill */}
-          <div ref={linksRef} style={{ position: 'relative', display: 'flex', gap: 4, alignItems: 'center' }}>
+          {/* wide pages: the links float in a pill */}
+          <div ref={linksRef} className={wide ? 'nav-pill' : undefined} style={{ position: 'relative', display: 'flex', gap: 4, alignItems: 'center', ...(wide ? { padding: 4, borderRadius: 'var(--radius-full)', background: 'var(--surface-1)', border: '1px solid var(--border-default)' } : {}) }}>
             {/* Sliding pill indicator */}
             <div style={{
               position: 'absolute',
@@ -307,12 +312,12 @@ export function Layout({ children, bare = false }) {
       </div>
 
       <footer style={{ position: 'relative', zIndex: 1, borderTop: '1px solid var(--border-default)', marginTop: 'var(--space-16, 64px)' }}>
-        <div style={{ maxWidth: 1160, margin: '0 auto', padding: '28px clamp(16px, 4vw, 40px)', display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--text-sm)', color: 'var(--fg-3)' }}>
-          <span>sonder. Your server's data is deleted 30 days after the bot leaves.</span>
+        <div style={{ maxWidth: wide ? `calc(${edge.maxWidth} + 2 * ${edge.pad})` : 1160, margin: '0 auto', padding: '28px var(--page-gutter)', display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--text-sm)', color: 'var(--fg-3)' }}>
+          <span>{BRAND}. Your server's data is deleted 30 days after the bot leaves.</span>
           <span style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px' }}>
             <Link to="/commands" style={{ color: 'inherit', textDecoration: 'none' }}>Commands</Link>
             <Link to="/dashboard" style={{ color: 'inherit', textDecoration: 'none' }}>Dashboard</Link>
-            <Link to="/switch" style={{ color: 'inherit', textDecoration: 'none' }}>Switch to sonder</Link>
+            <Link to="/switch" style={{ color: 'inherit', textDecoration: 'none' }}>Switch to {BRAND}</Link>
             <Link to="/terms" style={{ color: 'inherit', textDecoration: 'none' }}>Terms</Link>
             <Link to="/privacy" style={{ color: 'inherit', textDecoration: 'none' }}>Privacy</Link>
           </span>

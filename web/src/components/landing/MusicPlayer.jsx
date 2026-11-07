@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useReducer } from 'react'
 import { Embed, DButton, BotIcon, clock } from './Discord'
+import { BRAND } from '../../lib/brand'
 
 // Replica of the live music card the bot posts (src/music/card.js buildCard): one embed + one row of five buttons.
 // Like the real card, the embed is only re-rendered every TICK seconds while playing (the bot edits the message on
@@ -163,7 +164,7 @@ export function MusicCard({ player, act }) {
           { name: 'Loop', value: <code className="dc-code">{loop}</code>, inline: true },
           { name: 'Up next', value: next ? `${next.title.length > 60 ? `${next.title.slice(0, 57)}...` : next.title}${more > 0 ? ` (+${more})` : ''}` : 'nothing queued', inline: true },
         ]}
-        footer="requested by member - sonder"
+        footer={`requested by member - ${BRAND}`}
         at={at}
       >{desc}</Embed>
       <div className="dc-row" role="group" aria-label="Music card buttons">

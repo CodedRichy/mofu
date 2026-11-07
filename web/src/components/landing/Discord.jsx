@@ -1,4 +1,5 @@
 import { Fragment } from 'react'
+import { BRAND } from '../../lib/brand'
 
 // Discord message primitives for the landing mocks. They render what discord.js embeds look like in the client:
 // a 4px colour rail, author line, description, inline fields, thumbnail top-right, footer with icon + timestamp.
@@ -9,6 +10,7 @@ export const RAIL = {
   warning: 'oklch(0.837 0.164 84.4)',  // 0xfbbf24
   error: 'oklch(0.711 0.166 22.2)',    // 0xf87171
   muted: 'oklch(0.551 0.023 264.4)',   // 0x6b7280
+  info: 'oklch(0.585 0.233 277.1)',    // 0x6366f1
 }
 
 export const clock = () => new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
@@ -35,7 +37,7 @@ export function MemberIcon({ name = '?', size = 20 }) {
   return <span className="dc-micon" style={{ width: size, height: size, fontSize: size * 0.48 }} aria-hidden="true">{name.charAt(0).toUpperCase()}</span>
 }
 
-export function Embed({ color = 'primary', author, authorIcon, thumb, fields, footer = 'sonder', footerIcon = true, at, children }) {
+export function Embed({ color = 'primary', author, authorIcon, thumb, fields, footer = BRAND, footerIcon = true, at, children }) {
   return (
     <div className="dc-embed" style={{ '--rail': RAIL[color] || color }}>
       <div className="dc-ebody">

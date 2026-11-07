@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { Layout } from '../components/Layout'
+import { BRAND } from '../lib/brand'
 import './status.css'
 
 // Reads only the public endpoint, GET /api/public-stats (the detailed /api/stats needs a login).
@@ -151,7 +152,7 @@ export function Status() {
       <div className="st">
         <header className="st-top">
           <p className="st-eyebrow">Status</p>
-          <h1 className="st-h1">Is Sonder up?</h1>
+          <h1 className="st-h1">Is {BRAND} up?</h1>
           <p className="st-lede">Live from the bot's public status endpoint. This page shows only what that endpoint reports, nothing estimated.</p>
         </header>
 

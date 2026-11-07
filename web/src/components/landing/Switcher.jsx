@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { ArrowUpRight, Check } from 'lucide-react'
 import { INVITE_PERMISSIONS } from '../../lib/invite'
 import { Embed, BotIcon, clock } from './Discord'
+import { BRAND } from '../../lib/brand'
 
 // "Switching" as a stepper: each step shows what you actually see at that point.
 // Step outputs are the real reply text of /migrate scan and /import warnings (src/commands/config), for a server
@@ -20,7 +21,7 @@ const PERMS = (() => {
 })()
 
 const STEPS = [
-  { t: 'Add Sonder', d: 'Next to your current bot. One invite, no Administrator permission.' },
+  { t: `Add ${BRAND}`, d: 'Next to your current bot. One invite, no Administrator permission.' },
   { t: 'Run /migrate scan', d: 'Finds the bot you are replacing, checks prefixes, and spots channels it can reuse. Changes nothing.' },
   { t: 'Import your warnings', d: 'Export warnings from your old bot as CSV and bring them over with /import warnings.' },
   { t: 'Talk to it', d: 'Ask in plain words. It shows exactly what it will do and waits for your button press.' },
@@ -30,7 +31,7 @@ function Reply({ cmd, color = 'primary', children }) {
   return (
     <div className="sw-reply">
       <div className="sw-cmdline"><span className="cd-ravatar" aria-hidden="true">M</span><b>Moderator</b><span>used</span><span className="dc-cmd">/{cmd}</span></div>
-      <div className="sw-bot"><BotIcon size={32} /><div><div className="cd-who">sonder <span className="cd-app">APP</span><span className="cd-time">Today at {clock()}</span></div>
+      <div className="sw-bot"><BotIcon size={32} /><div><div className="cd-who">{BRAND} <span className="cd-app">APP</span><span className="cd-time">Today at {clock()}</span></div>
         <Embed color={color} at={clock()}>{children}</Embed></div></div>
       <div className="sw-only">Only you can see this {'·'} Dismiss message</div>
     </div>
@@ -41,7 +42,7 @@ function Panel({ i, onTry }) {
   if (i === 0) {
     return (
       <div className="sw-invite">
-        <div className="sw-invite-head"><img src="/logo.jpg" alt="" /><div><b>sonder</b><span>wants to join your server and will be able to:</span></div></div>
+        <div className="sw-invite-head"><img src="/logo.jpg" alt="" /><div><b>{BRAND}</b><span>wants to join your server and will be able to:</span></div></div>
         <ul>{PERMS.map((p) => <li key={p}><Check size={14} aria-hidden="true" />{p}</li>)}</ul>
       </div>
     )
@@ -50,9 +51,9 @@ function Panel({ i, onTry }) {
     return (
       <Reply cmd="migrate scan">
         <b>Other bots here:</b> Greed (default prefix <code className="dc-code">,</code>)<br /><br />
-        <b>Prefix:</b> Sonder uses <code className="dc-code">;</code>, so it will not collide with their defaults. If you changed their prefix, check it doesn't match.<br /><br />
-        Both bots can stay while you move over. Turn off a feature on the old bot once Sonder's version works, so nothing runs twice.<br /><br />
-        <b>Channels Sonder can reuse</b><br />Mod log: <span className="dc-mention">#mod-logs</span> (not set)<br />Welcome: <span className="dc-mention">#welcome</span> (not set)<br /><br />
+        <b>Prefix:</b> {BRAND} uses <code className="dc-code">;</code>, so it will not collide with their defaults. If you changed their prefix, check it doesn't match.<br /><br />
+        Both bots can stay while you move over. Turn off a feature on the old bot once {BRAND}'s version works, so nothing runs twice.<br /><br />
+        <b>Channels {BRAND} can reuse</b><br />Mod log: <span className="dc-mention">#mod-logs</span> (not set)<br />Welcome: <span className="dc-mention">#welcome</span> (not set)<br /><br />
         Run <code className="dc-code">/migrate apply</code> to link the ones that are not set.<br /><br />
         <b>Warnings:</b> if your old bot can export them to a CSV, bring them over with <code className="dc-code">/import warnings</code>.<br />
         <b>Not transferable:</b> levels and economy balances (other bots give servers no export), so those start fresh. Your server's bans, roles and Discord AutoMod rules are unaffected.
@@ -73,7 +74,7 @@ function Panel({ i, onTry }) {
   return (
     <div className="sw-try">
       <p>The first thing most servers try:</p>
-      <code className="dc-code">sonder mute @member 10m for spamming links</code>
+      <code className="dc-code">{BRAND} mute @member 10m for spamming links</code>
       <button type="button" className="ln-btn ln-btn--ghost sw-trybtn" onClick={onTry}>Try it in the demo <ArrowUpRight size={17} aria-hidden="true" /></button>
     </div>
   )

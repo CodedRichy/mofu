@@ -4,6 +4,7 @@ import { LogIn, Users, Server, Terminal, Activity, ArrowUpRight, Sparkles } from
 import { Layout } from '../components/Layout'
 import { api } from '../lib/api'
 import { useToken, setToken, clearToken, loginUrl as buildLoginUrl } from '../lib/auth'
+import { BRAND } from '../lib/brand'
 
 const handledCodes = new Set()
 
@@ -327,7 +328,7 @@ export function Dashboard() {
           {guilds.length === 0 ? (
             <div style={{ padding: 'var(--space-12)', textAlign: 'center', borderRadius: 'var(--radius-xl)', border: '1px dashed var(--border-default)', background: 'var(--surface-1)' }}>
               <Server size={28} style={{ color: 'var(--fg-4)', margin: '0 auto var(--space-4)' }} />
-              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--fg-3)' }}>no servers found. make sure sonder's in your server.</p>
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--fg-3)' }}>no servers found. make sure {BRAND}'s in your server.</p>
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))', gap: 'var(--space-3)' }}>
