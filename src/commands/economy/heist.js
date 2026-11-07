@@ -2,6 +2,7 @@ const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = re
 const { colors } = require('../../utils/constants');
 const { base, response } = require('../../utils/embed');
 const store = require('../../database/store');
+const gambling = require('../../utils/gambling');
 
 const HEIST_COOLDOWN = 3600000;
 const MIN_WALLET = 500;
@@ -16,6 +17,7 @@ module.exports = {
     .setDescription('Start a heist and recruit a crew'),
 
   async execute(interaction) {
+    if (await gambling.blocked(interaction)) return;
     const { guild, user } = interaction;
 
     const cd = store.getCooldown(guild.id, user.id, 'heist');

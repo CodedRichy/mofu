@@ -1,5 +1,5 @@
 const snipe = require('../database/snipe');
-const store = require('../database/store');
+const logevents = require('../utils/logevents');
 const { response, footer } = require('../utils/embed');
 const { colors } = require('../utils/constants');
 
@@ -11,9 +11,7 @@ module.exports = {
     // Messages the bot removed itself (antilink, word filter, AI automod) are never sniped.
     if (!require('../utils/automod').wasBotDeleted(message.id)) snipe.addDeleted(message.channel.id, message);
 
-    const logCh = store.getConfig(message.guild.id, 'log_channel');
-    if (!logCh || (store.getConfig(message.guild.id, 'log_message_delete') === false)) return;
-    const ch = message.guild.channels.cache.get(logCh);
+    const ch = logevents.resolve(message.guild, 'log_message_delete');
     if (!ch) return;
 
     const embed = response({ client: message.client, description: `**Message deleted in** ${message.channel}\n**Author** ${message.author.tag}\n\n${message.content?.slice(0, 1000) || '*No text*'}`, color: colors.error })

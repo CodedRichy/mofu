@@ -2,6 +2,7 @@ const { SlashCommandBuilder } = require('discord.js');
 const { colors } = require('../../utils/constants');
 const { response } = require('../../utils/embed');
 const store = require('../../database/store');
+const gambling = require('../../utils/gambling');
 
 const ROB_COOLDOWN = 3600000;
 const SUCCESS_RATE = 0.4;
@@ -13,6 +14,7 @@ module.exports = {
     .addUserOption((o) => o.setName('user').setDescription('Member to rob').setRequired(true)),
 
   async execute(interaction) {
+    if (await gambling.blocked(interaction)) return;
     const { guild, user } = interaction;
     const target = interaction.options.getUser('user');
 

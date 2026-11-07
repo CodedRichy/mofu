@@ -42,6 +42,9 @@ module.exports = {
       return;
     }
 
+    // Scam shield: staff lookalike check (alert only, no-op unless enabled)
+    require('../utils/scamshield').checkImpersonation(member);
+
     // Autoroles
     const autoroles = store.getConfig(guild.id, 'autoroles') || [];
     for (const roleId of autoroles) {

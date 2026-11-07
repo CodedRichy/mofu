@@ -3,11 +3,23 @@ const vm = require('../database/voicemaster');
 const { response } = require('../utils/embed');
 const { colors } = require('../utils/constants');
 const { ChannelType, PermissionFlagsBits } = require('discord.js');
+const voicecase = require('../utils/voicecase');
+const voiceguard = require('../utils/voiceguard');
+const log = require('../utils/logger');
 
 module.exports = {
   name: 'voiceStateUpdate',
   async execute(oldState, newState) {
     const guild = newState.guild;
+
+    // Voice case file: ids and timestamps only (mofu never hears audio). Must never break the handlers below.
+    try {
+      if (!newState.member?.user?.bot) voicecase.recordStates(guild.id, newState.id, oldState, newState);
+      const finding = voiceguard.observe(oldState, newState);
+      if (finding) voiceguard.propose(finding).catch((err) => log.warn(`voiceguard propose failed: ${err.message}`));
+    } catch (err) {
+      log.warn(`voice case record failed: ${err.message}`);
+    }
 
     // VoiceMaster: join-to-create
     if (newState.channelId) {

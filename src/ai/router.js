@@ -55,6 +55,7 @@ const RUN_NOW = new Set([
   'invites link', 'invites check', 'invites leaderboard', 'joinposition', 'membercount', 'milestone', 'newusers', 'ping', 'privacy',
   'quote random', 'quote search', 'quote get', 'remind set', 'remind list', 'remind cancel', 'roleinfo', 'server', 'spotlight',
   'tag use', 'tag info', 'tag list', 'timezone', 'toprole', 'translate', 'uptime', 'userinfo', 'voice info',
+  'isstaff', 'invite', 'preset list', 'scamshield status', 'gambling status',
   'birthday set', 'birthday remove', 'birthday list', 'birthday view',
 ]);
 

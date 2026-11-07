@@ -39,6 +39,8 @@ const PREFIX_ONLY = new Set([
   'starboard', 'stickymessage', 'voicemaster', 'wordfilter',
   // lastfm
   'fm',
+  // added: moderation (appeal stays slash so a muted member can use it), config, utility
+  'preset', 'reportvc', 'vc', 'scamshield', 'gambling', 'isstaff', 'invite',
 ]);
 
 const ALIASES = {
@@ -50,7 +52,7 @@ const ALIASES = {
   j: 'jail', nick: 'nickname', nn: 'nickname',
   clear: 'purge', clr: 'purge', del: 'purge', prune: 'purge', c: 'purge',
   l: 'lock', sp: 'selfpurge', sm: 'slowmode',
-  bl: 'banlist', ml: 'mutelist', ms: 'modstats', hist: 'history',
+  bl: 'banlist', ml: 'mutelist', ms: 'modstats', hist: 'history', vcreport: 'reportvc',
   mlog: 'modlog', dm: 'drag', n: 'note',
   wl: 'warn',
 

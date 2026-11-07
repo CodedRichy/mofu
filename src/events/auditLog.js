@@ -6,18 +6,16 @@ const { base, response, footer } = require('../utils/embed');
 const { colors } = require('../utils/constants');
 const log = require('../utils/logger');
 
-function getLogChannel(guild, client) {
-  // The dashboard and /logging historically used different keys; honour either so the setting always works.
-  const channelId = store.getConfig(guild.id, 'logging_channel') || store.getConfig(guild.id, 'log_channel');
-  if (!channelId) return null;
-  return guild.channels.cache.get(channelId) || null;
-}
+// message delete/edit are logged by events/messageDelete.js and messageUpdate.js (one embed each).
+// Every logger here goes through logevents.resolve so '/logging toggle' is respected.
+const logevents = require('../utils/logevents');
+const getLogChannel = (guild, key) => logevents.resolve(guild, key);
 
 module.exports = [
   {
     name: 'channelCreate',
     async execute(channel) {
-      const logCh = getLogChannel(channel.guild, channel.client);
+      const logCh = getLogChannel(channel.guild, 'log_channels');
       if (!logCh) return;
       const entry = await fetchAuditEntry(channel.guild, AuditLogEvent.ChannelCreate);
       const embed = base(channel.client, colors.primary)
@@ -30,7 +28,7 @@ module.exports = [
   {
     name: 'channelDelete',
     async execute(channel) {
-      const logCh = getLogChannel(channel.guild, channel.client);
+      const logCh = getLogChannel(channel.guild, 'log_channels');
       if (!logCh) return;
       const entry = await fetchAuditEntry(channel.guild, AuditLogEvent.ChannelDelete);
       const embed = base(channel.client, colors.primary)
@@ -43,7 +41,7 @@ module.exports = [
   {
     name: 'guildBanAdd',
     async execute(ban) {
-      const logCh = getLogChannel(ban.guild, ban.client);
+      const logCh = getLogChannel(ban.guild, 'log_bans');
       if (!logCh) return;
       const entry = await fetchAuditEntry(ban.guild, AuditLogEvent.MemberBanAdd);
       const embed = base(ban.client, colors.error)
@@ -56,7 +54,7 @@ module.exports = [
   {
     name: 'guildBanRemove',
     async execute(ban) {
-      const logCh = getLogChannel(ban.guild, ban.client);
+      const logCh = getLogChannel(ban.guild, 'log_bans');
       if (!logCh) return;
       const entry = await fetchAuditEntry(ban.guild, AuditLogEvent.MemberBanRemove);
       const embed = base(ban.client, colors.primary)
@@ -69,14 +67,12 @@ module.exports = [
   {
     name: 'guildMemberUpdate',
     async execute(oldMember, newMember) {
-      const logCh = getLogChannel(newMember.guild, newMember.client);
-      if (!logCh) return;
-
       // Role changes
+      const roleCh = getLogChannel(newMember.guild, 'log_role_change');
       const addedRoles = newMember.roles.cache.filter((r) => !oldMember.roles.cache.has(r.id));
       const removedRoles = oldMember.roles.cache.filter((r) => !newMember.roles.cache.has(r.id));
 
-      if (addedRoles.size || removedRoles.size) {
+      if (roleCh && (addedRoles.size || removedRoles.size)) {
         const lines = [];
         if (addedRoles.size) lines.push(`**Added** ${addedRoles.map((r) => r.toString()).join(', ')}`);
         if (removedRoles.size) lines.push(`**Removed** ${removedRoles.map((r) => r.toString()).join(', ')}`);
@@ -84,50 +80,24 @@ module.exports = [
           .setAuthor({ name: 'Roles Updated', iconURL: newMember.user.displayAvatarURL() })
           .setDescription(`**${newMember.user.tag}**\n${lines.join('\n')}`)
           .setFooter(footer(newMember.client, `ID: ${newMember.id}`));
-        logCh.send({ embeds: [embed] }).catch(() => {});
+        roleCh.send({ embeds: [embed] }).catch(() => {});
       }
 
       // Nickname change
-      if (oldMember.nickname !== newMember.nickname) {
+      const nickCh = getLogChannel(newMember.guild, 'log_nickname');
+      if (nickCh && oldMember.nickname !== newMember.nickname) {
         const embed = base(newMember.client, colors.primary)
           .setAuthor({ name: 'Nickname Changed', iconURL: newMember.user.displayAvatarURL() })
           .setDescription(`**${newMember.user.tag}**\n**Before** ${oldMember.nickname || 'None'}\n**After** ${newMember.nickname || 'None'}`)
           .setFooter(footer(newMember.client, `ID: ${newMember.id}`));
-        logCh.send({ embeds: [embed] }).catch(() => {});
+        nickCh.send({ embeds: [embed] }).catch(() => {});
       }
-    },
-  },
-  {
-    name: 'messageDelete',
-    async execute(message) {
-      if (!message.guild || message.author?.bot || !message.content) return;
-      const logCh = getLogChannel(message.guild, message.client);
-      if (!logCh) return;
-      const embed = base(message.client, colors.primary)
-        .setAuthor({ name: 'Message Deleted', iconURL: message.author?.displayAvatarURL() })
-        .setDescription(`**Author** ${message.author?.tag || 'Unknown'} in ${message.channel}\n**Content** ${message.content.slice(0, 1024)}`)
-        .setFooter(footer(message.client, `ID: ${message.id}`));
-      logCh.send({ embeds: [embed] }).catch(() => {});
-    },
-  },
-  {
-    name: 'messageUpdate',
-    async execute(oldMsg, newMsg) {
-      if (!newMsg.guild || newMsg.author?.bot || oldMsg.content === newMsg.content) return;
-      const logCh = getLogChannel(newMsg.guild, newMsg.client);
-      if (!logCh) return;
-      const embed = base(newMsg.client, colors.primary)
-        .setAuthor({ name: 'Message Edited', iconURL: newMsg.author.displayAvatarURL() })
-        .setDescription(`**Author** ${newMsg.author.tag} in ${newMsg.channel}\n**Before** ${oldMsg.content?.slice(0, 512) || '(empty)'}\n**After** ${newMsg.content.slice(0, 512)}`)
-        .setURL(newMsg.url)
-        .setFooter(footer(newMsg.client, `ID: ${newMsg.id}`));
-      logCh.send({ embeds: [embed] }).catch(() => {});
     },
   },
   {
     name: 'roleCreate',
     async execute(role) {
-      const logCh = getLogChannel(role.guild, role.client);
+      const logCh = getLogChannel(role.guild, 'log_roles_manage');
       if (!logCh) return;
       const embed = base(role.client, colors.primary)
         .setAuthor({ name: 'Role Created' })
@@ -139,7 +109,7 @@ module.exports = [
   {
     name: 'roleDelete',
     async execute(role) {
-      const logCh = getLogChannel(role.guild, role.client);
+      const logCh = getLogChannel(role.guild, 'log_roles_manage');
       if (!logCh) return;
       const embed = base(role.client, colors.primary)
         .setAuthor({ name: 'Role Deleted' })

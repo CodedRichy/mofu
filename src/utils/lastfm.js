@@ -96,6 +96,19 @@ module.exports = {
     };
   },
 
+  // artist.getInfo with a username: the canonical artist name and that user's playcount for it.
+  // Returns null when the artist is unknown; throws LASTFM_UNAVAILABLE on rate limit / outage.
+  async getArtistInfo(artist, username) {
+    const data = await call('artist.getinfo', { artist, username, autocorrect: 1 });
+    if (!data?.artist) return null;
+    const plays = Number(data.artist.stats?.userplaycount);
+    return {
+      name: data.artist.name || artist,
+      userplaycount: Number.isFinite(plays) ? plays : 0,
+      url: data.artist.url || null,
+    };
+  },
+
   async getRecentTracks(username, limit = 10) {
     const data = await call('user.getrecenttracks', { user: username, limit });
     if (!data?.recenttracks?.track) return [];

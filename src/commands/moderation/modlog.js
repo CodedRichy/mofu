@@ -38,14 +38,14 @@ module.exports = {
       store.setConfig(interaction.guild.id, 'modlog_channel', ch.id);
 
       await interaction.reply({
-        embeds: [response({ client: interaction.client, description: `Created ${ch} (private) and set as modlog channel.`, color: colors.success })],
+        embeds: [response({ client: interaction.client, description: `Created ${ch} (private) and set as modlog channel. Member appeals are posted there too.`, color: colors.success })],
       });
     } else if (sub === 'set') {
       const channel = interaction.options.getChannel('channel');
       store.setConfig(interaction.guild.id, 'modlog_channel', channel.id);
 
       await interaction.reply({
-        embeds: [response({ client: interaction.client, description: `Mod log channel set to ${channel}`, color: colors.success })],
+        embeds: [response({ client: interaction.client, description: `Mod log channel set to ${channel}. Member appeals are posted there too.`, color: colors.success })],
       });
     } else if (sub === 'remove') {
       store.setConfig(interaction.guild.id, 'modlog_channel', null);

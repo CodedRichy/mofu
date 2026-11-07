@@ -12,14 +12,15 @@ const { DefaultExtractors } = require('@discord-player/extractor');
 const { YoutubeExtractor } = require('discord-player-youtubei');
 
 const client = new Client({
+  // Only intents the code uses (see docs/verification.md). GuildPresences is deliberately NOT requested.
   intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildVoiceStates,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMessageReactions,
-    GatewayIntentBits.GuildModeration,
+    GatewayIntentBits.Guilds,               // guild/channel/role events, slash commands
+    GatewayIntentBits.GuildMessages,        // messageCreate/Update/Delete
+    GatewayIntentBits.GuildMembers,         // privileged: join/leave/update events (welcome, autorole, antiraid)
+    GatewayIntentBits.GuildVoiceStates,     // music, voice XP, VoiceMaster
+    GatewayIntentBits.MessageContent,       // privileged: prefix commands, name triggers, automod. @mention chat works without it
+    GatewayIntentBits.GuildMessageReactions, // reaction roles, starboard
+    GatewayIntentBits.GuildModeration,      // ban add/remove events, audit log entries
   ],
   partials: [Partials.Message, Partials.Reaction, Partials.GuildMember],
   // user-authored text (autoresponders, custom commands, prizes, reminders) can never ping @everyone/@here/roles by default

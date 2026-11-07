@@ -2,6 +2,7 @@ const { SlashCommandBuilder } = require('discord.js');
 const { colors } = require('../../utils/constants');
 const { response } = require('../../utils/embed');
 const store = require('../../database/store');
+const gambling = require('../../utils/gambling');
 
 const COINFLIP_COOLDOWN = 15000;
 const LUCKY_COIN_MAX_BET = 500;
@@ -19,6 +20,7 @@ module.exports = {
     ),
 
   async execute(interaction) {
+    if (await gambling.blocked(interaction)) return;
     const { guild, user } = interaction;
 
     const cd = store.getCooldown(guild.id, user.id, 'coinflip');

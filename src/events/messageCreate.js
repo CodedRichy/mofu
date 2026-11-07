@@ -205,6 +205,10 @@ module.exports = {
 
     if (message.author.bot || !message.guild) return;
 
+    // --- scamshield hook (src/utils/scamshield.js): no AI, off by default, never throws ---
+    if (await require('../utils/scamshield').inspectMessage(message)) return;
+    // --- end scamshield hook ---
+
     // Nightwatch — enhanced monitoring during off-hours
     const nightwatch = store.getConfig(message.guild.id, 'nightwatch');
     if (nightwatch?.enabled) {

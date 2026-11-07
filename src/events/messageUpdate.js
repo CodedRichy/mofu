@@ -1,5 +1,5 @@
 const snipe = require('../database/snipe');
-const store = require('../database/store');
+const logevents = require('../utils/logevents');
 const automod = require('../utils/automod');
 const { response, footer } = require('../utils/embed');
 const { colors } = require('../utils/constants');
@@ -21,9 +21,7 @@ module.exports = {
 
     if (oldMessage.author) snipe.addEdited(oldMessage.channel.id, oldMessage, newMessage);
 
-    const logCh = store.getConfig(oldMessage.guild.id, 'log_channel');
-    if (!logCh || (store.getConfig(oldMessage.guild.id, 'log_message_edit') === false)) return;
-    const ch = oldMessage.guild.channels.cache.get(logCh);
+    const ch = logevents.resolve(oldMessage.guild, 'log_message_edit');
     if (!ch) return;
 
     const embed = response({ client: oldMessage.client, description: `**Message edited in** ${oldMessage.channel} [Jump](${newMessage.url})\n**Author** ${oldMessage.author?.tag || newMessage.author?.tag || 'unknown'}\n\n**Before**\n${oldMessage.content?.slice(0, 500) || '*empty*'}\n\n**After**\n${newMessage.content?.slice(0, 500) || '*empty*'}`, color: colors.warning })

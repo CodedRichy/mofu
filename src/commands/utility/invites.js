@@ -33,7 +33,7 @@ module.exports = {
     if (sub === 'link') {
       const link = interaction.client.generateInvite({
         scopes: [OAuth2Scopes.Bot, OAuth2Scopes.ApplicationsCommands],
-        permissions: [PermissionFlagsBits.Administrator],
+        permissions: require('./invite').permissionBits(),
       });
 
       return interaction.reply({

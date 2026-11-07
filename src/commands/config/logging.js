@@ -2,6 +2,7 @@ const { SlashCommandBuilder, PermissionFlagsBits, ChannelType } = require('disco
 const { colors, LOG_CHANNEL } = require('../../utils/constants');
 const { response } = require('../../utils/embed');
 const store = require('../../database/store');
+const logevents = require('../../utils/logevents');
 const { createConfigChannel, CHANNEL_DEFAULTS } = require('../../utils/channelCreate');
 
 module.exports = {
@@ -16,11 +17,7 @@ module.exports = {
       sub.setName('toggle').setDescription('Toggle a log type')
         .addStringOption((o) =>
           o.setName('type').setDescription('Log type').setRequired(true)
-            .addChoices(
-              { name: 'Message deletes', value: 'log_message_delete' },
-              { name: 'Message edits', value: 'log_message_edit' },
-              { name: 'Voice state', value: 'log_voice' },
-            )
+            .addChoices(...logevents.EVENTS.map((e) => ({ name: e.label, value: e.key })))
         )
         .addBooleanOption((o) => o.setName('enabled').setDescription('Enable or disable').setRequired(true))
     )
@@ -53,8 +50,9 @@ module.exports = {
     } else if (sub === 'toggle') {
       const type = interaction.options.getString('type');
       const enabled = interaction.options.getBoolean('enabled');
-      const label = type.replace('log_', '').replace('_', ' ');
-      const current = store.getConfig(guild.id, type) ?? true;
+      if (!logevents.KEYS.includes(type)) return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Unknown log type.', color: colors.error })], ephemeral: true });
+      const label = logevents.label(type);
+      const current = logevents.isEnabled(guild.id, type);
       if (current === enabled) {
         return interaction.reply({ embeds: [response({ client: interaction.client, description: `**${label}** logging is already ${enabled ? 'enabled' : 'disabled'}`, color: colors.warning })], ephemeral: true });
       }
@@ -62,26 +60,22 @@ module.exports = {
       await interaction.reply({ embeds: [response({ client: interaction.client, description: `**${label}** logging ${enabled ? 'enabled' : 'disabled'}`, color: colors.success })] });
 
     } else if (sub === 'disable') {
-      const existing = store.getConfig(guild.id, 'log_channel');
+      const existing = logevents.channelId(guild.id);
       if (!existing) {
         return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Logging is not configured', color: colors.warning })], ephemeral: true });
       }
       store.setConfig(guild.id, 'log_channel', null);
+      store.setConfig(guild.id, 'logging_channel', null);
       await interaction.reply({ embeds: [response({ client: interaction.client, description: 'Logging disabled.', color: colors.muted })] });
 
     } else {
-      const ch = store.getConfig(guild.id, 'log_channel');
-      const types = ['log_message_delete', 'log_message_edit', 'log_voice'];
-      const lines = types.map((t) => {
-        const enabled = store.getConfig(guild.id, t) ?? true;
-        const label = t.replace('log_', '').replace('_', ' ');
-        return `${enabled ? '🟢' : '🔴'} ${label}`;
-      });
+      const ch = logevents.channelId(guild.id);
+      const lines = logevents.stateLines(guild.id);
 
       await interaction.reply({
         embeds: [response({
           client: interaction.client,
-          description: `**Channel** ${ch ? `<#${ch}>` : 'Not set'}\n\n${lines.join('\n')}\n\nMember join/leave, role and nickname events are not logged by this command yet.`,
+          description: `**Channel** ${ch ? `<#${ch}>` : 'Not set'}\n\n${lines.join('\n')}\n\nNot logged to this channel: ${logevents.NOT_LOGGED}.`,
           color: colors.info,
         })],
       });

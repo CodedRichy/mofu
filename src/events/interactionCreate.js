@@ -143,6 +143,7 @@ async function handleButton(interaction) {
   if (customId.startsWith('mq:')) return require('../commands/music/queue').handleButton(interaction);
   if (customId.startsWith('mp:')) return require('../music/card').handleButton(interaction);
   if (customId.startsWith('aiact:')) return require('../ai/actions').handleButton(interaction);
+  if (customId.startsWith('appeal:')) return require('../handlers/appeal').handleButton(interaction);
 
   if (customId === 'ticket_open') {
     if (!guild || !store.getConfig(guild.id, 'ticket_enabled')) return;
@@ -254,12 +255,6 @@ Describe your issue here.`);
     return interaction.reply({ embeds: [response({ client: interaction.client, description: `You entered the giveaway! (${gw.entries.size} total entries)`, color: colors.success })], ephemeral: true });
 
   } else if (customId === 'ticket_claim') {
-    if (!interaction.channel.name.startsWith('ticket-')) return;
-    const supportRole = store.getConfig(guild.id, 'ticket_support_role');
-    if (supportRole && !interaction.member.roles.cache.has(supportRole)) {
-      return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Only support team can claim tickets.', color: colors.error })], ephemeral: true });
-    }
-
-    await interaction.reply({ embeds: [response({ client: interaction.client, description: `Ticket claimed by ${user}`, color: colors.success })] });
+    return require('../handlers/ticket').handleClaim(interaction);
   }
 }

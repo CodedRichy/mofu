@@ -3,6 +3,7 @@ const { colors } = require('../../utils/constants');
 const { base, response } = require('../../utils/embed');
 const infractions = require('../../database/infractions');
 const { clip, reasonError, modLabel } = require('../../utils/modguard');
+const timeline = require('../../utils/timeline');
 
 const MAX_CASE = 1e9;
 
@@ -65,7 +66,15 @@ module.exports = {
     const c = infractions.getCase(interaction.guild.id, number);
     if (!c) return fail(`Case #${number} does not exist in this server.`);
 
-    if (sub === 'view') return interaction.reply({ embeds: [caseEmbed(interaction.client, c)] });
+    if (sub === 'view') {
+      const embed = caseEmbed(interaction.client, c);
+      // The member's other recent activity, so a moderator sees the pattern and not only this one case.
+      if (c.target_id) {
+        const field = timeline.renderTimelineField(interaction.guild.id, c.target_id, { limit: 6, name: 'Member timeline (newest first)' });
+        if (field) embed.addFields(field);
+      }
+      return interaction.reply({ embeds: [embed], allowedMentions: { parse: [] } });
+    }
 
     const text = String(interaction.options.getString('text') || '').trim();
     if (!text) return fail('Give the new reason.');

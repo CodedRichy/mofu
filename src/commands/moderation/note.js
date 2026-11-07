@@ -3,6 +3,7 @@ const { colors } = require('../../utils/constants');
 const { base, response, footer } = require('../../utils/embed');
 const store = require('../../database/store');
 const { clip, joinClipped, modLabel } = require('../../utils/modguard');
+const modlog = require('../../utils/modlog');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -38,8 +39,10 @@ module.exports = {
       }
 
       const id = store.addNote(interaction.guild.id, user.id, interaction.user.tag, content);
+      // Numbered, so the note shows up in the member's case timeline. Not posted to the modlog channel (staff-only note).
+      const caseId = modlog.openCase(interaction.guild, { action: 'note', target: user, moderator: interaction.user, reason: null }); // text stays in the notes table, so removing a note removes its text
 
-      await interaction.reply({ embeds: [response({ client: interaction.client, description: `📝 Note added to **${user.tag}** (note #${id})`, color: colors.success })] });
+      await interaction.reply({ embeds: [response({ client: interaction.client, description: `📝 Note added to **${user.tag}** (note #${id}${caseId ? `, case #${caseId}` : ''})`, color: colors.success })] });
     } else if (sub === 'view') {
       const user = interaction.options.getUser('user');
       const notes = store.getNotes(interaction.guild.id, user.id);

@@ -8,6 +8,7 @@ const { Events } = require('discord.js');
 const SWEEP_MS = 60000;
 let seen = new Map(); // `${guildId}:${userId}` -> channelId at the last sweep
 let timer = null;
+let caseTimer = null;
 let running = false;
 
 // Only load what was not injected (tests pass a fake store so the real database is never opened).
@@ -66,11 +67,28 @@ function start(client) {
   if (timer) return;
   timer = setInterval(() => { sweep(client).catch(() => {}); }, SWEEP_MS);
   timer.unref(); // never keeps the process alive on shutdown
+  startCaseSweep(client);
+}
+
+// Housekeeping for the voice case file: forget idle channel buffers and lift expired voice bans. Runs even when
+// voice XP is off, so it has its own timer.
+function startCaseSweep(client) {
+  if (caseTimer) return;
+  caseTimer = setInterval(() => {
+    try {
+      const voicecase = require('../utils/voicecase');
+      voicecase.buffer.prune();
+      voicecase.sweepVoiceBans(client).catch(() => {});
+    } catch { /* housekeeping only */ }
+  }, SWEEP_MS);
+  caseTimer.unref();
 }
 
 function stop() {
   if (timer) clearInterval(timer);
   timer = null;
+  if (caseTimer) clearInterval(caseTimer);
+  caseTimer = null;
   seen = new Map();
 }
 
