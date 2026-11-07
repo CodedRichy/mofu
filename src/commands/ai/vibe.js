@@ -47,7 +47,7 @@ module.exports = {
           content: `Here are the last ${humanMsgCount} messages from the channel:\n\n${transcript}`,
         },
       ],
-      { maxTokens: 200, temperature: 0.7 }
+      { maxTokens: 200, temperature: 0.7, guildId: interaction.guildId }
     );
 
     if (!result) {

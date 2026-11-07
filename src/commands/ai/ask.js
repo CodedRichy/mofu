@@ -15,7 +15,7 @@ module.exports = {
     const question = interaction.options.getString('question');
     await interaction.deferReply();
 
-    const answer = await generateResponse(question);
+    const answer = await generateResponse(question, '', { guildId: interaction.guildId });
     if (!answer) {
       return interaction.editReply({ embeds: [response({ client: interaction.client, description: 'AI unavailable. Set `GROQ_API_KEY` in .env to enable.', color: colors.error })] });
     }

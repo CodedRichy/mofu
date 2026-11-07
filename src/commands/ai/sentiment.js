@@ -23,7 +23,7 @@ module.exports = {
 
     const results = { positive: 0, negative: 0, neutral: 0, toxic: 0 };
     for (const msg of filtered.values()) {
-      const sentiment = await analyzeSentiment(msg.content);
+      const sentiment = await analyzeSentiment(msg.content, { guildId: interaction.guildId });
       if (sentiment && results[sentiment] !== undefined) results[sentiment]++;
     }
 

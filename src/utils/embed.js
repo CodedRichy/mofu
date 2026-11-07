@@ -8,6 +8,8 @@ function brand(client) {
   };
 }
 
+const clipText = (s, n) => { const t = String(s); return t.length > n ? `${t.slice(0, n - 3)}...` : t; };
+
 function base(client, color) {
   return new EmbedBuilder()
     .setColor(color || colors.primary)
@@ -15,10 +17,11 @@ function base(client, color) {
     .setTimestamp();
 }
 
-function modAction({ client, action, color, target, moderator, reason, duration, extra }) {
+// caseId (optional) shows as "BAN | Case #12" so a modlog post, a reply and a DM all name the same case.
+function modAction({ client, action, color, target, moderator, reason, duration, extra, caseId }) {
   const embed = base(client, color)
     .setAuthor({
-      name: action.toUpperCase(),
+      name: `${String(action).toUpperCase().slice(0, 60)}${caseId ? ` | Case #${caseId}` : ''}`,
       iconURL: target.displayAvatarURL?.(),
     })
     .setThumbnail(target.displayAvatarURL?.({ size: 256 }) || null);
@@ -26,20 +29,21 @@ function modAction({ client, action, color, target, moderator, reason, duration,
   const lines = [
     `**Member** ${target.tag || target.user?.tag} \`${target.id}\``,
     `**Moderator** ${moderator.tag} \`${moderator.id}\``,
-    `**Reason** ${reason || 'No reason provided'}`,
+    `**Reason** ${clipText(reason || 'No reason provided', 1024)}`,
   ];
 
   if (duration) lines.push(`**Duration** ${duration}`);
-  if (extra) lines.push(`**Details** ${extra}`);
+  if (extra) lines.push(`**Details** ${clipText(extra, 1000)}`);
 
   embed.setDescription(lines.join('\n'));
   return embed;
 }
 
-function dmNotice({ guild, action, reason, color, duration }) {
+function dmNotice({ guild, action, reason, color, duration, caseId }) {
   const lines = [`You have been **${action}** in **${guild.name}**`];
   if (duration) lines.push(`**Duration** ${duration}`);
-  lines.push(`**Reason** ${reason || 'No reason provided'}`);
+  lines.push(`**Reason** ${clipText(reason || 'No reason provided', 1024)}`);
+  if (caseId) lines.push(`**Case** #${caseId}`);
 
   return new EmbedBuilder()
     .setColor(color)

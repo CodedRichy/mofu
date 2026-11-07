@@ -41,11 +41,15 @@ module.exports = {
     }
 
     // A banned user shares no server with the bot, so the DM can only be delivered first. All checks have passed by here.
-    await user.send({ embeds: [dmNotice({ guild: interaction.guild, action: 'banned', reason, color: colors.error })] }).catch(() => {});
+    const caseId = modlog.openCase(interaction.guild, { action: 'ban', target: user, moderator: interaction.user, reason });
+    await user.send({ embeds: [dmNotice({ guild: interaction.guild, action: 'banned', reason, color: colors.error, caseId })] }).catch(() => {});
 
     try {
       await interaction.guild.members.ban(user, { reason, deleteMessageSeconds: days * 86400 });
+      // a permanent ban replaces any pending tempban, so the expiry sweep must not lift it
+      try { require('../../database/infractions').removeTempban(interaction.guild.id, user.id); } catch { /* ignore */ }
     } catch {
+      modlog.voidCase(interaction.guild, caseId, 'ban refused');
       return interaction.reply({ embeds: [response({ client: interaction.client, description: "Couldn't ban that user. Check my permissions and role position.", color: colors.error })], ephemeral: true });
     }
 
@@ -56,9 +60,10 @@ module.exports = {
       target: user,
       moderator: interaction.user,
       reason,
+      caseId,
     });
 
     await interaction.reply({ embeds: [embed] });
-    await modlog.send(interaction.guild, { action: 'ban', target: user, moderator: interaction.user, reason });
+    await modlog.send(interaction.guild, { action: 'ban', target: user, moderator: interaction.user, reason, caseId });
   },
 };

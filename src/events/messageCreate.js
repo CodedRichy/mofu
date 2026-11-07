@@ -129,7 +129,9 @@ module.exports = {
     if (automod.enforce(message)) return;
 
     // Anti-spam — auto-timeout if 5+ messages in 3 seconds
-    const antispam = store.getConfig(message.guild.id, 'antispam');
+    // An /automod spam rule turns detection on too and replaces the fixed 1-minute mute with its ladder.
+    const spamRule = automod.spamRule(message.guild.id);
+    const antispam = store.getConfig(message.guild.id, 'antispam') || spamRule;
     if (antispam && !message.member.permissions.has('ManageMessages')) {
       const key = `${message.guild.id}:${message.author.id}`;
       const now = Date.now();
@@ -140,6 +142,7 @@ module.exports = {
 
       if (recent.length >= SPAM_THRESHOLD) {
         spamTracker.delete(key);
+        if (spamRule) { await automod.enforceSpam(message, SPAM_THRESHOLD); return; }
         await message.member.timeout(60000, 'Anti-spam: message velocity exceeded').catch(() => {});
         const msgs = await message.channel.messages.fetch({ limit: SPAM_THRESHOLD });
         const userMsgs = msgs.filter((m) => m.author.id === message.author.id);
@@ -159,7 +162,7 @@ module.exports = {
     // AI automod — async content moderation
     const aiMod = store.getConfig(message.guild.id, 'ai_automod');
     if (aiMod && !message.member.permissions.has('ManageMessages') && message.content.length > 10) {
-      moderate(message.content).then((result) => {
+      moderate(message.content, { guildId: message.guild.id }).then((result) => {
         if (result?.flagged) {
           automod.markBotDeleted(message.id);
           message.delete().catch(() => {});
@@ -198,23 +201,8 @@ module.exports = {
       message.member.setNickname(forcedNick).catch(() => {});
     }
 
-    // XP gain
-    const leveling = store.getConfig(message.guild.id, 'leveling') ?? true;
-    if (leveling && xpStore.canEarnXp(message.guild.id, message.author.id, XP_COOLDOWN)) {
-      const amount = Math.floor(Math.random() * (XP_MAX - XP_MIN + 1)) + XP_MIN;
-      const result = xpStore.addXp(message.guild.id, message.author.id, amount);
-
-      if (result.leveledUp) {
-        const channelId = store.getConfig(message.guild.id, 'levelup_channel');
-        const target = channelId ? message.guild.channels.cache.get(channelId) : message.channel;
-
-        if (target) {
-          const { levelUpEmbed } = require('../utils/visuals');
-          const embed = levelUpEmbed({ client: message.client, user: message.author, oldLevel: result.level - 1, newLevel: result.level, xpPct: result.needed ? result.xp / result.needed : 0 });
-          target.send({ embeds: [embed], allowedMentions: { parse: [] } }).catch(() => {});
-        }
-      }
-    }
+    // XP gain (no-XP lists, multipliers, level rewards, announcement: src/utils/xp.js). Not awaited; never throws.
+    require('../utils/xp').handleMessageXp(message, { min: XP_MIN, max: XP_MAX, cooldown: XP_COOLDOWN });
 
     // Autoresponder
     const responders = store.getConfig(message.guild.id, 'autoresponders') || {};
@@ -299,7 +287,7 @@ module.exports = {
 
         message.channel.sendTyping().catch(() => {});
         const { text, history, context } = await buildChatContext(message, botId);
-        const reply = await chatWithHistory(text, history, context);
+        const reply = await chatWithHistory(text, history, context, { guildId: message.guild.id });
         if (reply) {
           await message.reply({ content: reply.slice(0, 1900), allowedMentions: { parse: [], repliedUser: false } }).catch(() => {});
         } else {

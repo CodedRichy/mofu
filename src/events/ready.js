@@ -24,6 +24,7 @@ module.exports = {
     }
     restoreGiveaways(client);
     require('../database/reminders').startSweep(client);
+    require('../utils/tempban').startSweep(client); // DB-backed: expired tempbans are lifted even after a restart
     require('../utils/announceUpdate').announceUpdate(client);
     require('../utils/statusPost').online(client);
 
@@ -31,6 +32,9 @@ module.exports = {
     const retention = require('../database/retention');
     retention.sweep(client);
     setInterval(() => retention.sweep(client), 6 * 60 * 60 * 1000).unref();
+
+    // Daily SQLite snapshot to data/backups (newest 7 kept). Never blocks or fails startup.
+    try { require('../utils/backup').start(); } catch (err) { log.error('Backup scheduler failed to start:', err?.message || err); }
   },
 };
 

@@ -36,6 +36,7 @@ module.exports = {
 
     try {
       await interaction.guild.members.unban(userId, reason);
+      try { require('../../database/infractions').removeTempban(interaction.guild.id, userId); } catch { /* ignore */ }
 
       const embed = modAction({
         client: interaction.client,

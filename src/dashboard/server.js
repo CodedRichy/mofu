@@ -3,6 +3,8 @@ const cors = require('cors');
 const config = require('../config');
 const log = require('../utils/logger');
 const V = require('./validate');
+const OAuth = require('./oauthState');
+const crypto = require('crypto');
 
 // deps.store is injectable so tests never open the live SQLite file.
 function createApp(client, deps = {}) {
@@ -56,10 +58,21 @@ function createApp(client, deps = {}) {
     };
   }
 
-  // Liveness probe for Docker/uptime monitors. Reports only whether the gateway connection is up; no data.
+  // Health probe for Docker/uptime monitors. Gateway state, ws ping, a trivial DB read and uptime; no ids,
+  // names, tokens or config. 503 unless both Discord is ready and the database answers.
   app.get('/healthz', (req, res) => {
-    const ready = client.isReady();
-    res.status(ready ? 200 : 503).json({ ok: ready });
+    const ready = !!client.isReady?.();
+    let dbOk = false;
+    try { dbOk = db.prepare('SELECT 1 AS ok').get()?.ok === 1; } catch { dbOk = false; }
+    const ping = Number(client.ws?.ping);
+    const ok = ready && dbOk;
+    res.set('Cache-Control', 'no-store');
+    res.status(ok ? 200 : 503).json({
+      ok,
+      discord: { ready, wsPingMs: Number.isFinite(ping) && ping >= 0 ? Math.round(ping) : null },
+      db: { ok: dbOk },
+      uptimeSeconds: Math.floor(process.uptime()),
+    });
   });
 
   // Three public numbers for the marketing site. Counts only, no user or server data; cached so a busy
@@ -149,10 +162,46 @@ function createApp(client, deps = {}) {
     });
   });
 
+  // OAuth state (CSRF): minted here, carried in a signed httpOnly cookie, checked once on the callback.
+  // See src/dashboard/oauthState.js. The cookie key is derived from SESSION_SECRET, never the secret itself.
+  // Without a real SESSION_SECRET (dev default is public) use a random per-process key: a restart only voids
+  // logins that are mid-flight (10 minute window), and nobody can forge a state cookie.
+  const oauthSecret = deps.oauthSecret
+    || (process.env.SESSION_SECRET
+      ? crypto.createHmac('sha256', process.env.SESSION_SECRET).update('sonder-oauth-state-v1').digest('hex')
+      : crypto.randomBytes(32).toString('hex'));
+  const oauthState = OAuth.createStateManager({ secret: oauthSecret, now: deps.now });
+  const cookieSecure = (req) => req.secure || /^https:/i.test(config.dashboard.callbackUrl || '') || process.env.COOKIE_SECURE === '1';
+
+  // Start login: sets the state cookie and sends the browser to Discord. The website links here directly.
+  app.get('/api/auth/login', (req, res) => {
+    if (!config.discord.clientId) return res.status(503).json({ error: 'Login is not configured' });
+    const { state, cookieValue } = oauthState.issue();
+    res.set('Set-Cookie', OAuth.setCookieHeader(cookieValue, { secure: cookieSecure(req) }));
+    res.set('Cache-Control', 'no-store');
+    const params = new URLSearchParams({
+      client_id: config.discord.clientId,
+      redirect_uri: config.dashboard.callbackUrl,
+      response_type: 'code',
+      scope: 'identify guilds',
+      state,
+    });
+    res.redirect(302, `https://discord.com/oauth2/authorize?${params}`);
+  });
+
   // Exchange code for token
   app.post('/api/auth/callback', async (req, res) => {
     const code = req.body?.code;
     if (!code || typeof code !== 'string' || code.length > 512) return res.status(400).json({ error: 'No code' });
+
+    // State first: an unverified callback never reaches Discord. The cookie is single-use either way.
+    const cookie = OAuth.parseCookies(req.headers.cookie)[OAuth.COOKIE_NAME];
+    const check = oauthState.verify(cookie, req.body?.state);
+    res.append('Set-Cookie', OAuth.clearCookieHeader({ secure: cookieSecure(req) }));
+    if (!check.ok) {
+      log.warn(`dashboard oauth state rejected (${check.reason}) from ${req.ip}`);
+      return res.status(400).json({ error: 'Sign-in could not be verified. Please try again.' });
+    }
 
     try {
       const tokenRes = await fetch('https://discord.com/api/v10/oauth2/token', {
@@ -270,7 +319,7 @@ function createApp(client, deps = {}) {
     if (!v.ok) return badRequest(res, v.error);
 
     const { chatWithHistory } = deps.ai || require('../utils/ai');
-    const response = await chatWithHistory(v.values.message, v.values.history);
+    const response = await chatWithHistory(v.values.message, v.values.history, null, { guildId: 'web' });
     if (!response) return res.status(503).json({ error: 'AI unavailable', response: 'AI service is currently unavailable.' });
     res.json({ response });
   });

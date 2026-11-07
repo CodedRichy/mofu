@@ -4,6 +4,23 @@ const { modAction, dmNotice, response, base } = require('../../utils/embed');
 const store = require('../../database/store');
 const modlog = require('../../utils/modlog');
 const { reasonError, clip, joinClipped, modLabel } = require('../../utils/modguard');
+const policy = require('../../utils/warnpolicy');
+
+// After a warning: count active warnings and apply the highest threshold reached. Never throws.
+async function enforceThresholds(interaction, user) {
+  try {
+    const guildId = interaction.guild.id;
+    const thresholds = policy.normalizeThresholds(store.getConfig(guildId, 'warn_thresholds'));
+    if (!thresholds.length) return null;
+    const active = policy.countActive(store.getWarnings(guildId, user.id), store.getConfig(guildId, 'warn_expiry_days'));
+    const threshold = policy.pickThreshold(thresholds, active);
+    if (!threshold || threshold.action === 'none') return null;
+    const result = await policy.applyThreshold({ guild: interaction.guild, user, invoker: interaction.member, count: active, threshold });
+    return result.text;
+  } catch {
+    return null;
+  }
+}
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -53,8 +70,9 @@ module.exports = {
       });
 
       const warnings = store.getWarnings(interaction.guild.id, user.id);
+      const caseId = modlog.openCase(interaction.guild, { action: 'warn', target: user, moderator: interaction.user, reason });
 
-      await user.send({ embeds: [dmNotice({ guild: interaction.guild, action: 'warned', reason, color: colors.warning })] }).catch(() => {});
+      await user.send({ embeds: [dmNotice({ guild: interaction.guild, action: 'warned', reason, color: colors.warning, caseId })] }).catch(() => {});
 
       const embed = modAction({
         client: interaction.client,
@@ -64,10 +82,16 @@ module.exports = {
         moderator: interaction.user,
         reason,
         extra: `Warning #${warnings.length}`,
+        caseId,
       });
 
       await interaction.reply({ embeds: [embed] });
-      await modlog.send(interaction.guild, { action: 'warn', target: user, moderator: interaction.user, reason, extra: `Total: ${warnings.length}` });
+      await modlog.send(interaction.guild, { action: 'warn', target: user, moderator: interaction.user, reason, extra: `Total: ${warnings.length}`, caseId });
+
+      const followUp = await enforceThresholds(interaction, user);
+      if (followUp) {
+        await interaction.followUp({ embeds: [response({ client: interaction.client, description: followUp, color: colors.warning })], allowedMentions: { parse: [] } }).catch(() => {});
+      }
     } else if (sub === 'list') {
       const user = interaction.options.getUser('user');
       const warnings = store.getWarnings(interaction.guild.id, user.id);
@@ -81,9 +105,11 @@ module.exports = {
         return interaction.reply({ embeds: [embed] });
       }
 
+      const expiry = store.getConfig(interaction.guild.id, 'warn_expiry_days');
       const list = joinClipped(warnings.map((w, i) => {
         const ts = Math.floor(new Date(w.timestamp).getTime() / 1000);
-        return `\`${i + 1}\` ${clip(w.reason || 'No reason', 300)}\n  ▸ ${modLabel(w.moderatorId)} · <t:${ts}:R>`;
+        const old = policy.isActive(w, expiry) ? '' : ' *(expired)*';
+        return `\`${i + 1}\` ${clip(w.reason || 'No reason', 300)}${old}\n  ▸ ${modLabel(w.moderatorId)} · <t:${ts}:R>`;
       }), 4000, '\n\n');
 
       const embed = base(interaction.client, colors.warning)

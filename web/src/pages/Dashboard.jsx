@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { LogIn, Users, Server, Terminal, Activity, ArrowUpRight, Sparkles } from 'lucide-react'
 import { Layout } from '../components/Layout'
 import { api } from '../lib/api'
-import { useToken, setToken, clearToken, loginUrl as buildLoginUrl, verifyOAuthState } from '../lib/auth'
+import { useToken, setToken, clearToken, loginUrl as buildLoginUrl } from '../lib/auth'
 
 const handledCodes = new Set()
 
@@ -148,10 +148,7 @@ export function Dashboard() {
         setLoading(false)
         navigate('/dashboard', { replace: true })
       }
-      if (!verifyOAuthState(searchParams.get('state'))) {
-        finish('Sign-in could not be verified (state mismatch). Please try again.')
-        return
-      }
+      // The server issued the state in a signed cookie on /api/auth/login and checks it here.
       setLoading(true)
       ;(async () => {
         try {
@@ -165,7 +162,7 @@ export function Dashboard() {
             setToken(data.access_token)
             finish(null)
           } else {
-            finish(`Sign-in failed (${r.status}). Please try again.`)
+            finish((data && data.error) || `Sign-in failed (${r.status}). Please try again.`)
           }
         } catch {
           finish("Couldn't reach the server to finish signing in. Please try again.")

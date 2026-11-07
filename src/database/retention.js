@@ -4,6 +4,7 @@
 const store = require('./store');
 const { db } = store;
 const log = require('../utils/logger');
+const { scrubAiPrompts } = require('./privacy');
 
 const RETENTION_DAYS = 30;
 const DAY_MS = 86400000;
@@ -45,6 +46,13 @@ function purgeGuild(guildId) {
 }
 
 function sweep(client) {
+  // AI action audit rows stay, but the chat text that triggered them goes after RETENTION_DAYS.
+  try {
+    const scrubbed = scrubAiPrompts(db, { maxAgeMs: RETENTION_DAYS * DAY_MS });
+    if (scrubbed) log.info(`Retention: cleared prompt text from ${scrubbed} AI action rows older than ${RETENTION_DAYS} days`);
+  } catch (err) {
+    log.warn(`Retention: AI prompt scrub failed: ${err.message}`);
+  }
   const cutoff = Date.now() - RETENTION_DAYS * DAY_MS;
   for (const { guild_id: guildId } of stmts.due.all(cutoff)) {
     if (client.guilds.cache.has(guildId)) { markReturned(guildId); continue; } // came back without an event

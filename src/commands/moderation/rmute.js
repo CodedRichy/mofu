@@ -3,6 +3,7 @@ const { colors } = require('../../utils/constants');
 const { response, modAction } = require('../../utils/embed');
 const modlog = require('../../utils/modlog');
 const { reasonError } = require('../../utils/modguard');
+const { send, ensureDeferred, applyRoleOverwrites, failureText } = require('../../utils/bulk');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -42,25 +43,29 @@ module.exports = {
 
       let rmuteRole = interaction.guild.roles.cache.find((r) => r.name === 'Reaction Muted');
       if (!rmuteRole) {
+        await ensureDeferred(interaction); // first use: role + per-channel setup can take well over 3 seconds
         rmuteRole = await interaction.guild.roles.create({
           name: 'Reaction Muted',
           permissions: [],
           reason: '[sonder] Auto-created reaction mute role',
         });
-
-        for (const [, ch] of interaction.guild.channels.cache) {
-          await ch.permissionOverwrites.edit(rmuteRole, { AddReactions: false }).catch(() => {});
-        }
       }
-
       if (member.roles.cache.has(rmuteRole.id)) {
-        return interaction.reply({ embeds: [response({ client: interaction.client, description: 'User is already reaction muted.', color: colors.error })], ephemeral: true });
+        return send(interaction, { embeds: [response({ client: interaction.client, description: 'User is already reaction muted.', color: colors.error })], ephemeral: true });
       }
 
-      await member.roles.add(rmuteRole, `Reaction muted by ${interaction.user.tag}: ${reason}`);
+      // Only channels still missing the overwrite are touched, so a partial failure last time is retried now.
+      const setup = await applyRoleOverwrites(interaction, rmuteRole, { AddReactions: false }, { reason: '[sonder] Reaction mute role setup' });
+
+      try {
+        await member.roles.add(rmuteRole, `Reaction muted by ${interaction.user.tag}: ${reason}`);
+      } catch {
+        return send(interaction, { embeds: [response({ client: interaction.client, description: "Couldn't reaction mute that member. Check my permissions and role position.", color: colors.error })], ephemeral: true });
+      }
 
       const embed = modAction({ client: interaction.client, action: 'Reaction Mute', color: colors.warning, target: member.user, moderator: interaction.user, reason });
-      await interaction.reply({ embeds: [embed] });
+      const warnText = failureText(setup.failedNames);
+      await send(interaction, { embeds: warnText ? [embed, response({ client: interaction.client, description: warnText, color: colors.warning })] : [embed] });
       await modlog.send(interaction.guild, { action: 'Reaction Mute', target: member.user, moderator: interaction.user, reason });
     } else if (sub === 'remove') {
       const rmuteRole = interaction.guild.roles.cache.find((r) => r.name === 'Reaction Muted');

@@ -4,6 +4,7 @@ const { response, modAction, dmNotice } = require('../../utils/embed');
 const store = require('../../database/store');
 const modlog = require('../../utils/modlog');
 const { reasonError, memberProblem, splitRoles, restorableRoles } = require('../../utils/modguard');
+const { send, ensureDeferred, applyRoleOverwrites, failureText } = require('../../utils/bulk');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -59,27 +60,27 @@ module.exports = {
 
       let muteRole = interaction.guild.roles.cache.find((r) => r.name === 'Hardmuted');
       if (!muteRole) {
+        await ensureDeferred(interaction); // first use: role + per-channel setup can take well over 3 seconds
         muteRole = await interaction.guild.roles.create({
           name: 'Hardmuted',
           color: 0x2c2f33,
           permissions: [],
           reason: '[sonder] Auto-created hardmute role',
         });
-
-        for (const [, channel] of interaction.guild.channels.cache) {
-          await channel.permissionOverwrites.edit(muteRole, {
-            SendMessages: false,
-            AddReactions: false,
-            Speak: false,
-            Connect: false,
-            AttachFiles: false,
-            EmbedLinks: false,
-          }).catch(() => {});
-        }
       }
 
+      // Only channels still missing the overwrite are touched, so a partial failure last time is retried now.
+      const setup = await applyRoleOverwrites(interaction, muteRole, {
+        SendMessages: false,
+        AddReactions: false,
+        Speak: false,
+        Connect: false,
+        AttachFiles: false,
+        EmbedLinks: false,
+      }, { reason: '[sonder] Hardmute role setup' });
+
       if (!muteRole.editable) {
-        return interaction.reply({ embeds: [response({ client: interaction.client, description: "I can't assign the Hardmuted role (it is above my highest role).", color: colors.error })], ephemeral: true });
+        return send(interaction, { embeds: [response({ client: interaction.client, description: "I can't assign the Hardmuted role (it is above my highest role).", color: colors.error })], ephemeral: true });
       }
 
       // Managed roles and roles above the bot can't be removed; they stay on the member.
@@ -91,7 +92,7 @@ module.exports = {
       } catch {
         // unwind: nothing changed on the member, so forget the saved list
         store.setConfig(interaction.guild.id, `hardmute_roles_${target.id}`, null);
-        return interaction.reply({ embeds: [response({ client: interaction.client, description: "Couldn't hardmute that member. Check my permissions and role position.", color: colors.error })], ephemeral: true });
+        return send(interaction, { embeds: [response({ client: interaction.client, description: "Couldn't hardmute that member. Check my permissions and role position.", color: colors.error })], ephemeral: true });
       }
 
       await target.user.send({ embeds: [dmNotice({ guild: interaction.guild, action: 'Hardmuted', reason, color: colors.error })] }).catch(() => {});
@@ -101,7 +102,8 @@ module.exports = {
         target: target.user, moderator: interaction.user, reason,
       });
 
-      await interaction.reply({ embeds: [embed] });
+      const warnText = failureText(setup.failedNames);
+      await send(interaction, { embeds: warnText ? [embed, response({ client: interaction.client, description: warnText, color: colors.warning })] : [embed] });
       await modlog.send(interaction.guild, { action: 'Hardmute', target: target.user, moderator: interaction.user, reason });
     } else if (sub === 'remove') {
       const muteRole = interaction.guild.roles.cache.find((r) => r.name === 'Hardmuted');

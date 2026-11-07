@@ -38,11 +38,13 @@ module.exports = {
     }
 
     // A kicked member shares no server with the bot afterwards, so the DM can only be delivered first.
-    await member.user.send({ embeds: [dmNotice({ guild: interaction.guild, action: 'kicked', reason, color: colors.warning })] }).catch(() => {});
+    const caseId = modlog.openCase(interaction.guild, { action: 'kick', target: member.user, moderator: interaction.user, reason });
+    await member.user.send({ embeds: [dmNotice({ guild: interaction.guild, action: 'kicked', reason, color: colors.warning, caseId })] }).catch(() => {});
 
     try {
       await member.kick(reason);
     } catch {
+      modlog.voidCase(interaction.guild, caseId, 'kick refused');
       return interaction.reply({ embeds: [response({ client: interaction.client, description: "Couldn't kick that member. Check my permissions and role position.", color: colors.error })], ephemeral: true });
     }
 
@@ -53,9 +55,10 @@ module.exports = {
       target: member.user,
       moderator: interaction.user,
       reason,
+      caseId,
     });
 
     await interaction.reply({ embeds: [embed] });
-    await modlog.send(interaction.guild, { action: 'kick', target: member.user, moderator: interaction.user, reason });
+    await modlog.send(interaction.guild, { action: 'kick', target: member.user, moderator: interaction.user, reason, caseId });
   },
 };

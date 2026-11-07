@@ -59,7 +59,8 @@ module.exports = {
     } catch {
       return interaction.reply({ embeds: [response({ client: interaction.client, description: "Couldn't mute that member. Check my permissions and role position.", color: colors.error })], ephemeral: true });
     }
-    await member.user.send({ embeds: [dmNotice({ guild: interaction.guild, action: 'muted', reason, color: colors.warning, duration: dur })] }).catch(() => {});
+    const caseId = modlog.openCase(interaction.guild, { action: 'mute', target: member.user, moderator: interaction.user, reason, duration: dur });
+    await member.user.send({ embeds: [dmNotice({ guild: interaction.guild, action: 'muted', reason, color: colors.warning, duration: dur, caseId })] }).catch(() => {});
 
     const embed = modAction({
       client: interaction.client,
@@ -69,9 +70,10 @@ module.exports = {
       moderator: interaction.user,
       reason,
       duration: dur,
+      caseId,
     });
 
     await interaction.reply({ embeds: [embed] });
-    await modlog.send(interaction.guild, { action: 'mute', target: member.user, moderator: interaction.user, reason, duration: dur });
+    await modlog.send(interaction.guild, { action: 'mute', target: member.user, moderator: interaction.user, reason, duration: dur, caseId });
   },
 };

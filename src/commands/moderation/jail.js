@@ -4,6 +4,7 @@ const { response, modAction, dmNotice } = require('../../utils/embed');
 const store = require('../../database/store');
 const modlog = require('../../utils/modlog');
 const { reasonError, memberProblem, splitRoles, restorableRoles } = require('../../utils/modguard');
+const { send, ensureDeferred, applyRoleOverwrites, failureText } = require('../../utils/bulk');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -59,23 +60,21 @@ module.exports = {
 
       let jailRole = interaction.guild.roles.cache.find((r) => r.name === 'Jailed');
       if (!jailRole) {
+        await ensureDeferred(interaction); // first use: role + per-channel setup can take well over 3 seconds
         jailRole = await interaction.guild.roles.create({
           name: 'Jailed',
           color: 0x2c2f33,
           permissions: [],
           reason: '[sonder] Auto-created jail role',
         });
-
-        for (const [, channel] of interaction.guild.channels.cache) {
-          if (channel.type === ChannelType.GuildText || channel.type === ChannelType.GuildVoice) {
-            await channel.permissionOverwrites.edit(jailRole, {
-              ViewChannel: false,
-              SendMessages: false,
-              Connect: false,
-            }).catch(() => {});
-          }
-        }
       }
+
+      // Every text/voice channel except the jail itself gets a deny. Only channels still missing the overwrite are
+      // touched, so a partial failure last time is retried now, and failures are reported below.
+      const setup = await applyRoleOverwrites(interaction, jailRole, { ViewChannel: false, SendMessages: false, Connect: false }, {
+        filter: (c) => (c.type === ChannelType.GuildText || c.type === ChannelType.GuildVoice) && c.name !== 'jail',
+        reason: '[sonder] Jail role setup',
+      });
 
       let jailChannel = interaction.guild.channels.cache.find((c) => c.name === 'jail');
       if (!jailChannel) {
@@ -88,10 +87,13 @@ module.exports = {
           ],
           reason: '[sonder] Auto-created jail channel',
         });
+      } else if (!jailChannel.permissionOverwrites?.cache.has(jailRole.id)) {
+        // an existing #jail must let jailed members in, or they would see nothing at all
+        await jailChannel.permissionOverwrites?.edit(jailRole, { ViewChannel: true, SendMessages: true }).catch(() => {});
       }
 
       if (!jailRole.editable) {
-        return interaction.reply({ embeds: [response({ client: interaction.client, description: "I can't assign the Jailed role (it is above my highest role).", color: colors.error })], ephemeral: true });
+        return send(interaction, { embeds: [response({ client: interaction.client, description: "I can't assign the Jailed role (it is above my highest role).", color: colors.error })], ephemeral: true });
       }
 
       // Managed roles and roles above the bot can't be removed; they stay on the member.
@@ -103,7 +105,7 @@ module.exports = {
       } catch {
         // unwind: nothing changed on the member, so forget the saved list
         store.setConfig(interaction.guild.id, `jail_roles_${target.id}`, null);
-        return interaction.reply({ embeds: [response({ client: interaction.client, description: "Couldn't jail that member. Check my permissions and role position.", color: colors.error })], ephemeral: true });
+        return send(interaction, { embeds: [response({ client: interaction.client, description: "Couldn't jail that member. Check my permissions and role position.", color: colors.error })], ephemeral: true });
       }
 
       await target.user.send({ embeds: [dmNotice({ guild: interaction.guild, action: 'Jailed', reason, color: colors.error })] }).catch(() => {});
@@ -113,7 +115,8 @@ module.exports = {
         target: target.user, moderator: interaction.user, reason,
       });
 
-      await interaction.reply({ embeds: [embed] });
+      const warnText = failureText(setup.failedNames);
+      await send(interaction, { embeds: warnText ? [embed, response({ client: interaction.client, description: warnText, color: colors.warning })] : [embed] });
       await modlog.send(interaction.guild, { action: 'Jail', target: target.user, moderator: interaction.user, reason });
     } else if (sub === 'remove') {
       if (target.id === interaction.user.id) {

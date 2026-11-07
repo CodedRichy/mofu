@@ -85,7 +85,7 @@ module.exports = {
         { role: 'user', content: message },
       ];
 
-      const reply = await chat(messages, { maxTokens: 200, temperature: 0.85 });
+      const reply = await chat(messages, { maxTokens: 200, temperature: 0.85, guildId: interaction.guildId });
 
       if (!reply) {
         return interaction.editReply({

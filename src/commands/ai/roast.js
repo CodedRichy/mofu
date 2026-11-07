@@ -28,7 +28,7 @@ module.exports = {
         role: 'user',
         content: `Roast the Discord user named ${displayName} (username: ${target.username}). Their account was created ${target.createdAt.toLocaleDateString()}. They are ${status} in the server.`,
       },
-    ], { maxTokens: 150, temperature: 0.9 });
+    ], { maxTokens: 150, temperature: 0.9, guildId: interaction.guildId });
 
     if (!roast) {
       return interaction.editReply({

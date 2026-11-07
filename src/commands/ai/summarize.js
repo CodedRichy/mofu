@@ -24,7 +24,7 @@ module.exports = {
       return interaction.editReply({ embeds: [response({ client: interaction.client, description: 'Not enough messages to summarize.', color: colors.error })] });
     }
 
-    const summary = await summarize(filtered);
+    const summary = await summarize(filtered, { guildId: interaction.guildId });
     if (!summary) {
       return interaction.editReply({ embeds: [response({ client: interaction.client, description: 'AI unavailable. Set `GROQ_API_KEY` in .env to enable.', color: colors.error })] });
     }

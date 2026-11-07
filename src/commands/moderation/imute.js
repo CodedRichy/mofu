@@ -3,6 +3,7 @@ const { colors } = require('../../utils/constants');
 const { response, modAction } = require('../../utils/embed');
 const modlog = require('../../utils/modlog');
 const { reasonError } = require('../../utils/modguard');
+const { send, ensureDeferred, applyRoleOverwrites, failureText } = require('../../utils/bulk');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -42,25 +43,29 @@ module.exports = {
 
       let imuteRole = interaction.guild.roles.cache.find((r) => r.name === 'Image Muted');
       if (!imuteRole) {
+        await ensureDeferred(interaction); // first use: role + per-channel setup can take well over 3 seconds
         imuteRole = await interaction.guild.roles.create({
           name: 'Image Muted',
           permissions: [],
           reason: '[sonder] Auto-created image mute role',
         });
-
-        for (const [, ch] of interaction.guild.channels.cache) {
-          await ch.permissionOverwrites.edit(imuteRole, { AttachFiles: false, EmbedLinks: false }).catch(() => {});
-        }
       }
-
       if (member.roles.cache.has(imuteRole.id)) {
-        return interaction.reply({ embeds: [response({ client: interaction.client, description: 'User is already image muted.', color: colors.error })], ephemeral: true });
+        return send(interaction, { embeds: [response({ client: interaction.client, description: 'User is already image muted.', color: colors.error })], ephemeral: true });
       }
 
-      await member.roles.add(imuteRole, `Image muted by ${interaction.user.tag}: ${reason}`);
+      // Only channels still missing the overwrite are touched, so a partial failure last time is retried now.
+      const setup = await applyRoleOverwrites(interaction, imuteRole, { AttachFiles: false, EmbedLinks: false }, { reason: '[sonder] Image mute role setup' });
+
+      try {
+        await member.roles.add(imuteRole, `Image muted by ${interaction.user.tag}: ${reason}`);
+      } catch {
+        return send(interaction, { embeds: [response({ client: interaction.client, description: "Couldn't image mute that member. Check my permissions and role position.", color: colors.error })], ephemeral: true });
+      }
 
       const embed = modAction({ client: interaction.client, action: 'Image Mute', color: colors.warning, target: member.user, moderator: interaction.user, reason });
-      await interaction.reply({ embeds: [embed] });
+      const warnText = failureText(setup.failedNames);
+      await send(interaction, { embeds: warnText ? [embed, response({ client: interaction.client, description: warnText, color: colors.warning })] : [embed] });
       await modlog.send(interaction.guild, { action: 'Image Mute', target: member.user, moderator: interaction.user, reason });
     } else if (sub === 'remove') {
       const imuteRole = interaction.guild.roles.cache.find((r) => r.name === 'Image Muted');
