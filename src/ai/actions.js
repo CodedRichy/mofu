@@ -10,7 +10,7 @@
 const crypto = require('crypto');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { colors } = require('../utils/constants');
-const { modAction, dmNotice, response } = require('../utils/embed');
+const { base, modAction, dmNotice, response } = require('../utils/embed');
 const { parse, format } = require('../utils/duration');
 const modlog = require('../utils/modlog');
 const store = require('../database/store');
@@ -207,6 +207,47 @@ async function validateMute(guild, invokerId, targetId, ms, kind = 'mute') {
   return { invoker, target };
 }
 
+// ---- presentation only: proposal card + compact result cards ----
+const clip = (s, n) => { const t = String(s ?? ''); return t.length > n ? `${t.slice(0, n - 3)}...` : t; };
+const unix = (ms) => Math.floor(ms / 1000);
+
+// The slash-equivalent of what will run, shown in a code block (no mentions inside, so nothing can ping).
+function commandText(kind, target, dur, reason) {
+  const name = clip(target.user?.username || target.displayName || target.id, 32).replace(/`/g, "'");
+  const r = clip(reason, 80).replace(/`/g, "'").replace(/\s+/g, ' ');
+  const parts = [`/${kind}`, `@${name}`];
+  if (kind === 'mute' && dur) parts.push(dur);
+  if (kind !== 'unmute' && r) parts.push(r);
+  return clip(parts.join(' '), 200);
+}
+
+function proposalCard({ client, kind, target, dur, reason, invokerId, expiresAt }) {
+  const need = REQUIRED_PERM[kind];
+  const top = target.roles?.highest?.name || '@everyone';
+  const safeReason = clip(reason, 200).replace(/@(everyone|here)/gi, '$1');
+  return base(client, colors.warning)
+    .setAuthor({ name: 'AI ACTION PROPOSAL', iconURL: target.user?.displayAvatarURL?.() || undefined })
+    .addFields(
+      { name: 'Command', value: `\`\`\`\n${commandText(kind, target, dur, reason)}\n\`\`\``.slice(0, 1024) },
+      { name: 'Reason', value: clip(safeReason, 200) || 'No reason provided' },
+      { name: 'Target', value: clip(`<@${target.id}> - ${top}`, 1024), inline: true },
+      { name: 'Who can confirm', value: clip(`Only <@${invokerId}> (needs ${need.label})`, 1024), inline: true },
+      { name: 'Expires', value: `<t:${unix(expiresAt)}:R>`, inline: true },
+    );
+}
+
+// Compact result card: action, target, duration, "via Sonder AI".
+function resultCard({ client, title, kind, targetId, dur, note, color }) {
+  const lines = [`**Action** ${kind}`];
+  if (targetId) lines.push(`**Target** <@${targetId}>`);
+  if (dur) lines.push(`**Duration** ${dur}`);
+  if (note) lines.push(clip(note, 300));
+  return base(client, color)
+    .setAuthor({ name: title })
+    .setDescription(lines.join('\n'))
+    .setFooter({ text: 'via Sonder AI', iconURL: client?.user?.displayAvatarURL?.() || undefined });
+}
+
 async function proposeMute(message, intent) {
   const { guild } = message;
   const say = (description, color = colors.error) =>
@@ -240,13 +281,11 @@ async function proposeMute(message, intent) {
     new ButtonBuilder().setCustomId(`aiact:${id}:ok`).setLabel(label).setStyle(style),
     new ButtonBuilder().setCustomId(`aiact:${id}:no`).setLabel('Cancel').setStyle(ButtonStyle.Secondary),
   );
-  const who = `**${v.target.user.tag}** (\`${v.target.id}\`)`;
-  const what = kind === 'mute' ? `mute ${who} for **${dur}**?` : `${kind} ${who}?`;
+  const expiresAt = Date.now() + PENDING_TTL_MS;
   const card = await message.reply({
-    embeds: [response({
-      client: message.client,
-      description: `${what}\nreason: ${intent.reason}\n\nonly <@${message.author.id}> can confirm. expires in 2 min.`,
-      color: colors.primary,
+    embeds: [proposalCard({
+      client: message.client, kind, target: v.target, dur, reason: intent.reason,
+      invokerId: message.author.id, expiresAt,
     })],
     components: [row],
     allowedMentions: NO_PINGS,
@@ -261,7 +300,7 @@ async function proposeMute(message, intent) {
   const timer = setTimeout(() => {
     if (!pending.delete(id)) return;
     audit.resolve(auditId, 'expired');
-    card.edit({ embeds: [response({ client: message.client, description: 'expired. nothing was done.', color: colors.muted })], components: [] }).catch(() => {});
+    card.edit({ embeds: [resultCard({ client: message.client, title: 'EXPIRED', kind, targetId: v.target.id, dur, note: 'Nothing was done.', color: colors.muted })], components: [], allowedMentions: NO_PINGS }).catch(() => {});
   }, PENDING_TTL_MS);
   timer.unref();
 
@@ -289,7 +328,7 @@ async function handleButton(interaction) {
   if (!p) {
     // expired, or the bot restarted since the card was posted (pending actions live in memory, which fails safe).
     // Fix the card itself so it stops offering buttons that do nothing.
-    return interaction.update({ embeds: [response({ client: interaction.client, description: 'expired. nothing was done. ask again if you still want it.', color: colors.muted })], components: [] })
+    return interaction.update({ embeds: [resultCard({ client: interaction.client, title: 'EXPIRED', kind: 'action', note: 'Nothing was done. Ask again if you still want it.', color: colors.muted })], components: [], allowedMentions: NO_PINGS })
       .catch(() => ephemeral('that one expired.'));
   }
   if (interaction.user.id !== p.invokerId) return ephemeral(`only <@${p.invokerId}> can confirm this.`, colors.error);
@@ -300,14 +339,14 @@ async function handleButton(interaction) {
 
   if (verb === 'no') {
     audit.resolve(p.auditId, 'cancelled');
-    return interaction.update({ embeds: [response({ client: interaction.client, description: 'cancelled.', color: colors.muted })], components: [] }).catch(() => {});
+    return interaction.update({ embeds: [resultCard({ client: interaction.client, title: 'CANCELLED', kind: p.kind, targetId: p.targetId, dur: p.dur, note: 'Nothing was done.', color: colors.muted })], components: [], allowedMentions: NO_PINGS }).catch(() => {});
   }
 
   const { guild } = interaction;
   const v = await validateMute(guild, p.invokerId, p.targetId, p.ms, p.kind);
   if (v.error) {
     audit.resolve(p.auditId, 'rejected', v.error);
-    return interaction.update({ embeds: [response({ client: interaction.client, description: `not done: ${v.error}`, color: colors.error })], components: [] }).catch(() => {});
+    return interaction.update({ embeds: [resultCard({ client: interaction.client, title: 'NOT DONE', kind: p.kind, targetId: p.targetId, dur: p.dur, note: v.error, color: colors.error })], components: [], allowedMentions: NO_PINGS }).catch(() => {});
   }
 
   const reason = `${p.reason} (via Sonder AI, confirmed by ${interaction.user.tag})`;
@@ -343,7 +382,7 @@ async function handleButton(interaction) {
   } catch (err) {
     audit.resolve(p.auditId, 'failed', err.message);
     log.warn(`AI ${p.kind} failed: ${err.message}`);
-    interaction.update({ embeds: [response({ client: interaction.client, description: `couldn't ${p.kind} them. check my permissions.`, color: colors.error })], components: [] }).catch(() => {});
+    interaction.update({ embeds: [resultCard({ client: interaction.client, title: 'FAILED', kind: p.kind, targetId: p.targetId, dur: p.dur, note: "Couldn't do that. Check my permissions.", color: colors.error })], components: [], allowedMentions: NO_PINGS }).catch(() => {});
   }
 }
 

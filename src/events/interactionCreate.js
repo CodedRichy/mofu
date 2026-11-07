@@ -2,7 +2,7 @@ const { EmbedBuilder, Collection, ChannelType, PermissionFlagsBits, ActionRowBui
 const log = require('../utils/logger');
 const { track } = require('../utils/commandTracker');
 const { colors } = require('../utils/constants');
-const { response, base } = require('../utils/embed');
+const { response, base, errorCard, refId, permissionDenied } = require('../utils/embed');
 const config = require('../config');
 const store = require('../database/store');
 const giveawayDb = require('../database/giveaway');
@@ -18,10 +18,16 @@ const categoryEmojis = {
   fun: '🎮',
 };
 
+const PROCESS_START = Date.now();
+
 module.exports = {
   name: 'interactionCreate',
   async execute(interaction) {
     if (interaction.isStringSelectMenu() && interaction.customId === 'help_category') {
+      // A fresh /help message is owned by its own collector in help.js (it also offers the per-command menu).
+      // This global handler only serves menus the collector can no longer see: older than 2 minutes, or from before a restart.
+      const msg = interaction.message;
+      if (msg && msg.createdTimestamp > PROCESS_START && Date.now() - msg.createdTimestamp < 120_000) return;
       const category = interaction.values[0];
       const prefix = store.getConfig(interaction.guild?.id, 'prefix') || config.discord.defaultPrefix;
       // Commands are tagged with their category at load time, so no disk I/O here.
@@ -56,7 +62,7 @@ module.exports = {
     // admin can override that per command in Server Settings > Integrations, so never rely on it alone.
     const requiredPerms = command.data.default_member_permissions;
     if (requiredPerms && interaction.inGuild() && !interaction.memberPermissions?.has(BigInt(requiredPerms))) {
-      return interaction.reply({ embeds: [response({ client: interaction.client, description: 'You lack permission to use this command.', color: colors.error })], ephemeral: true });
+      return interaction.reply({ embeds: [permissionDenied(interaction.client, command)], ephemeral: true });
     }
 
     const cooldownAmount = (command.cooldown || 3) * 1000;
@@ -79,8 +85,9 @@ module.exports = {
       track(interaction.commandName, { userId: interaction.user.id, guildId: interaction.guildId, type: 'slash', feedback: interaction.failure ? 'errored' : 'ok', error: interaction.failure || null });
     } catch (err) {
       track(interaction.commandName, { userId: interaction.user.id, guildId: interaction.guildId, type: 'slash', feedback: 'errored', error: err.message });
-      log.error(`Command ${interaction.commandName} failed:`, err.message);
-      const reply = { content: 'Something went wrong.', ephemeral: true };
+      const ref = refId();
+      log.error(`Command ${interaction.commandName} failed [ref ${ref}]:`, err.message);
+      const reply = { embeds: [errorCard({ client: interaction.client, title: 'That did not work', fix: 'Try again in a moment. If it keeps happening, tell the server admins and quote the ref below.', ref })], ephemeral: true };
       // The interaction may already be expired or acknowledged elsewhere;
       // don't let the error notice itself throw.
       if (interaction.replied || interaction.deferred) {
@@ -95,6 +102,7 @@ module.exports = {
 async function handleButton(interaction) {
   const { guild, user, customId } = interaction;
 
+  if (customId.startsWith('mq:')) return require('../commands/music/queue').handleButton(interaction);
   if (customId.startsWith('mp:')) return require('../music/card').handleButton(interaction);
   if (customId.startsWith('aiact:')) return require('../ai/actions').handleButton(interaction);
 

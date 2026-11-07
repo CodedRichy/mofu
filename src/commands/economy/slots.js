@@ -2,6 +2,7 @@ const { SlashCommandBuilder } = require('discord.js');
 const { colors } = require('../../utils/constants');
 const { base, response } = require('../../utils/embed');
 const store = require('../../database/store');
+const { fmt, sleep } = require('../../utils/visuals');
 
 const SYMBOLS = ['🍒', '🍋', '🍊', '🍇', '💎', '7️⃣'];
 const PAYOUTS = {
@@ -80,14 +81,28 @@ module.exports = {
       result = `You lost **⌬ ${amount.toLocaleString()}**`;
     }
 
-    const embed = base(interaction.client, won ? colors.success : multiplier > 0 ? colors.warning : colors.error)
-      .setAuthor({ name: 'Slots', iconURL: user.displayAvatarURL() })
-      .setDescription(
-        `> ${r1} ${r2} ${r3}\n\n` +
-        `${result}\n` +
-        `**Wallet** \`⌬ ${newBal.wallet.toLocaleString()}\``
-      );
+    const frame = (a, b, c) => '```\n+-----------+\n| ' + a + ' ' + b + ' ' + c + ' |\n+-----------+\n```';
+    const stage = (color, a, b, c, text) =>
+      base(interaction.client, color)
+        .setAuthor({ name: 'Slots', iconURL: user.displayAvatarURL() })
+        .setDescription(`${frame(a, b, c)}\n${text}`);
 
-    await interaction.reply({ embeds: [embed] });
+    const SPIN = '\u{1F300}';
+    await interaction.reply({ embeds: [stage(colors.primary, SPIN, SPIN, SPIN, `Bet **⌬ ${fmt(amount)}** - spinning...`)] });
+    await sleep(2500);
+
+    const near = r1 === r2 && r2 !== r3;
+    await interaction.editReply({ embeds: [stage(colors.primary, r1, SPIN, SPIN, near ? 'Two in a row... so close...' : 'Reel one locked...')] });
+    await sleep(2500);
+
+    const jackpot = r1 === r2 && r2 === r3 && r1 === '7️⃣';
+    const head = jackpot ? '**JACKPOT!** Triple sevens.\n' : '';
+    const embed = stage(
+      won ? colors.success : multiplier > 0 ? colors.warning : colors.error,
+      r1, r2, r3,
+      `${head}${result}\n**Wallet** \`⌬ ${newBal.wallet.toLocaleString()}\``
+    );
+
+    await interaction.editReply({ embeds: [embed] });
   },
 };

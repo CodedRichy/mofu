@@ -68,6 +68,18 @@ function buildCategoryEmbed(client, cat, cmds, commands, prefix) {
     .setFooter({ text: `${cmds.length} commands • Use /help <command> for details` });
 }
 
+// Second menu: pick a command in the open category to see its description (cap 25).
+function buildCommandMenu(cmds, commands) {
+  return new StringSelectMenuBuilder()
+    .setCustomId('help_cmd')
+    .setPlaceholder('Pick a command for details')
+    .addOptions(cmds.slice(0, 25).map((name) => ({
+      label: name.slice(0, 100),
+      description: (commands.get(name)?.data?.toJSON?.()?.description || 'No description').slice(0, 100),
+      value: name,
+    })));
+}
+
 function buildMenu(categories) {
   return new StringSelectMenuBuilder()
     .setCustomId('help_category')
@@ -132,6 +144,17 @@ module.exports = {
     const collector = reply.createMessageComponentCollector({ time: 120_000 });
 
     collector.on('collect', async (i) => {
+      if (i.customId === 'help_cmd') {
+        const c = commands.get(i.values[0]);
+        const d = c?.data?.toJSON?.();
+        if (!d) return i.deferUpdate().catch(() => {});
+        const detail = base(interaction.client, colors.primary)
+          .setAuthor({ name: `/${d.name}`, iconURL: interaction.client.user.displayAvatarURL() })
+          .setDescription(`${d.description}
+
+\`/${d.name}\` or \`${prefix}${d.name}\``);
+        return i.reply({ embeds: [detail], ephemeral: true }).catch(() => {});
+      }
       if (i.customId !== 'help_category') return;
 
       const cat = i.values[0];
@@ -150,7 +173,10 @@ module.exports = {
 
       await i.update({
         embeds: [catEmbed],
-        components: [new ActionRowBuilder().addComponents(updatedMenu)],
+        components: [
+          new ActionRowBuilder().addComponents(updatedMenu),
+          new ActionRowBuilder().addComponents(buildCommandMenu(cmds, commands)),
+        ],
       });
     });
 

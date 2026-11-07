@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, PermissionsBitField } = require('discord.js');
 const { colors } = require('./constants');
 
 function brand(client) {
@@ -52,4 +52,32 @@ function response({ client, description, color }) {
   return base(client, color || colors.primary).setDescription(description);
 }
 
-module.exports = { base, modAction, dmNotice, response, brand };
+function errorCard({ client, title, fix, ref }) {
+  const embed = base(client, colors.error).setDescription(`**${title}**
+${fix}`);
+  if (ref) embed.setFooter({ ...brand(client), text: `sonder | ref ${ref}` });
+  return embed;
+}
+
+function refId() {
+  return Math.random().toString(36).slice(2, 8);
+}
+
+// "You need Ban Members for /ban. Ask an admin for a role that has it."
+function permissionDenied(client, command) {
+  let names = [];
+  try {
+    const bits = command?.data?.default_member_permissions;
+    if (bits) {
+      names = new PermissionsBitField(BigInt(bits)).toArray()
+        .map((n) => n.replace(/([a-z])([A-Z])/g, '$1 $2'));
+    }
+  } catch { /* fall through to the generic wording */ }
+  const name = command?.data?.name;
+  const fix = names.length
+    ? `You need ${names.join(' and ')}${name ? ` for /${name}` : ''}. Ask an admin for a role that has it.`
+    : 'You do not have permission to use this command. Ask an admin for access.';
+  return errorCard({ client, title: 'Missing permission', fix });
+}
+
+module.exports = { base, modAction, dmNotice, response, brand, errorCard, refId, permissionDenied };

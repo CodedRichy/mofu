@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sonder embed preview</title>
+<style>
+  :root {
+    --bg: #313338; --embed: #2b2d31; --text: #dbdee1; --muted: #949ba4; --link: #00a8fc;
+    --btn: #4e5058; --btn-green: #248046; --btn-red: #da373c; --btn-blue: #5865f2;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #1e1f22; color: var(--text); font: 16px/1.375 'gg sans', 'Segoe UI', system-ui, sans-serif; }
+  header { padding: 20px clamp(16px, 4vw, 40px); border-bottom: 1px solid #3f4147; display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header span { color: var(--muted); font-size: 14px; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px clamp(12px, 3vw, 24px) 80px; display: grid; gap: 28px; }
+  .scene h2 { margin: 0 0 2px; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .scene .note { margin: 0 0 10px; font-size: 12px; color: #6d7078; font-family: ui-monospace, Consolas, monospace; }
+  .msg { background: var(--bg); border-radius: 8px; padding: 14px 16px 16px; display: grid; grid-template-columns: 40px 1fr; gap: 14px; }
+  .av { width: 40px; height: 40px; border-radius: 50%; background: #fff; color: #111; display: grid; place-items: center; font-weight: 700; }
+  .who { font-weight: 500; }
+  .app { font-size: 10px; background: var(--btn-blue); color: #fff; border-radius: 3px; padding: 1px 5px; margin-left: 6px; vertical-align: 1px; }
+  .embed { margin-top: 6px; background: var(--embed); border-left: 4px solid #fff; border-radius: 4px; padding: 8px 16px 16px 12px; max-width: 520px; display: grid; gap: 8px; position: relative; }
+  .embed.has-thumb { padding-right: 96px; }
+  .thumb { position: absolute; top: 8px; right: 16px; width: 80px; height: 80px; border-radius: 4px; background: #3a3c42; }
+  .e-author { font-size: 14px; font-weight: 600; margin-top: 8px; }
+  .e-title { font-size: 16px; font-weight: 600; }
+  .e-desc { font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .fields { display: grid; grid-template-columns: repeat(12, 1fr); gap: 8px; }
+  .field { grid-column: span 12; font-size: 14px; min-width: 0; }
+  .field.inline { grid-column: span 4; }
+  .field b.n { display: block; font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+  .e-foot { font-size: 12px; color: var(--muted); }
+  a { color: var(--link); text-decoration: none; }
+  code { background: #1e1f22; border-radius: 3px; padding: 0 4px; font: 13px ui-monospace, Consolas, monospace; }
+  pre { background: #1e1f22; border: 1px solid #1a1b1e; border-radius: 4px; padding: 8px; margin: 4px 0; font: 13px ui-monospace, Consolas, monospace; overflow-x: auto; }
+  .mention { background: rgba(88,101,242,.3); color: #c9cdfb; border-radius: 3px; padding: 0 2px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .btn { background: var(--btn); color: #fff; font-size: 14px; font-weight: 500; border-radius: 3px; padding: 2px 16px; height: 32px; display: inline-flex; align-items: center; }
+  .btn.s3 { background: var(--btn-green); } .btn.s4 { background: var(--btn-red); } .btn.s1 { background: var(--btn-blue); }
+  .btn[data-disabled="1"] { opacity: .5; }
+  .fail { color: #f23f42; font-size: 13px; }
+</style>
+</head>
+<body>
+<header><h1>Sonder embed preview</h1><span>Real builders, stub data. Re-run <code>node tools/embed-preview.js</code> to refresh.</span></header>
+<main id="root"></main>
+<script>
+const SCENES = /*SCENES*/[];
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// Enough Discord markdown to judge a layout: code blocks, inline code, bold, italics, links, mentions, relative times.
+function md(s) {
+  let out = esc(s);
+  const blocks = [];
+  out = out.replace(/```(?:\w+\n)?([\s\S]*?)```/g, (_, c) => { blocks.push(c); return `\u0000${blocks.length - 1}\u0000`; });
+  out = out.replace(/`([^`\n]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+    .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<i>$2</i>')
+    .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>')
+    .replace(/&lt;@!?(\d+)&gt;/g, '<span class="mention">@user</span>')
+    .replace(/&lt;t:(\d+):[a-zA-Z]&gt;/g, '<span class="mention">in 2 minutes</span>');
+  return out.replace(/\u0000(\d+)\u0000/g, (_, i) => `<pre>${blocks[i]}</pre>`);
+}
+
+function embedHtml(e) {
+  const color = '#' + (e.color ?? 0xffffff).toString(16).padStart(6, '0');
+  const parts = [];
+  if (e.author) parts.push(`<div class="e-author">${esc(e.author.name)}</div>`);
+  if (e.title) parts.push(`<div class="e-title">${md(e.title)}</div>`);
+  if (e.description) parts.push(`<div class="e-desc">${md(e.description)}</div>`);
+  if (e.fields?.length) parts.push(`<div class="fields">${e.fields.map((f) => `<div class="field ${f.inline ? 'inline' : ''}"><b class="n">${md(f.name)}</b>${md(f.value)}</div>`).join('')}</div>`);
+  if (e.footer || e.timestamp) parts.push(`<div class="e-foot">${esc(e.footer?.text || '')}${e.timestamp ? ' • today' : ''}</div>`);
+  return `<div class="embed ${e.thumbnail ? 'has-thumb' : ''}" style="border-left-color:${color}">${e.thumbnail ? '<div class="thumb"></div>' : ''}${parts.join('')}</div>`;
+}
+
+function rowsHtml(rows) {
+  return rows.map((r) => `<div class="row">${(r.components || []).map((c) => `<span class="btn s${c.style}" data-disabled="${c.disabled ? 1 : 0}">${esc(c.label || '')}</span>`).join('')}</div>`).join('');
+}
+
+document.getElementById('root').innerHTML = SCENES.map((sc) => `
+  <section class="scene">
+    <h2>${esc(sc.title)}</h2><p class="note">${esc(sc.note || '')}</p>
+    ${sc.messages.length ? sc.messages.map((m) => `
+      <div class="msg"><div class="av">S</div><div>
+        <div class="who">sonder<span class="app">APP</span></div>
+        ${m.embeds.map(embedHtml).join('')}${rowsHtml(m.components)}
+      </div></div>`).join('') : '<div class="fail">No render: see note.</div>'}
+  </section>`).join('');
+</script>
+</body>
+</html>

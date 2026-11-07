@@ -4,7 +4,7 @@ const store = require('../database/store');
 const log = require('../utils/logger');
 const { track } = require('../utils/commandTracker');
 const xpStore = require('../database/xp');
-const { response } = require('../utils/embed');
+const { response, errorCard, refId, permissionDenied } = require('../utils/embed');
 const { colors } = require('../utils/constants');
 const PrefixContext = require('../utils/prefixContext');
 const modlog = require('../utils/modlog');
@@ -232,12 +232,9 @@ module.exports = {
         const target = channelId ? message.guild.channels.cache.get(channelId) : message.channel;
 
         if (target) {
-          const embed = response({
-            client: message.client,
-            description: `**${message.author.tag}** reached level **${result.level}**`,
-            color: colors.primary,
-          });
-          target.send({ embeds: [embed] }).catch(() => {});
+          const { levelUpEmbed } = require('../utils/visuals');
+          const embed = levelUpEmbed({ client: message.client, user: message.author, oldLevel: result.level - 1, newLevel: result.level, xpPct: result.needed ? result.xp / result.needed : 0 });
+          target.send({ embeds: [embed], allowedMentions: { parse: [] } }).catch(() => {});
         }
       }
     }
@@ -359,7 +356,7 @@ module.exports = {
     try {
       const requiredPerms = command.data.default_member_permissions;
       if (requiredPerms && !message.member.permissions.has(BigInt(requiredPerms))) {
-        await message.reply({ embeds: [response({ client: message.client, description: 'You lack permission to use this command.', color: colors.error })] });
+        await message.reply({ embeds: [permissionDenied(message.client, command)] });
         return;
       }
 
@@ -403,8 +400,9 @@ module.exports = {
       track(commandName, { userId: message.author.id, guildId: message.guildId, type: 'prefix', feedback: ctx.failure ? 'errored' : 'ok', error: ctx.failure || null });
     } catch (err) {
       track(commandName, { userId: message.author.id, guildId: message.guildId, type: 'prefix', feedback: 'errored', error: err.message });
-      log.error(`Prefix command ${commandName} failed:`, err.message);
-      await message.reply({ content: 'Something went wrong.' }).catch(() => {});
+      const ref = refId();
+      log.error(`Prefix command ${commandName} failed [ref ${ref}]:`, err.message);
+      await message.reply({ embeds: [errorCard({ client: message.client, title: 'That did not work', fix: 'Try again in a moment. If it keeps happening, tell the server admins and quote the ref below.', ref })] }).catch(() => {});
     }
   },
 };
