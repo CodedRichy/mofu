@@ -54,7 +54,18 @@ module.exports = {
       if (!words.length) {
         return interaction.reply({ embeds: [response({ client: interaction.client, description: 'No words in filter.', color: colors.muted })] });
       }
-      return interaction.reply({ embeds: [response({ client: interaction.client, description: `**Blocked Words (${words.length})**\n${words.map((w) => `\`${w}\``).join(', ')}`, color: colors.primary })], ephemeral: true });
+      // Embed descriptions max out at 4096 characters: show as many words as fit and say how many were left out.
+      const header = `**Blocked Words (${words.length})**\n`;
+      let body = '';
+      let shown = 0;
+      for (const w of words) {
+        const piece = `${shown ? ', ' : ''}\`${String(w).slice(0, 60)}\``;
+        if (header.length + body.length + piece.length > 3900) break;
+        body += piece;
+        shown++;
+      }
+      const more = shown < words.length ? `\n...and ${words.length - shown} more not shown.` : '';
+      return interaction.reply({ embeds: [response({ client: interaction.client, description: header + body + more, color: colors.primary })], ephemeral: true });
     }
 
     if (sub === 'clear') {

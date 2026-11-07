@@ -2,6 +2,7 @@ const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { colors } = require('../../utils/constants');
 const { modAction, response } = require('../../utils/embed');
 const modlog = require('../../utils/modlog');
+const { reasonError } = require('../../utils/modguard');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -14,6 +15,11 @@ module.exports = {
   async execute(interaction) {
     const member = interaction.options.getMember('user');
     const reason = interaction.options.getString('reason') || 'No reason provided';
+
+    const reasonErr = reasonError(reason);
+    if (reasonErr) {
+      return interaction.reply({ embeds: [response({ client: interaction.client, description: reasonErr, color: colors.error })], ephemeral: true });
+    }
 
     if (!member) {
       return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Member not found in server.', color: colors.error })], ephemeral: true });

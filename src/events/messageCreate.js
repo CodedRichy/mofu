@@ -379,6 +379,20 @@ module.exports = {
         return;
       }
       await command.execute(ctx);
+
+      // A command with subcommands that was given none (or a wrong one) falls through without replying, which
+      // looks like the bot ignoring you (";warn @user spam", ";bank"). Say what it expects instead of staying silent.
+      if (!ctx.replied && !ctx.deferred) {
+        let subs = [];
+        try { subs = (command.data.toJSON().options || []).filter((o) => o.type === 1 || o.type === 2); } catch { /* not a builder */ }
+        if (subs.length) {
+          const names = subs.map((s) => s.name).join(' | ');
+          await message.reply({
+            embeds: [response({ client: message.client, description: `Usage: \`${prefix}${commandName} <${names}>\``, color: colors.muted })],
+            allowedMentions: { parse: [], repliedUser: false },
+          }).catch(() => {});
+        }
+      }
       track(commandName, { userId: message.author.id, guildId: message.guildId, type: 'prefix', feedback: ctx.failure ? 'errored' : 'ok', error: ctx.failure || null });
     } catch (err) {
       track(commandName, { userId: message.author.id, guildId: message.guildId, type: 'prefix', feedback: 'errored', error: err.message });
