@@ -76,7 +76,7 @@ module.exports = {
 
     try {
       await command.execute(interaction);
-      track(interaction.commandName, { userId: interaction.user.id, guildId: interaction.guildId, type: 'slash', feedback: 'ok' });
+      track(interaction.commandName, { userId: interaction.user.id, guildId: interaction.guildId, type: 'slash', feedback: interaction.failure ? 'errored' : 'ok', error: interaction.failure || null });
     } catch (err) {
       track(interaction.commandName, { userId: interaction.user.id, guildId: interaction.guildId, type: 'slash', feedback: 'errored', error: err.message });
       log.error(`Command ${interaction.commandName} failed:`, err.message);

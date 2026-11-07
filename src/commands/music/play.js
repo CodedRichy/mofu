@@ -51,9 +51,16 @@ module.exports = {
 
       await interaction.editReply({ embeds: [embed] });
     } catch (err) {
-      // Surface extractor/stream failures in logs; the user message is unchanged.
-      log.warn(`play failed for "${query}":`, err?.message || err);
-      await interaction.editReply({ embeds: [response({ client: interaction.client, description: 'No results found or failed to play.', color: colors.error })] });
+      const msg = String(err?.message || err);
+      log.warn(`play failed for "${query}":`, msg);
+      // Tell the command handler this was a failure, so telemetry does not record it as "ok".
+      interaction.failure = msg.slice(0, 200);
+      // A missing audio engine is the host's problem, not "no results": say so instead of misleading the user.
+      const engine = /ffmpeg|opus|sodium|encryption/i.test(msg);
+      const text = engine
+        ? "I can't play audio right now (a problem on my side, it's been logged). Try again in a bit."
+        : "Couldn't find or play that. Try a different search, or paste a link.";
+      await interaction.editReply({ embeds: [response({ client: interaction.client, description: text, color: colors.error })] });
     }
   },
 };

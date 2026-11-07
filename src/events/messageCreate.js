@@ -390,7 +390,7 @@ module.exports = {
         return;
       }
       await command.execute(ctx);
-      track(commandName, { userId: message.author.id, guildId: message.guildId, type: 'prefix', feedback: 'ok' });
+      track(commandName, { userId: message.author.id, guildId: message.guildId, type: 'prefix', feedback: ctx.failure ? 'errored' : 'ok', error: ctx.failure || null });
     } catch (err) {
       track(commandName, { userId: message.author.id, guildId: message.guildId, type: 'prefix', feedback: 'errored', error: err.message });
       log.error(`Prefix command ${commandName} failed:`, err.message);
