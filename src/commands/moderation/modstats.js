@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits, AuditLogEvent } = require('discord.js');
 const { colors } = require('../../utils/constants');
-const { base, response } = require('../../utils/embed');
+const { base, response, footer } = require('../../utils/embed');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -78,7 +78,7 @@ module.exports = {
       const embed = base(interaction.client, colors.primary)
         .setAuthor({ name: 'Mod Team Stats' })
         .setDescription(`**${totalActions}** total actions · **${sorted.length}** active mods\n\n${desc}`)
-        .setFooter({ text: 'Based on recent audit log entries · B=Bans K=Kicks T=Timeouts' });
+        .setFooter(footer(interaction.client, 'Based on recent audit log entries · B=Bans K=Kicks T=Timeouts'));
 
       await interaction.editReply({ embeds: [embed] });
     } catch {

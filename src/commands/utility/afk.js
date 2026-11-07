@@ -7,7 +7,7 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName('afk')
     .setDescription('Set your AFK status')
-    .addStringOption((o) => o.setName('reason').setDescription('AFK reason')),
+    .addStringOption((o) => o.setName('reason').setDescription('AFK reason').setMaxLength(200)),
 
   async execute(interaction) {
     const reason = interaction.options.getString('reason') || 'AFK';

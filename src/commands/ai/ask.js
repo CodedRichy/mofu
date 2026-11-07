@@ -17,9 +17,14 @@ module.exports = {
 
     const answer = await generateResponse(question, '', { guildId: interaction.guildId });
     if (!answer) {
-      return interaction.editReply({ embeds: [response({ client: interaction.client, description: 'AI unavailable. Set `GROQ_API_KEY` in .env to enable.', color: colors.error })] });
+      return interaction.editReply({ embeds: [response({ client: interaction.client, description: 'AI is unavailable right now. Try again later.', color: colors.error })] });
     }
 
-    await interaction.editReply({ embeds: [response({ client: interaction.client, description: `**Q:** ${question}\n\n**A:** ${answer}`, color: colors.primary })] });
+    // Embed descriptions cap at 4096: clip the question to 500 and the answer to what is left, and say so.
+    const q = question.length > 500 ? `${question.slice(0, 497)}...` : question;
+    const head = `**Q:** ${q}\n\n**A:** `;
+    const room = 4096 - head.length;
+    const a = answer.length > room ? `${answer.slice(0, room - 14)}... (cut off)` : answer;
+    await interaction.editReply({ embeds: [response({ client: interaction.client, description: `${head}${a}`, color: colors.primary })] });
   },
 };

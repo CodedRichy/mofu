@@ -6,7 +6,7 @@ const store = require('../../database/store');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('threadwatch')
-    .setDescription('Keep threads alive before auto-archive')
+    .setDescription('Unarchive watched threads when they get archived')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageThreads)
     .addSubcommand((s) =>
       s.setName('add')
@@ -42,7 +42,7 @@ module.exports = {
       watched.push(thread.id);
       store.setConfig(guildId, 'threadwatch', watched);
 
-      return interaction.reply({ embeds: [response({ client: interaction.client, description: `Now watching ${thread}. It will be kept alive.`, color: colors.success })] });
+      return interaction.reply({ embeds: [response({ client: interaction.client, description: `Now watching ${thread}. When it gets archived, I unarchive it (while I am online and can send messages there; locked threads also need Manage Threads).`, color: colors.success })] });
     }
 
     if (sub === 'remove') {
@@ -56,7 +56,7 @@ module.exports = {
       watched.splice(idx, 1);
       store.setConfig(guildId, 'threadwatch', watched);
 
-      return interaction.reply({ embeds: [response({ client: interaction.client, description: `Stopped watching ${thread}.`, color: colors.success })] });
+      return interaction.reply({ embeds: [response({ client: interaction.client, description: `Stopped watching ${thread}.`, color: colors.success })] }); // claim-ok: removed from the list above
     }
 
     if (sub === 'list') {

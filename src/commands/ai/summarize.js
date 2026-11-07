@@ -26,9 +26,12 @@ module.exports = {
 
     const summary = await summarize(filtered, { guildId: interaction.guildId });
     if (!summary) {
-      return interaction.editReply({ embeds: [response({ client: interaction.client, description: 'AI unavailable. Set `GROQ_API_KEY` in .env to enable.', color: colors.error })] });
+      return interaction.editReply({ embeds: [response({ client: interaction.client, description: 'AI is unavailable right now. Try again later.', color: colors.error })] });
     }
 
-    await interaction.editReply({ embeds: [response({ client: interaction.client, description: `**Channel Summary** (last ${filtered.length} messages)\n\n${summary}`, color: colors.primary })] });
+    const head = `**Channel Summary** (${filtered.length} member messages out of the last ${messages.size})\n\n`;
+    const room = 4096 - head.length;
+    const body = summary.length > room ? `${summary.slice(0, room - 14)}... (cut off)` : summary;
+    await interaction.editReply({ embeds: [response({ client: interaction.client, description: `${head}${body}`, color: colors.primary })] });
   },
 };

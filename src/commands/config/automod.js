@@ -3,18 +3,19 @@ const { colors } = require('../../utils/constants');
 const { response, base } = require('../../utils/embed');
 const store = require('../../database/store');
 const rules = require('../../utils/automodRules');
+const { cmdRef } = require('../../utils/invocation');
 
 // What turns detection on for each trigger, besides a rule.
 function detectionNote(guildId, trigger, hasRule) {
-  if (trigger === 'links') return store.getConfig(guildId, 'antilink') || hasRule ? 'on' : 'off (`/antilink` or a rule turns it on)';
-  if (trigger === 'spam') return store.getConfig(guildId, 'antispam') || hasRule ? 'on (5 messages in 3s)' : 'off (`/antispam` or a rule turns it on)';
-  if (trigger === 'badwords') return (store.getConfig(guildId, 'word_filter') || []).length ? 'on' : 'off (add words with `/wordfilter`)';
+  if (trigger === 'links') return store.getConfig(guildId, 'antilink') || hasRule ? 'on' : `off (${cmdRef(guildId, 'antilink')} or a rule turns it on)`;
+  if (trigger === 'spam') return store.getConfig(guildId, 'antispam') || hasRule ? `on (${rules.SPAM_THRESHOLD} messages in ${rules.SPAM_WINDOW_MS / 1000}s)` : `off (${cmdRef(guildId, 'antispam')} or a rule turns it on)`;
+  if (trigger === 'badwords') return (store.getConfig(guildId, 'word_filter') || []).length ? 'on' : `off (add words with ${cmdRef(guildId, 'wordfilter')})`;
   if (trigger === 'mentions') return hasRule ? `on (${rules.MENTION_LIMIT}+ mentions)` : 'off';
-  if (trigger === 'caps') return hasRule ? 'on (70%+ capitals, 12+ letters)' : 'off';
+  if (trigger === 'caps') return hasRule ? `on (${Math.round(rules.CAPS_RATIO * 100)}%+ capitals, ${rules.CAPS_MIN_LETTERS}+ letters)` : 'off';
   return hasRule ? 'on' : 'off';
 }
 
-const legacy = { links: 'delete', badwords: 'delete', spam: '1 minute timeout' };
+const legacy = { links: 'delete', badwords: 'delete', spam: `${rules.SPAM_TIMEOUT_MS / 60000} minute timeout` };
 
 module.exports = {
   data: new SlashCommandBuilder()

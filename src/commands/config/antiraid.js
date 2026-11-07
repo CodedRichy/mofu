@@ -2,6 +2,9 @@ const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { colors } = require('../../utils/constants');
 const { response } = require('../../utils/embed');
 const store = require('../../database/store');
+const antiraidDb = require('../../database/antiraid');
+
+const secs = antiraidDb.WINDOW / 1000;
 
 const AGE_OPTIONS = [
   { name: '1 day', value: 86400000 },
@@ -19,7 +22,7 @@ module.exports = {
     .addSubcommand((sub) => sub.setName('disable').setDescription('Disable antiraid protection'))
     .addSubcommand((sub) =>
       sub.setName('threshold').setDescription('Set join flood threshold')
-        .addIntegerOption((o) => o.setName('count').setDescription('Max joins in 10s before trigger (default: 5)').setRequired(true).setMinValue(3).setMaxValue(20))
+        .addIntegerOption((o) => o.setName('count').setDescription(`Max joins in ${secs}s before trigger (default: 5)`).setRequired(true).setMinValue(3).setMaxValue(20))
     )
     .addSubcommand((sub) =>
       sub.setName('action').setDescription('Set action for raiders')
@@ -51,7 +54,7 @@ module.exports = {
         return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Antiraid is already enabled.', color: colors.warning })], ephemeral: true });
       }
       store.setConfig(guild.id, 'antiraid', true);
-      await interaction.reply({ embeds: [response({ client: interaction.client, description: 'Antiraid protection **enabled**.\nJoin floods and new account raids will be detected.', color: colors.success })] });
+      await interaction.reply({ embeds: [response({ client: interaction.client, description: `Antiraid protection **enabled**.\nWhen joins pass the threshold within ${secs}s (or a smaller burst of accounts younger than the minimum age), each new joiner during the flood is ${antiraidDb.getAction(guild.id) === 'ban' ? 'banned' : 'kicked'}, if my role is high enough.`, color: colors.success })] });
 
     } else if (sub === 'disable') {
       const existing = store.getConfig(guild.id, 'antiraid');
@@ -68,7 +71,7 @@ module.exports = {
         return interaction.reply({ embeds: [response({ client: interaction.client, description: `Threshold is already set to **${count}**.`, color: colors.warning })], ephemeral: true });
       }
       store.setConfig(guild.id, 'antiraid_threshold', count);
-      await interaction.reply({ embeds: [response({ client: interaction.client, description: `Raid threshold set to **${count}** joins in 10 seconds.`, color: colors.success })] });
+      await interaction.reply({ embeds: [response({ client: interaction.client, description: `Raid threshold set to **${count}** joins in ${secs}s.`, color: colors.success })] });
 
     } else if (sub === 'action') {
       const type = interaction.options.getString('type');
@@ -83,15 +86,15 @@ module.exports = {
 
     } else {
       const enabled = store.getConfig(guild.id, 'antiraid') === true;
-      const threshold = store.getConfig(guild.id, 'antiraid_threshold') || 5;
-      const action = store.getConfig(guild.id, 'antiraid_action') || 'kick';
-      const accountAge = store.getConfig(guild.id, 'antiraid_account_age') || 604800000;
+      const threshold = antiraidDb.getThreshold(guild.id);
+      const action = antiraidDb.getAction(guild.id);
+      const accountAge = antiraidDb.getAccountAge(guild.id);
       const ageLabel = AGE_OPTIONS.find((a) => a.value === accountAge)?.name || `${Math.floor(accountAge / 86400000)}d`;
 
       await interaction.reply({
         embeds: [response({
           client: interaction.client,
-          description: `**Status** ${enabled ? '🟢 Enabled' : '🔴 Disabled'}\n**Threshold** ${threshold} joins / 10s\n**Action** ${action}\n**Min Account Age** ${ageLabel}`,
+          description: `**Status** ${enabled ? '🟢 Enabled' : '🔴 Disabled'}\n**Threshold** ${threshold} joins / ${secs}s\n**Action** ${action}\n**Min Account Age** ${ageLabel}`,
           color: enabled ? colors.success : colors.muted,
         })],
       });

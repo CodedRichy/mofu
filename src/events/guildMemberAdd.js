@@ -13,11 +13,16 @@ module.exports = {
     const raid = antiraid.check(guild.id, member);
     if (raid.triggered) {
       const action = antiraid.getAction(guild.id);
+      // Track the result so the modlog only says Banned/Kicked when Discord accepted it.
+      let ok = true;
       if (action === 'ban') {
-        await guild.members.ban(member.id, { reason: `[sonder antiraid] ${raid.reason} (${raid.count} joins)` }).catch(() => {});
+        await guild.members.ban(member.id, { reason: `[sonder antiraid] ${raid.reason} (${raid.count} joins)` }).catch(() => { ok = false; });
       } else {
-        await member.kick(`[sonder antiraid] ${raid.reason} (${raid.count} joins)`).catch(() => {});
+        await member.kick(`[sonder antiraid] ${raid.reason} (${raid.count} joins)`).catch(() => { ok = false; });
       }
+      const outcome = ok
+        ? (action === 'ban' ? 'Banned' : 'Kicked')
+        : `${action === 'ban' ? 'Ban' : 'Kick'} failed (check my permissions and role position)`;
 
       const modlogChannel = store.getConfig(guild.id, 'modlog_channel');
       if (modlogChannel) {
@@ -26,14 +31,14 @@ module.exports = {
           ch.send({
             embeds: [response({
               client: guild.client,
-              description: `**Antiraid triggered**\n**User** ${member.user.tag} \`${member.id}\`\n**Reason** ${raid.reason === 'join_flood' ? 'Join flood detected' : 'New account flood detected'}\n**Action** ${action === 'ban' ? 'Banned' : 'Kicked'}\n**Count** ${raid.count} joins in 10s`,
+              description: `**Antiraid triggered**\n**User** ${member.user.tag} \`${member.id}\`\n**Reason** ${raid.reason === 'join_flood' ? 'Join flood detected' : 'New account flood detected'}\n**Action** ${outcome}\n**Count** ${raid.count} joins in ${antiraid.WINDOW / 1000}s`,
               color: colors.warning,
             })],
           }).catch(() => {});
         }
       }
 
-      log.warn(`[antiraid] ${raid.reason} in ${guild.name} — ${member.user.tag} ${action}ed`);
+      log.warn(`[antiraid] ${raid.reason} in ${guild.name} — ${member.user.tag} ${ok ? `${action}ed` : `${action} failed`}`);
       return;
     }
 

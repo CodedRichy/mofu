@@ -44,9 +44,12 @@ module.exports = {
     // Tidy up the command message itself (prefix path); it is not part of the count.
     if (commandMessage?.deletable) commandMessage.delete().catch(() => {});
 
-    const desc = targetUser
+    // bulkDelete(..., true) silently skips messages older than 14 days (Discord's limit): say how many.
+    const skipped = messages.length - deleted.size;
+    const desc = (targetUser
       ? `Deleted **${deleted.size}** message(s) from **${targetUser.tag}**`
-      : `Deleted **${deleted.size}** message(s)`;
+      : `Deleted **${deleted.size}** message(s)`)
+      + (skipped > 0 ? ` (${skipped} skipped: Discord only bulk-deletes messages under 14 days old)` : '');
 
     // Log first: a failed reply (message gone, interaction expired) must not skip the audit trail.
     await sendChannelLog(interaction.guild, {

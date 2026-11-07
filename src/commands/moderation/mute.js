@@ -50,7 +50,7 @@ module.exports = {
     }
 
     if (ms > 2419200000) {
-      return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Duration cannot exceed 28 days.', color: colors.error })], ephemeral: true });
+      return interaction.reply({ embeds: [response({ client: interaction.client, description: `Duration cannot exceed ${2419200000 / 86400000} days (Discord's timeout limit).`, color: colors.error })], ephemeral: true });
     }
 
     const dur = format(ms);

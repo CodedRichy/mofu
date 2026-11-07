@@ -1,7 +1,9 @@
 const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { colors } = require('../../utils/constants');
-const { base, response } = require('../../utils/embed');
+const { base, response, footer } = require('../../utils/embed');
 const { rateLimit } = require('../../utils/ratelimit');
+
+const ANSWER_MS = 15000;
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -10,7 +12,7 @@ module.exports = {
 
   async execute(interaction) {
     if (!rateLimit(`trivia:${interaction.guild.id}`, 5, 30000)) {
-      return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Rate limit reached. Try again shortly.', color: colors.error })], ephemeral: true });
+      return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Rate limit reached for this server. Try again in a little while.', color: colors.error })], ephemeral: true });
     }
 
     await interaction.deferReply();
@@ -31,7 +33,7 @@ module.exports = {
       const embed = base(interaction.client, colors.primary)
         .setAuthor({ name: `Trivia — ${decode(q.category)}` })
         .setDescription(`${decode(q.question)}\n\n${answers.map((a, i) => `**${labels[i]}.** ${a}`).join('\n')}`)
-        .setFooter({ text: `Difficulty: ${q.difficulty} · 15 seconds` });
+        .setFooter(footer(interaction.client, `Difficulty: ${q.difficulty} · ${ANSWER_MS / 1000} seconds`));
 
       const row = new ActionRowBuilder().addComponents(
         labels.map((l, i) =>
@@ -44,7 +46,7 @@ module.exports = {
       const collector = msg.createMessageComponentCollector({
         filter: (i) => i.user.id === interaction.user.id,
         max: 1,
-        time: 15000,
+        time: ANSWER_MS,
       });
 
       collector.on('collect', async (btn) => {

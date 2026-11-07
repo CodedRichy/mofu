@@ -58,7 +58,7 @@ function parseMusicIntent(content, botId) {
 
   if (BARE_VERBS.has(verb)) {
     if (rest && !(VERB_PHRASES[verb] && VERB_PHRASES[verb].test(rest))) return null;
-    return { verb: verb === 'resume' ? 'pause' : verb, args: '' };
+    return { verb, args: '' };
   }
 
   if (!rest) return null;

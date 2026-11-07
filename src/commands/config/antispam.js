@@ -2,6 +2,10 @@ const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { colors } = require('../../utils/constants');
 const { response } = require('../../utils/embed');
 const store = require('../../database/store');
+const { SPAM_THRESHOLD, SPAM_WINDOW_MS, SPAM_TIMEOUT_MS } = require('../../utils/automodRules');
+const automod = require('../../utils/automod');
+
+const mins = SPAM_TIMEOUT_MS / 60000;
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -22,7 +26,7 @@ module.exports = {
         return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Anti-spam is already enabled.', color: colors.warning })], ephemeral: true });
       }
       store.setConfig(guildId, 'antispam', true);
-      return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Anti-spam enabled. Users sending 5+ messages in 3s will be muted for 1 minute.', color: colors.success })] });
+      return interaction.reply({ embeds: [response({ client: interaction.client, description: `Anti-spam enabled. Members without Manage Messages who send ${SPAM_THRESHOLD}+ messages in ${SPAM_WINDOW_MS / 1000}s get a ${mins} minute timeout (if I have Moderate Members and a higher role).`, color: colors.success })] });
     }
 
     if (sub === 'disable') {
@@ -35,6 +39,6 @@ module.exports = {
     }
 
     const enabled = store.getConfig(guildId, 'antispam');
-    return interaction.reply({ embeds: [response({ client: interaction.client, description: `**Anti-Spam:** ${enabled ? 'Enabled' : 'Disabled'}\n**Threshold:** 5 messages in 3 seconds\n**Action:** 1 minute timeout + delete messages`, color: colors.primary })] });
+    return interaction.reply({ embeds: [response({ client: interaction.client, description: `**Anti-Spam:** ${enabled ? 'Enabled' : 'Disabled'}\n**Threshold:** ${SPAM_THRESHOLD} messages in ${SPAM_WINDOW_MS / 1000}s\n**Action:** ${mins} minute timeout + delete their recent messages${automod.spamRule(guildId) ? '\n**Note:** an `automod` spam rule is set, so its ladder replaces this action' : ''}`, color: colors.primary })] });
   },
 };

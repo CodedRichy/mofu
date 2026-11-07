@@ -2,7 +2,9 @@ const { EmbedBuilder, Collection, ChannelType, PermissionFlagsBits, ActionRowBui
 const log = require('../utils/logger');
 const { track } = require('../utils/commandTracker');
 const { colors } = require('../utils/constants');
-const { response, base, errorCard, refId, permissionDenied } = require('../utils/embed');
+const { response, base, footer, errorCard, refId, permissionDenied } = require('../utils/embed');
+
+const TICKET_DELETE_MS = 5000;
 const config = require('../config');
 const store = require('../database/store');
 const giveawayDb = require('../database/giveaway');
@@ -39,13 +41,36 @@ module.exports = {
 
       const lines = inCategory.map((cmd) => `**\`${prefix}${cmd.data.name}\`** — ${cmd.data.description}`);
 
-      const embed = new EmbedBuilder()
-        .setColor(colors.primary)
+      let desc = lines.join('\n');
+      if (desc.length > 4096) desc = `${desc.slice(0, 4040)}\n...list cut off at Discord's embed limit`;
+      const embed = base(interaction.client, colors.primary)
         .setTitle(`${emoji} ${category.charAt(0).toUpperCase() + category.slice(1)}`)
-        .setDescription(lines.join('\n'))
-        .setFooter({ text: `${lines.length} commands` });
+        .setDescription(desc)
+        .setFooter(footer(interaction.client, `${lines.length} commands`));
 
       await interaction.update({ embeds: [embed] });
+      return;
+    }
+
+    // Role panel dropdowns (`rp:<panel>`). Stored in the database, so they keep working after a restart.
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith('rp:')) {
+      try {
+        await require('../handlers/rolepanel').handleSelect(interaction);
+      } catch (err) {
+        log.error(`Select ${interaction.customId} failed:`, err?.stack || err?.message || err);
+        const reply = { embeds: [response({ client: interaction.client, description: 'Something went wrong. Try again in a moment.', color: colors.error })], ephemeral: true };
+        if (interaction.replied || interaction.deferred) await interaction.editReply(reply).catch(() => {});
+        else await interaction.reply(reply).catch(() => {});
+      }
+      return;
+    }
+
+    // Autocomplete for commands that export autocomplete(interaction) (e.g. /tag names). Never throws.
+    if (interaction.isAutocomplete()) {
+      const cmd = interaction.client.commands.get(interaction.commandName);
+      if (cmd?.autocomplete && interaction.guild) {
+        try { await cmd.autocomplete(interaction); } catch { await interaction.respond([]).catch(() => {}); }
+      }
       return;
     }
 
@@ -155,8 +180,8 @@ async function handleButton(interaction) {
 
       const embed = base(interaction.client, colors.primary)
         .setAuthor({ name: 'Ticket Opened', iconURL: user.displayAvatarURL() })
-        .setDescription(`Welcome ${user}, a support member will be with you shortly.
-Describe your issue and be patient.`);
+        .setDescription(`Welcome ${user}. Support staff can see this channel.
+Describe your issue here.`);
 
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('ticket_close').setLabel('Close Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒'),
@@ -181,7 +206,7 @@ Describe your issue and be patient.`);
       return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Only the ticket opener or support staff can close this ticket.', color: colors.error })], ephemeral: true });
     }
 
-    await interaction.reply({ embeds: [response({ client: interaction.client, description: `Ticket closed by ${user}. Deleting in 5 seconds...`, color: colors.muted })] });
+    await interaction.reply({ embeds: [response({ client: interaction.client, description: `Ticket closed by ${user}. Deleting in ${TICKET_DELETE_MS / 1000} seconds...`, color: colors.muted })] });
 
     const logsChannel = store.getConfig(guild.id, 'ticket_logs');
     if (logsChannel) {
@@ -207,31 +232,14 @@ Describe your issue and be patient.`);
       }
     }
 
-    setTimeout(() => interaction.channel.delete().catch(() => {}), 5000);
+    setTimeout(() => interaction.channel.delete().catch(() => {}), TICKET_DELETE_MS);
+
+  } else if (customId.startsWith('rp:')) {
+    return require('../handlers/rolepanel').handleButton(interaction);
 
   } else if (customId.startsWith('rr_')) {
-    const roleId = customId.slice(3);
-    const role = guild.roles.cache.get(roleId);
-    if (!role) return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Role no longer exists.', color: colors.error })], ephemeral: true });
-
-    const member = interaction.member;
-    const rrFail = (description) =>
-      interaction.reply({ embeds: [response({ client: interaction.client, description, color: colors.error })], ephemeral: true });
-
-    // Never grant @everyone / integration-managed roles, or one the bot can no longer manage (position changed since
-    // the panel was made).
-    if (role.id === guild.id || role.managed || !role.editable) {
-      return rrFail("I can't assign that role anymore. Ask a moderator to check the panel.");
-    }
-
-    const removing = member.roles.cache.has(roleId);
-    try {
-      if (removing) await member.roles.remove(roleId, 'Reaction role');
-      else await member.roles.add(roleId, 'Reaction role');
-    } catch {
-      return rrFail(`Couldn't ${removing ? 'remove' : 'add'} **${role.name}**. Ask a moderator to check my permissions.`);
-    }
-    return interaction.reply({ embeds: [response({ client: interaction.client, description: removing ? `Removed **${role.name}**` : `Added **${role.name}**`, color: removing ? colors.muted : colors.success })], ephemeral: true });
+    // Panels posted before panels were stored in the database.
+    return require('../handlers/rolepanel').handleLegacyButton(interaction);
 
   } else if (customId === 'giveaway_enter') {
     const gw = giveawayDb.get(guild.id, interaction.message.id);

@@ -57,4 +57,4 @@ function check(guildId, member) {
   return { triggered: false };
 }
 
-module.exports = { check, isEnabled, getThreshold, getAccountAge, getAction, recordJoin };
+module.exports = { check, isEnabled, getThreshold, getAccountAge, getAction, recordJoin, WINDOW };

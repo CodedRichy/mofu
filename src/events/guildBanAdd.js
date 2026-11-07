@@ -1,5 +1,5 @@
 const antinuke = require('../database/antinuke');
-const { findAuditEntry, punishExecutor } = require('../utils/auditEntry');
+const { findAuditEntry, punishExecutor, stepLines } = require('../utils/auditEntry');
 const { response } = require('../utils/embed');
 const { colors } = require('../utils/constants');
 const log = require('../utils/logger');
@@ -18,9 +18,9 @@ module.exports = {
     if (executorId === guild.ownerId) return;
 
     if (antinuke.check(guild.id, executorId, 'ban')) {
-      await punishExecutor(guild, executorId, '[sonder antinuke] Mass ban detected');
+      const { banned, rolesStripped } = await punishExecutor(guild, executorId, '[sonder antinuke] Mass ban detected');
 
-      await guild.members.unban(ban.user.id, '[sonder antinuke] Reversed mass ban').catch(() => {});
+      const unbanned = await guild.members.unban(ban.user.id, '[sonder antinuke] Reversed mass ban').then(() => true, () => false);
 
       const modlogChannel = require('../database/store').getConfig(guild.id, 'modlog_channel');
       if (modlogChannel) {
@@ -29,7 +29,7 @@ module.exports = {
           ch.send({
             embeds: [response({
               client: guild.client,
-              description: `**Antinuke triggered**\n**User** ${entry.executor.tag} \`${executorId}\`\n**Action** Mass ban detected — user banned and roles stripped\n**Reversed** Unbanned ${ban.user.tag}`,
+              description: `**Antinuke triggered**\n**User** ${entry.executor.tag} \`${executorId}\`\n**Trigger** Mass ban\n${stepLines([['Ban', banned], ['Roles stripped', rolesStripped], [`Unbanned ${ban.user.tag}`, unbanned]])}`,
               color: colors.error,
             })],
           }).catch(() => {});

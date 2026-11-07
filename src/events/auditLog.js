@@ -1,7 +1,8 @@
 const { AuditLogEvent } = require('discord.js');
 const store = require('../database/store');
 const antinuke = require('../database/antinuke');
-const { base, response } = require('../utils/embed');
+const { punishExecutor, stepLines } = require('../utils/auditEntry');
+const { base, response, footer } = require('../utils/embed');
 const { colors } = require('../utils/constants');
 const log = require('../utils/logger');
 
@@ -22,7 +23,7 @@ module.exports = [
       const embed = base(channel.client, colors.primary)
         .setAuthor({ name: 'Channel Created' })
         .setDescription(`**#${channel.name}** (${channel.type === 0 ? 'Text' : 'Voice'})\n**By** ${entry?.executor || 'Unknown'}`)
-        .setFooter({ text: `ID: ${channel.id}` });
+        .setFooter(footer(channel.client, `ID: ${channel.id}`));
       logCh.send({ embeds: [embed] }).catch(() => {});
     },
   },
@@ -35,7 +36,7 @@ module.exports = [
       const embed = base(channel.client, colors.primary)
         .setAuthor({ name: 'Channel Deleted' })
         .setDescription(`**#${channel.name}**\n**By** ${entry?.executor || 'Unknown'}`)
-        .setFooter({ text: `ID: ${channel.id}` });
+        .setFooter(footer(channel.client, `ID: ${channel.id}`));
       logCh.send({ embeds: [embed] }).catch(() => {});
     },
   },
@@ -48,7 +49,7 @@ module.exports = [
       const embed = base(ban.client, colors.error)
         .setAuthor({ name: 'Member Banned', iconURL: ban.user.displayAvatarURL() })
         .setDescription(`**${ban.user.tag}**\n**By** ${entry?.executor || 'Unknown'}\n**Reason** ${entry?.reason || 'None'}`)
-        .setFooter({ text: `ID: ${ban.user.id}` });
+        .setFooter(footer(ban.client, `ID: ${ban.user.id}`));
       logCh.send({ embeds: [embed] }).catch(() => {});
     },
   },
@@ -61,7 +62,7 @@ module.exports = [
       const embed = base(ban.client, colors.primary)
         .setAuthor({ name: 'Member Unbanned', iconURL: ban.user.displayAvatarURL() })
         .setDescription(`**${ban.user.tag}**\n**By** ${entry?.executor || 'Unknown'}`)
-        .setFooter({ text: `ID: ${ban.user.id}` });
+        .setFooter(footer(ban.client, `ID: ${ban.user.id}`));
       logCh.send({ embeds: [embed] }).catch(() => {});
     },
   },
@@ -82,7 +83,7 @@ module.exports = [
         const embed = base(newMember.client, colors.primary)
           .setAuthor({ name: 'Roles Updated', iconURL: newMember.user.displayAvatarURL() })
           .setDescription(`**${newMember.user.tag}**\n${lines.join('\n')}`)
-          .setFooter({ text: `ID: ${newMember.id}` });
+          .setFooter(footer(newMember.client, `ID: ${newMember.id}`));
         logCh.send({ embeds: [embed] }).catch(() => {});
       }
 
@@ -91,7 +92,7 @@ module.exports = [
         const embed = base(newMember.client, colors.primary)
           .setAuthor({ name: 'Nickname Changed', iconURL: newMember.user.displayAvatarURL() })
           .setDescription(`**${newMember.user.tag}**\n**Before** ${oldMember.nickname || 'None'}\n**After** ${newMember.nickname || 'None'}`)
-          .setFooter({ text: `ID: ${newMember.id}` });
+          .setFooter(footer(newMember.client, `ID: ${newMember.id}`));
         logCh.send({ embeds: [embed] }).catch(() => {});
       }
     },
@@ -105,7 +106,7 @@ module.exports = [
       const embed = base(message.client, colors.primary)
         .setAuthor({ name: 'Message Deleted', iconURL: message.author?.displayAvatarURL() })
         .setDescription(`**Author** ${message.author?.tag || 'Unknown'} in ${message.channel}\n**Content** ${message.content.slice(0, 1024)}`)
-        .setFooter({ text: `ID: ${message.id}` });
+        .setFooter(footer(message.client, `ID: ${message.id}`));
       logCh.send({ embeds: [embed] }).catch(() => {});
     },
   },
@@ -119,7 +120,7 @@ module.exports = [
         .setAuthor({ name: 'Message Edited', iconURL: newMsg.author.displayAvatarURL() })
         .setDescription(`**Author** ${newMsg.author.tag} in ${newMsg.channel}\n**Before** ${oldMsg.content?.slice(0, 512) || '(empty)'}\n**After** ${newMsg.content.slice(0, 512)}`)
         .setURL(newMsg.url)
-        .setFooter({ text: `ID: ${newMsg.id}` });
+        .setFooter(footer(newMsg.client, `ID: ${newMsg.id}`));
       logCh.send({ embeds: [embed] }).catch(() => {});
     },
   },
@@ -131,7 +132,7 @@ module.exports = [
       const embed = base(role.client, colors.primary)
         .setAuthor({ name: 'Role Created' })
         .setDescription(`**${role.name}**\nColor: ${role.hexColor}`)
-        .setFooter({ text: `ID: ${role.id}` });
+        .setFooter(footer(role.client, `ID: ${role.id}`));
       logCh.send({ embeds: [embed] }).catch(() => {});
     },
   },
@@ -143,7 +144,7 @@ module.exports = [
       const embed = base(role.client, colors.primary)
         .setAuthor({ name: 'Role Deleted' })
         .setDescription(`**${role.name}**`)
-        .setFooter({ text: `ID: ${role.id}` });
+        .setFooter(footer(role.client, `ID: ${role.id}`));
       logCh.send({ embeds: [embed] }).catch(() => {});
     },
   },
@@ -165,11 +166,8 @@ module.exports = [
       const executorId = entry.executor.id;
 
       if (antinuke.check(guild.id, executorId, 'kick')) {
-        const executor = guild.members.cache.get(executorId);
-        if (executor) {
-          await executor.roles.set([]).catch(() => {});
-          await guild.members.ban(executorId, { reason: '[sonder antinuke] Mass kick detected' }).catch(() => {});
-        }
+        // punishExecutor bans by id even when the executor is not cached, and reports each step.
+        const { banned, rolesStripped } = await punishExecutor(guild, executorId, '[sonder antinuke] Mass kick detected');
 
         const modlogChannel = store.getConfig(guild.id, 'modlog_channel');
         if (modlogChannel) {
@@ -178,7 +176,7 @@ module.exports = [
             ch.send({
               embeds: [response({
                 client: guild.client,
-                description: `**Antinuke triggered**\n**User** ${entry.executor.tag} \`${executorId}\`\n**Action** Mass kick detected — user banned and roles stripped`,
+                description: `**Antinuke triggered**\n**User** ${entry.executor.tag} \`${executorId}\`\n**Trigger** Mass kick\n${stepLines([['Ban', banned], ['Roles stripped', rolesStripped]])}`,
                 color: colors.error,
               })],
             }).catch(() => {});

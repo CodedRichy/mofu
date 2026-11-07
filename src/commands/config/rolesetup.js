@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { colors } = require('../../utils/constants');
-const { base, response } = require('../../utils/embed');
+const { base, response, footer } = require('../../utils/embed');
+const { isSlash, prefixFor } = require('../../utils/invocation');
 const { createRole, lockdownRoleInChannels, ROLE_PRESETS } = require('../../utils/roleCreate');
 
 const PRESET_OPTIONS = [
@@ -106,7 +107,7 @@ module.exports = {
       const resultEmbed = base(interaction.client, colors.success)
         .setAuthor({ name: 'Role Setup Complete', iconURL: interaction.client.user.displayAvatarURL() })
         .setDescription(lines.join('\n'))
-        .setFooter({ text: 'Tip: use /autorole add for the Member role', iconURL: interaction.client.user.displayAvatarURL() });
+        .setFooter(footer(interaction.client, `Tip: use ${isSlash('autorole') ? '/' : prefixFor(interaction.guild.id)}autorole add for the Member role`));
 
       await interaction.editReply({ embeds: [resultEmbed], components: [] });
     });

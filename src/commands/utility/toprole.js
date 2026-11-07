@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, ChannelType } = require('discord.js');
 const { colors } = require('../../utils/constants');
-const { base, response } = require('../../utils/embed');
+const { base, response, footer } = require('../../utils/embed');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -49,7 +49,7 @@ module.exports = {
     const embed = base(interaction.client, role.color || colors.primary)
       .setAuthor({ name: `Top ${role.name} Members` })
       .setDescription(`${roleMembers.size} members · ${inactive} inactive in sample\n\n${desc}`)
-      .setFooter({ text: `Based on recent messages in ${channelList.length} channel${channelList.length > 1 ? 's' : ''}` });
+      .setFooter(footer(interaction.client, `Based on recent messages in ${channelList.length} channel${channelList.length > 1 ? 's' : ''}`));
 
     await interaction.editReply({ embeds: [embed] });
   },

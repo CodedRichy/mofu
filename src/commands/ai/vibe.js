@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { colors } = require('../../utils/constants');
-const { base, response } = require('../../utils/embed');
+const { base, response, footer } = require('../../utils/embed');
 const { chat } = require('../../utils/ai');
 
 module.exports = {
@@ -60,7 +60,7 @@ module.exports = {
     const embed = base(interaction.client, colors.primary)
       .setAuthor({ name: 'vibe check', iconURL: interaction.client.user.displayAvatarURL() })
       .setDescription(result)
-      .setFooter({ text: `based on ${humanMsgCount} messages` });
+      .setFooter(footer(interaction.client, `based on ${humanMsgCount} messages`));
 
     await interaction.editReply({ embeds: [embed] });
   },

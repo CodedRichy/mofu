@@ -12,7 +12,7 @@ module.exports = {
       s.setName('set')
         .setDescription('Set a reminder')
         .addStringOption((o) => o.setName('time').setDescription('Duration (e.g. 30m, 1h, 1d)').setRequired(true))
-        .addStringOption((o) => o.setName('message').setDescription('What to remind you about').setRequired(true))
+        .addStringOption((o) => o.setName('message').setDescription('What to remind you about').setRequired(true).setMaxLength(1000))
     )
     .addSubcommand((s) => s.setName('list').setDescription('View active reminders'))
     .addSubcommand((s) =>
@@ -29,12 +29,14 @@ module.exports = {
       const message = interaction.options.getString('message');
       const duration = parse(timeStr);
 
-      if (!duration || duration < 10000) {
-        return interaction.reply({ embeds: [response({ client: interaction.client, description: !duration ? 'Invalid duration. Use formats like `30m`, `1h`, `1d`.' : 'Minimum reminder duration is 10 seconds', color: colors.error })], ephemeral: true });
+      const MIN_MS = 10000;
+      const MAX_MS = 7 * 24 * 60 * 60 * 1000;
+      if (!duration || duration < MIN_MS) {
+        return interaction.reply({ embeds: [response({ client: interaction.client, description: !duration ? 'Invalid duration. Use formats like `30m`, `1h`, `1d`.' : `Minimum reminder duration is ${MIN_MS / 1000} seconds`, color: colors.error })], ephemeral: true });
       }
 
-      if (duration > 7 * 24 * 60 * 60 * 1000) {
-        return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Reminders can be at most **7 days**.', color: colors.error })], ephemeral: true });
+      if (duration > MAX_MS) {
+        return interaction.reply({ embeds: [response({ client: interaction.client, description: `Reminders can be at most **${MAX_MS / 86400000} days**.`, color: colors.error })], ephemeral: true });
       }
 
       const { id, expiresAt } = reminders.add(interaction.user.id, interaction.channel.id, message, duration, interaction.guild?.id || '');

@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { colors } = require('../../utils/constants');
 const { fetchAllMembers } = require('../../utils/members');
-const { base, response } = require('../../utils/embed');
+const { base, response, footer } = require('../../utils/embed');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -43,7 +43,7 @@ module.exports = {
     const embed = base(interaction.client, colors.warning)
       .setAuthor({ name: 'Ghost Check' })
       .setDescription(desc)
-      .setFooter({ text: 'These members may have never engaged. Consider a welcome nudge or review.' });
+      .setFooter(footer(interaction.client, 'These members may have never engaged. Consider a welcome nudge or review.')); // claim-ok: hedged with "may"
 
     await interaction.editReply({ embeds: [embed] });
   },

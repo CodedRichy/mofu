@@ -1,7 +1,7 @@
 const snipe = require('../database/snipe');
 const store = require('../database/store');
 const automod = require('../utils/automod');
-const { response } = require('../utils/embed');
+const { response, footer } = require('../utils/embed');
 const { colors } = require('../utils/constants');
 
 module.exports = {
@@ -27,7 +27,7 @@ module.exports = {
     if (!ch) return;
 
     const embed = response({ client: oldMessage.client, description: `**Message edited in** ${oldMessage.channel} [Jump](${newMessage.url})\n**Author** ${oldMessage.author?.tag || newMessage.author?.tag || 'unknown'}\n\n**Before**\n${oldMessage.content?.slice(0, 500) || '*empty*'}\n\n**After**\n${newMessage.content?.slice(0, 500) || '*empty*'}`, color: colors.warning })
-      .setFooter({ text: `ID: ${oldMessage.id}` })
+      .setFooter(footer(oldMessage.client, `ID: ${oldMessage.id}`))
       .setTimestamp();
     ch.send({ embeds: [embed], allowedMentions: { parse: [] } }).catch(() => {});
   },

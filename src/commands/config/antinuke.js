@@ -2,6 +2,9 @@ const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { colors } = require('../../utils/constants');
 const { response } = require('../../utils/embed');
 const store = require('../../database/store');
+const antinukeDb = require('../../database/antinuke');
+
+const secs = antinukeDb.WINDOW / 1000;
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -30,7 +33,7 @@ module.exports = {
               { name: 'Role Create', value: 'role_create' },
             )
         )
-        .addIntegerOption((o) => o.setName('limit').setDescription('Max actions in 10s before trigger').setRequired(true).setMinValue(2).setMaxValue(10))
+        .addIntegerOption((o) => o.setName('limit').setDescription(`Max actions in ${secs}s before trigger`).setRequired(true).setMinValue(2).setMaxValue(10))
     )
     .addSubcommand((sub) => sub.setName('settings').setDescription('View antinuke settings'))
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
@@ -52,7 +55,7 @@ module.exports = {
         return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Anti-nuke is already enabled.', color: colors.warning })], ephemeral: true });
       }
       store.setConfig(guild.id, 'antinuke', true);
-      await interaction.reply({ embeds: [response({ client: interaction.client, description: 'Antinuke protection **enabled**.\nDestructive mass actions will be detected and stopped.', color: colors.success })] });
+      await interaction.reply({ embeds: [response({ client: interaction.client, description: `Antinuke protection **enabled**.\nAnyone (except the owner and whitelist) who passes a threshold within ${secs}s is banned and has their roles removed, and I try to undo the action that tripped it (a deleted channel is recreated without its permission overwrites, a deleted role without its members, created ones are deleted, the ban is lifted; kicks cannot be undone). This needs Ban Members, Manage Roles and a role above theirs; the modlog says which steps worked.`, color: colors.success })] });
 
     } else if (sub === 'disable') {
       const existing = store.getConfig(guild.id, 'antinuke');
@@ -90,13 +93,13 @@ module.exports = {
       thresholds[action] = limit;
       store.setConfig(guild.id, 'antinuke_thresholds', thresholds);
       const label = action.replace('_', ' ');
-      await interaction.reply({ embeds: [response({ client: interaction.client, description: `Threshold for **${label}** set to **${limit}** actions in 10 seconds.`, color: colors.success })] });
+      await interaction.reply({ embeds: [response({ client: interaction.client, description: `Threshold for **${label}** set to **${limit}** actions in ${secs}s.`, color: colors.success })] });
 
     } else {
       const enabled = store.getConfig(guild.id, 'antinuke') === true;
       const whitelist = store.getConfig(guild.id, 'antinuke_whitelist') || [];
       const thresholds = store.getConfig(guild.id, 'antinuke_thresholds') || {};
-      const defaults = { ban: 3, kick: 3, channel_delete: 3, channel_create: 5, role_delete: 3, role_create: 5 };
+      const defaults = antinukeDb.DEFAULTS;
 
       const thresholdLines = Object.entries(defaults)
         .map(([k, v]) => `**${k.replace('_', ' ')}** — ${thresholds[k] ?? v}`)
@@ -109,7 +112,7 @@ module.exports = {
       await interaction.reply({
         embeds: [response({
           client: interaction.client,
-          description: `**Status** ${enabled ? '🟢 Enabled' : '🔴 Disabled'}\n\n**Thresholds** (per 10s)\n${thresholdLines}\n\n**Whitelisted** ${whitelistLines}`,
+          description: `**Status** ${enabled ? '🟢 Enabled' : '🔴 Disabled'}\n\n**Thresholds** (per ${secs}s)\n${thresholdLines}\n\n**Whitelisted** ${whitelistLines}`,
           color: enabled ? colors.success : colors.muted,
         })],
       });

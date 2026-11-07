@@ -10,6 +10,7 @@ const {
   ButtonStyle,
   ComponentType,
 } = require('discord.js');
+const { cmdRef } = require('../../utils/invocation');
 const { colors } = require('../../utils/constants');
 const { base, response } = require('../../utils/embed');
 const store = require('../../database/store');
@@ -110,7 +111,7 @@ function protectionEmbed(client, guildId) {
   });
   const words = store.getConfig(guildId, 'word_filter');
   const wordCount = Array.isArray(words) ? words.length : 0;
-  lines.push(`\u{1F4DD} **Word Filter** — ${wordCount} word${wordCount === 1 ? '' : 's'} (manage with \`/wordfilter\`)`);
+  lines.push(`\u{1F4DD} **Word Filter** — ${wordCount} word${wordCount === 1 ? '' : 's'} (manage with ${cmdRef(guildId, 'wordfilter add')})`);
   return base(client, colors.primary)
     .setTitle('\u{1F6E1}️ Protection')
     .setDescription(lines.join('\n') + '\n\nSelect a feature below to toggle it.');
@@ -223,8 +224,8 @@ function featuresEmbed(client, guildId) {
   });
   const sb = store.getConfig(guildId, 'starboard_channel');
   const ct = store.getConfig(guildId, 'counter_channel');
-  lines.push(`\u2B50 **Starboard** — ${sb ? `<#${sb}>` : 'Off'} (set with \`/starboard\`)`);
-  lines.push(`\u{1F522} **Counter** — ${ct ? `<#${ct}>` : 'Off'} (set with \`/counter\`)`);
+  lines.push(`\u2B50 **Starboard** — ${sb ? `<#${sb}>` : 'Off'} (set with ${cmdRef(guildId, 'starboard')})`);
+  lines.push(`\u{1F522} **Counter** — ${ct ? `<#${ct}>` : 'Off'} (set with ${cmdRef(guildId, 'counter')})`);
   return base(client, colors.primary)
     .setTitle('\u{1F3AB} Features')
     .setDescription(lines.join('\n') + '\n\nSelect a feature below to toggle it. Tickets also need the panel set up with `/ticket`.');

@@ -3,6 +3,7 @@ const log = require('../utils/logger');
 
 const actionLog = new Map();
 const WINDOW = 10000;
+const DEFAULTS = { ban: 3, kick: 3, channel_delete: 3, channel_create: 5, role_delete: 3, role_create: 5 };
 
 function getActions(guildId, userId, type) {
   const key = `${guildId}:${userId}:${type}`;
@@ -32,8 +33,7 @@ function isEnabled(guildId) {
 
 function getThreshold(guildId, type) {
   const thresholds = store.getConfig(guildId, 'antinuke_thresholds') || {};
-  const defaults = { ban: 3, kick: 3, channel_delete: 3, channel_create: 5, role_delete: 3, role_create: 5 };
-  return thresholds[type] ?? defaults[type] ?? 3;
+  return thresholds[type] ?? DEFAULTS[type] ?? 3;
 }
 
 function check(guildId, userId, type) {
@@ -47,4 +47,4 @@ function check(guildId, userId, type) {
   return actions.length >= threshold;
 }
 
-module.exports = { check, isEnabled, isWhitelisted, getThreshold, recordAction };
+module.exports = { check, isEnabled, isWhitelisted, getThreshold, recordAction, WINDOW, DEFAULTS };

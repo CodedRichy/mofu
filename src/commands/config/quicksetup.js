@@ -7,7 +7,7 @@ const templates = {
   gaming: {
     label: 'Gaming',
     emoji: '🎮',
-    description: 'Optimized for gaming communities',
+    description: 'Logs, modlog, welcome, antispam, antilink, leveling',
     channels: ['sonder-logs', 'modlog'],
     config: { antispam: true, antilink: true, leveling: true },
     welcome: 'Welcome to {server}, {user}! 🎮 Check out the channels and have fun!',
@@ -15,7 +15,7 @@ const templates = {
   community: {
     label: 'Community',
     emoji: '🏘️',
-    description: 'Full-featured community server',
+    description: 'Gaming set plus antiraid, starboard, goodbye',
     channels: ['sonder-logs', 'modlog', 'starboard'],
     config: { antispam: true, antilink: true, antiraid: true, leveling: true, starboard_threshold: 3, starboard_emoji: '⭐' },
     welcome: 'Hey {user}, welcome to **{server}**! You\'re member #{membercount} 🎉',
@@ -24,7 +24,7 @@ const templates = {
   study: {
     label: 'Study',
     emoji: '📚',
-    description: 'Study groups and productivity',
+    description: 'Logs, welcome, antispam, leveling',
     channels: ['sonder-logs'],
     config: { antispam: true, leveling: true },
     welcome: 'Welcome {user}! 📚 Stay focused and good luck with your studies.',
@@ -32,7 +32,7 @@ const templates = {
   minimal: {
     label: 'Minimal',
     emoji: '🔒',
-    description: 'Just the essentials',
+    description: 'Logs and antispam only',
     channels: ['sonder-logs'],
     config: { antispam: true },
   },
@@ -68,7 +68,7 @@ module.exports = {
     const embed = base(client, colors.primary)
       .setAuthor({ name: 'Quick Setup', iconURL: client.user.displayAvatarURL() })
       .setDescription(
-        'Choose a pre-built template to configure your server instantly.\n\n' +
+        'Pick a preset to apply. Each one creates the channels and turns on the features listed.\n\n' +
         Object.values(templates).map((t) => `${t.emoji} **${t.label}** — ${t.description}`).join('\n')
       );
 

@@ -34,7 +34,7 @@ function toggle(guildId, key, id, action) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('xpignore')
-    .setDescription('Channels and roles that never earn XP')
+    .setDescription('Channels and roles that never earn XP') // claim-ok: utils/xp.js isIgnored gates every XP grant
     .addSubcommand((sub) => sub.setName('channel').setDescription('No XP in a channel or category')
       .addStringOption((o) => o.setName('action').setDescription('Add or remove').setRequired(true).addChoices(...ACTIONS))
       .addChannelOption((o) => o.setName('channel').setDescription('Channel or category').setRequired(true).addChannelTypes(...CHANNEL_TYPES)))

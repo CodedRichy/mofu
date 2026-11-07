@@ -51,7 +51,7 @@ function buildCard(client, queue, frame = 0) {
     .setDescription(lines.join('\n'))
     .addFields(
       { name: 'Loop', value: `\`${loop}\``, inline: true },
-      { name: 'Up next', value: next ? `${next.title}`.slice(0, 60) + (queue.tracks.size > 1 ? ` (+${queue.tracks.size - 1})` : '') : 'nothing queued', inline: true },
+      { name: 'Up next', value: next ? (String(next.title).length > 60 ? `${String(next.title).slice(0, 57)}...` : `${next.title}`) + (queue.tracks.size > 1 ? ` (+${queue.tracks.size - 1})` : '') : 'nothing queued', inline: true },
     );
   if (track.thumbnail) embed.setThumbnail(track.thumbnail);
   if (track.requestedBy) embed.setFooter({ text: `requested by ${track.requestedBy.globalName || track.requestedBy.username} - sonder`, iconURL: client.user.displayAvatarURL() });

@@ -35,10 +35,24 @@ async function findAuditEntry(guild, type, targetId, { tries = 3, delayMs = 600 
 
 // Strip roles and ban an offender even when they are not in the member cache. The ban works on a bare user id,
 // so a cache miss can never let the attacker keep going.
+// Returns what actually happened so the modlog never claims a ban or strip that Discord refused.
+// rolesStripped is null when the executor was not in the server (nothing to strip).
 async function punishExecutor(guild, executorId, reason) {
   const member = guild.members.cache.get(executorId) || await guild.members.fetch(executorId).catch(() => null);
-  if (member) await member.roles.set([], reason).catch(() => {});
-  await guild.members.ban(executorId, { reason }).catch(() => {});
+  let rolesStripped = null;
+  if (member) rolesStripped = await member.roles.set([], reason).then(() => true, () => false);
+  const banned = await guild.members.ban(executorId, { reason }).then(() => true, () => false);
+  return { banned, rolesStripped };
 }
 
-module.exports = { findAuditEntry, pickEntry, punishExecutor, MAX_AGE_MS };
+// "**Ban** done\n**Roles stripped** failed\n**Restored** done", built from step results.
+// steps: array of [label, true | false | null]; null steps are skipped. Capped well under the 4096 embed limit.
+function stepLines(steps) {
+  const out = steps
+    .filter(([, ok]) => ok !== null && ok !== undefined)
+    .map(([label, ok]) => `**${label}** ${ok ? 'done' : 'failed (check my permissions and role position)'}`)
+    .join('\n');
+  return out.length > 1500 ? `${out.slice(0, 1497)}...` : out;
+}
+
+module.exports = { findAuditEntry, pickEntry, punishExecutor, stepLines, MAX_AGE_MS };

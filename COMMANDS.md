@@ -1,62 +1,58 @@
 # Command Registration
 
-Discord limit: 100 slash commands per guild. Sonder registers ~38 as slash, ~113 as prefix-only.
-All ~151 commands work via prefix (`;command`). Controlled by `PREFIX_ONLY` set in `src/handlers/commandHandler.js`.
+Discord limit: 100 slash commands per app. Sonder registers 84 as slash and keeps 85 prefix-only (169 total).
+Every command works via prefix (`;command`). Controlled by the `PREFIX_ONLY` set in `src/handlers/commandHandler.js`;
+`test/slashcap.test.js` checks the cap and validates every slash builder against Discord's limits. Keep about
+10 slots free. The most-used commands are slash so they keep working if MESSAGE_CONTENT is denied at review.
 
-## Slash Commands (~38) — visible in `/` menu
+## Slash Commands (84) — visible in `/` menu, also work with the prefix
 
-### config (11)
-autorole, goodbye, logging, prefix, quicksetup, reactionrole, rolesetup, settings, setup, ticket, welcome
+### ai (6)
+ask, persona, roast, sentiment, summarize, vibe
 
-### moderation (9)
-ban, unban, kick, mute, unmute, warn, purge, lock, modlog
+### config (18)
+aiactions, airoles, automod, autorole, goodbye, import, logging, memory, migrate, prefix, quicksetup, reactionrole, rolesetup, settings, setup, ticket, warnconfig, welcome
 
-### music (5)
-play, skip, stop, queue, nowplaying
+### economy (9)
+bank, blackjack, coinflip, daily, inventory, leaderboard, shop, transfer, work
 
-### utility (5)
-help, ping, avatar, userinfo, server
+### fun (3)
+8ball, rps, trivia
 
-### economy (4)
-bank, daily, work, shop
+### leveling (7)
+leveling, levelrole, levelup, rank, xpignore, xpleaderboard, xpmultiplier
 
-### leveling (2)
-rank, leveling
+### moderation (15)
+ban, case, history, kick, lock, modlog, mute, nickname, purge, role, slowmode, tempban, unban, unmute, warn
 
-### ai (1)
-ask
+### music (11)
+loop, lyrics, nowplaying, pause, play, queue, resume, shuffle, skip, stop, volume
 
-### fun (1)
-trivia
+### utility (15)
+afk, avatar, forgetme, giveaway, help, membercount, ping, poll, privacy, remind, roleinfo, server, snipe, translate, userinfo
 
-## Prefix-Only (~113) — `;command` only
-
-### moderation (16)
-banlist, drag, hardmute, hide, history, imute, jail, modstats, mutelist, nickname, note, rmute, role, selfpurge, slowmode, softban
-
-### music (4)
-loop, pause, shuffle, volume
-
-### utility (36)
-afk, banner, besttime, boostimpact, botinfo, bots, calculate, catchup, channelstats, define, emoji, firstmessage, ghostcheck, github, giveaway, inrole, invites, joinposition, membercount, milestone, newusers, poll, quote, remind, roleaudit, roleinfo, snipe, spotlight, staleperms, sticker, threadwatch, timezone, toprole, translate, uptime, voice
-
-### economy (12)
-beg, blackjack, coinflip, crime, fish, heist, hunt, inventory, leaderboard, rob, slots, transfer
-
-### ai (5)
-persona, roast, sentiment, summarize, vibe
-
-### fun (18)
-8ball, bite, blacktea, bonk, cat, confess, dog, hug, kiss, meme, mock, pat, rps, ship, slap, truthordare, uwuify, wyr
+## Prefix-Only (85) — `;command` only
 
 ### config (20)
 aimod, antilink, antinuke, antiraid, antispam, auditlog, autoresponder, backup, birthday, boosterrole, bumpreminder, confession, configaudit, counter, customcommand, nightwatch, starboard, stickymessage, voicemaster, wordfilter
 
-### leveling (2)
-setlevel, xpleaderboard
+### economy (7)
+beg, crime, fish, heist, hunt, rob, slots
+
+### fun (16)
+bite, blacktea, bonk, cat, confess, dog, hug, kiss, meme, mock, pat, ship, slap, truthordare, uwuify, wyr
 
 ### lastfm (1)
 fm
+
+### leveling (1)
+setlevel
+
+### moderation (12)
+banlist, drag, hardmute, hide, imute, jail, modstats, mutelist, note, rmute, selfpurge, softban
+
+### utility (28)
+banner, besttime, boostimpact, botinfo, bots, calculate, catchup, channelstats, define, emoji, firstmessage, ghostcheck, github, inrole, invites, joinposition, milestone, newusers, quote, roleaudit, spotlight, staleperms, sticker, threadwatch, timezone, toprole, uptime, voice
 
 ## Consolidated Commands (25 slots saved)
 

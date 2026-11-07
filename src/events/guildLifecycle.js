@@ -12,7 +12,7 @@ async function sendWelcome(guild) {
     const steps = [
       hasQuick ? '**`/quicksetup`**: pick sensible defaults for logs, welcome and moderation in one go.' : '**`/setup`**: configure logs, welcome and moderation.',
       '**`/migrate scan`**: see which other bots and channels Sonder can reuse. It changes nothing.',
-      'Say **`sonder what can you do`** in chat and ask me anything.',
+      'Admins can say **`sonder what can you do`** in chat. Until you pick roles with `/airoles`, members with Manage Messages can too.',
     ];
     const embed = base(client)
       .setTitle('Thanks for adding Sonder')

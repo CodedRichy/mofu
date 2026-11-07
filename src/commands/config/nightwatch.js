@@ -39,7 +39,7 @@ module.exports = {
       return interaction.reply({
         embeds: [response({
           client: interaction.client,
-          description: `Night watch enabled.\n**Active** ${start}:00 → ${end}:00\n**Alerts** ${alertChannel}\n\nDuring these hours: new account messages flagged, link posting logged, and rapid message bursts alerted.`,
+          description: `Night watch enabled.\n**Active** ${start}:00 → ${end}:00 (bot host time)\n**Alerts** ${alertChannel}\n\nDuring these hours, messages from accounts under a week old and messages with links are posted to ${alertChannel}.`,
           color: colors.success,
         })],
       });
@@ -64,7 +64,7 @@ module.exports = {
 
       const desc = [
         `**Status** ${isActive ? '🔴 Active now' : '🟢 Inactive'}`,
-        `**Hours** ${config.start}:00 → ${config.end}:00`,
+        `**Hours** ${config.start}:00 → ${config.end}:00 (bot host time)`,
         `**Alerts** <#${config.alertChannel}>`,
       ].join('\n');
 
@@ -76,7 +76,7 @@ module.exports = {
       const ch = await createConfigChannel(interaction.guild, { ...defaults, client: interaction.client });
       if (!ch) return interaction.reply({ embeds: [response({ client: interaction.client, description: "Couldn't create channel. Make sure I have **Manage Channels** permission.", color: colors.error })], ephemeral: true });
       store.setConfig(guildId, 'nightwatch', { enabled: true, start: 23, end: 7, alertChannel: ch.id });
-      return interaction.reply({ embeds: [response({ client: interaction.client, description: `Created ${ch} and set as nightwatch alert channel.\n**Active** 23:00 → 7:00 (default hours)`, color: colors.success })] });
+      return interaction.reply({ embeds: [response({ client: interaction.client, description: `Created ${ch} and set as nightwatch alert channel.\n**Active** 23:00 → 7:00 (default hours, bot host time)`, color: colors.success })] });
     }
   },
 };

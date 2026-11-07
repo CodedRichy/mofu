@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { colors } = require('../../utils/constants');
-const { base, response } = require('../../utils/embed');
+const { base, response, footer } = require('../../utils/embed');
 const store = require('../../database/store');
 const { clip, joinClipped, modLabel } = require('../../utils/modguard');
 
@@ -60,7 +60,7 @@ module.exports = {
       const embed = base(interaction.client)
         .setAuthor({ name: `Notes — ${user.tag}`, iconURL: user.displayAvatarURL() })
         .setDescription(list)
-        .setFooter({ text: total > 10 ? `showing 10 of ${total} notes` : `${total} notes` });
+        .setFooter(footer(interaction.client, total > 10 ? `showing 10 of ${total} notes` : `${total} notes`));
 
       await interaction.reply({ embeds: [embed] });
     } else if (sub === 'remove') {

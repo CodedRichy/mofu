@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { colors } = require('../../utils/constants');
-const { base, response } = require('../../utils/embed');
+const { base, response, footer } = require('../../utils/embed');
+const { cmdRef } = require('../../utils/invocation');
 const store = require('../../database/store');
 const { clip, joinClipped, modLabel } = require('../../utils/modguard');
 
@@ -18,7 +19,7 @@ module.exports = {
 
     if (!warnings.length && !notes.length) {
       return interaction.reply({
-        embeds: [response({ client: interaction.client, description: `**${user.tag}** has a clean record.`, color: colors.muted })],
+        embeds: [response({ client: interaction.client, description: `**${user.tag}** has no warnings or notes. Bans, kicks and mutes are separate cases: see ${cmdRef(interaction.guild.id, 'case view')} or the modlog.`, color: colors.muted })],
         ephemeral: true,
       });
     }
@@ -44,7 +45,7 @@ module.exports = {
       embed.addFields({ name: '📝 Notes', value: joinClipped(lines, 1024) });
     }
 
-    embed.setFooter({ text: `Total: ${warnings.length + notes.length} records` });
+    embed.setFooter(footer(interaction.client, `${warnings.length + notes.length} warnings and notes (cases not included)`));
 
     await interaction.reply({ embeds: [embed] });
   },

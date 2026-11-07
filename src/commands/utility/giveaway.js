@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { colors } = require('../../utils/constants');
-const { base, response } = require('../../utils/embed');
+const { base, response, footer } = require('../../utils/embed');
 const { parse, format } = require('../../utils/duration');
 const giveawayDb = require('../../database/giveaway');
 const { setLongTimeout } = require('../../utils/longTimeout');
@@ -11,7 +11,7 @@ module.exports = {
     .setDescription('Manage giveaways')
     .addSubcommand((sub) =>
       sub.setName('start').setDescription('Start a giveaway')
-        .addStringOption((o) => o.setName('prize').setDescription('What are you giving away?').setRequired(true))
+        .addStringOption((o) => o.setName('prize').setDescription('What are you giving away?').setRequired(true).setMaxLength(256))
         .addStringOption((o) => o.setName('duration').setDescription('How long? (e.g. 1h, 1d, 1w)').setRequired(true))
         .addIntegerOption((o) => o.setName('winners').setDescription('Number of winners (default: 1)').setMinValue(1).setMaxValue(20))
     )
@@ -43,16 +43,20 @@ module.exports = {
 
       const embed = base(interaction.client, colors.primary)
         .setAuthor({ name: '🎉 Giveaway' })
-        .setDescription(`**${prize}**\n\nReact with 🎉 or click the button to enter!\n**Winners:** ${winnerCount}\n**Ends:** <t:${Math.floor(endsAt / 1000)}:R>\n**Hosted by:** ${interaction.user}`)
-        .setFooter({ text: `${winnerCount} winner(s)` })
+        .setDescription(`**${prize}**\n\nClick **Enter** to join.\n**Winners:** ${winnerCount}\n**Ends:** <t:${Math.floor(endsAt / 1000)}:R>\n**Hosted by:** ${interaction.user}`)
+        .setFooter(footer(interaction.client, `${winnerCount} winner(s) | ends`))
         .setTimestamp(endsAt);
 
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('giveaway_enter').setLabel('Enter').setStyle(ButtonStyle.Primary).setEmoji('🎉'),
       );
 
-      await interaction.reply({ embeds: [response({ client: interaction.client, description: 'Giveaway started!', color: colors.success })], ephemeral: true });
-      const msg = await channel.send({ embeds: [embed], components: [row] });
+      // Post first, confirm after: never say "started" for a giveaway that did not get posted.
+      const msg = await channel.send({ embeds: [embed], components: [row] }).catch(() => null);
+      if (!msg) {
+        return interaction.reply({ embeds: [response({ client: interaction.client, description: "Couldn't post the giveaway. Check that I can send messages and embeds in this channel.", color: colors.error })], ephemeral: true });
+      }
+      await interaction.reply({ embeds: [response({ client: interaction.client, description: 'Giveaway started.', color: colors.success })], ephemeral: true });
 
       giveawayDb.create(guild.id, {
         messageId: msg.id,
@@ -112,7 +116,7 @@ async function endGiveaway(guild, messageId, channelId, client) {
         ? `**${gw.prize}**\n\n**Winner(s):** ${winners.map((w) => `<@${w}>`).join(', ')}`
         : `**${gw.prize}**\n\nNot enough entries.`,
     )
-    .setFooter({ text: 'Ended' })
+    .setFooter(footer(client, 'Ended'))
     .setTimestamp();
 
   const row = new ActionRowBuilder().addComponents(

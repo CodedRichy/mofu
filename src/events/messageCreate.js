@@ -74,8 +74,7 @@ const XP_MIN = 15;
 const XP_MAX = 25;
 const stickyLocks = new Set();
 const XP_COOLDOWN = 60000;
-const SPAM_THRESHOLD = 5;
-const SPAM_WINDOW = 3000;
+const { SPAM_THRESHOLD, SPAM_WINDOW_MS: SPAM_WINDOW, SPAM_TIMEOUT_MS } = require('../utils/automodRules');
 
 // Drop spam-tracker entries whose newest timestamp is outside the window,
 // otherwise every user who ever spoke in an antispam guild stays in memory.
@@ -114,8 +113,9 @@ module.exports = {
         const alertCh = message.guild.channels.cache.get(nightwatch.alertChannel);
         if (alertCh) {
           const accountAge = Date.now() - message.author.createdTimestamp;
-          if (accountAge < 7 * 86400000) {
-            alertCh.send({ embeds: [response({ client: message.client, description: `**Nightwatch** New account (<7d) active: ${message.author} in ${message.channel}\n> ${message.content.slice(0, 200)}`, color: colors.warning })] }).catch(() => {});
+          const NEW_ACCOUNT_MS = 7 * 86400000;
+          if (accountAge < NEW_ACCOUNT_MS) {
+            alertCh.send({ embeds: [response({ client: message.client, description: `**Nightwatch** New account (<${NEW_ACCOUNT_MS / 86400000}d) active: ${message.author} in ${message.channel}\n> ${message.content.slice(0, 200)}`, color: colors.warning })] }).catch(() => {});
           }
 
           if (/https?:\/\/[^\s]+/i.test(message.content)) {
@@ -143,14 +143,18 @@ module.exports = {
       if (recent.length >= SPAM_THRESHOLD) {
         spamTracker.delete(key);
         if (spamRule) { await automod.enforceSpam(message, SPAM_THRESHOLD); return; }
-        await message.member.timeout(60000, 'Anti-spam: message velocity exceeded').catch(() => {});
-        const msgs = await message.channel.messages.fetch({ limit: SPAM_THRESHOLD });
-        const userMsgs = msgs.filter((m) => m.author.id === message.author.id);
-        await message.channel.bulkDelete(userMsgs).catch(() => {});
-        message.channel.send({ embeds: [response({ client: message.client, description: `${message.author} muted for **1 minute** — spam detected.`, color: colors.error })] })
+        const muted = await message.member.timeout(SPAM_TIMEOUT_MS, 'Anti-spam: message velocity exceeded').then(() => true, () => false);
+        const msgs = await message.channel.messages.fetch({ limit: SPAM_THRESHOLD }).catch(() => null);
+        const userMsgs = msgs ? msgs.filter((m) => m.author.id === message.author.id) : null;
+        if (userMsgs?.size) await message.channel.bulkDelete(userMsgs).catch(() => {});
+        const mins = SPAM_TIMEOUT_MS / 60000;
+        const notice = muted
+          ? `${message.author} muted for **${mins} minute${mins === 1 ? '' : 's'}**: spam detected.`
+          : `Spam detected, but I could not time out ${message.author} (check my Moderate Members permission and role position).`;
+        message.channel.send({ embeds: [response({ client: message.client, description: notice, color: colors.error })] })
           .then((m) => setTimeout(() => m.delete().catch(() => {}), 5000)).catch(() => {});
         await modlog.send(message.guild, {
-          action: 'Auto-Mute (Spam)',
+          action: muted ? 'Auto-Mute (Spam)' : 'Spam Detected (mute failed)',
           target: message.author,
           moderator: message.client.user,
           reason: `Sent ${SPAM_THRESHOLD}+ messages in ${SPAM_WINDOW / 1000}s`,

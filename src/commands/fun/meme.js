@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { colors } = require('../../utils/constants');
-const { base, response } = require('../../utils/embed');
+const { base, response, footer } = require('../../utils/embed');
 const { rateLimit } = require('../../utils/ratelimit');
 
 module.exports = {
@@ -23,7 +23,7 @@ module.exports = {
       const embed = base(interaction.client, colors.primary)
         .setAuthor({ name: data.title, url: data.postLink })
         .setImage(data.url)
-        .setFooter({ text: `👍 ${data.ups} · r/${data.subreddit}` });
+        .setFooter(footer(interaction.client, `👍 ${data.ups} · r/${data.subreddit}`));
 
       await interaction.editReply({ embeds: [embed] });
     } catch {

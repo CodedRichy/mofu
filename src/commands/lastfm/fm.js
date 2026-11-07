@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { colors } = require('../../utils/constants');
 const { base, response } = require('../../utils/embed');
+const { cmdRef } = require('../../utils/invocation');
 const store = require('../../database/store');
 const lastfm = require('../../utils/lastfm');
 const config = require('../../config');
@@ -73,7 +74,8 @@ async function run(interaction) {
       return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Last.fm API key not configured.', color: colors.error })], ephemeral: true });
     }
 
-    const sub = interaction.options.getSubcommand();
+    // A bare `;fm` (no subcommand) shows what you are listening to now; slash always supplies a subcommand.
+    const sub = interaction.options.getSubcommand() || 'np';
 
     if (sub === 'set') {
       const username = interaction.options.getString('username');
@@ -90,7 +92,7 @@ async function run(interaction) {
     const username = store.getConfig(interaction.guild.id, `lastfm_${targetUser.id}`);
     if (!username) {
       return interaction.reply({
-        embeds: [response({ client: interaction.client, description: `${targetUser.id === interaction.user.id ? 'You haven\'t' : `${targetUser.tag} hasn't`} linked a Last.fm account.\nUse \`/fm set <username>\``, color: colors.error })],
+        embeds: [response({ client: interaction.client, description: `${targetUser.id === interaction.user.id ? 'You haven\'t' : `${targetUser.tag} hasn't`} linked a Last.fm account.\nUse ${cmdRef(interaction.guild.id, 'fm set <username>')}`, color: colors.error })],
         ephemeral: true,
       });
     }

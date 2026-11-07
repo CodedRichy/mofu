@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits, AttachmentBuilder } = require('discord.js');
 const { colors } = require('../../utils/constants');
 const { response } = require('../../utils/embed');
+const { cmdRef } = require('../../utils/invocation');
 const store = require('../../database/store');
 
 const KEYS = [
@@ -77,14 +78,14 @@ module.exports = {
 
       if (!attachment.name.endsWith('.json')) {
         return interaction.reply({
-          embeds: [response({ client: interaction.client, description: 'Upload a `.json` file exported from `/backup export`.', color: colors.error })],
+          embeds: [response({ client: interaction.client, description: `Upload a \`.json\` file exported from ${cmdRef(interaction.guild.id, 'backup export')}.`, color: colors.error })],
           ephemeral: true,
         });
       }
 
       if (attachment.size > 100_000) {
         return interaction.reply({
-          embeds: [response({ client: interaction.client, description: 'Backup file too large (max 100KB). Re-export with `/backup export`.', color: colors.error })],
+          embeds: [response({ client: interaction.client, description: `Backup file too large (max 100KB). Re-export with ${cmdRef(interaction.guild.id, 'backup export')}.`, color: colors.error })],
           ephemeral: true,
         });
       }
@@ -102,7 +103,7 @@ module.exports = {
 
       if (!data._meta || !data.config || typeof data.config !== 'object' || data._meta.version !== 1) {
         return interaction.reply({
-          embeds: [response({ client: interaction.client, description: "This doesn't look like a Sonder backup. Use `/backup export` to create one.", color: colors.error })],
+          embeds: [response({ client: interaction.client, description: `This doesn't look like a Sonder backup. Use ${cmdRef(interaction.guild.id, 'backup export')} to create one.`, color: colors.error })],
           ephemeral: true,
         });
       }

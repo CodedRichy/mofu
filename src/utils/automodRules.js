@@ -18,6 +18,10 @@ const MAX_WINDOW_MIN = 1440; // 24h
 const MENTION_LIMIT = 5;
 const CAPS_MIN_LETTERS = 12;
 const CAPS_RATIO = 0.7;
+// Legacy /antispam burst detector (events/messageCreate.js). Embeds read these instead of hard-coding them.
+const SPAM_THRESHOLD = 5;
+const SPAM_WINDOW_MS = 3000;
+const SPAM_TIMEOUT_MS = 60000;
 
 const intIn = (v, lo, hi, dflt) => (Number.isInteger(v) && v >= lo && v <= hi ? v : dflt);
 
@@ -135,5 +139,6 @@ class StrikeCounter {
 
 module.exports = {
   TRIGGERS, ACTIONS, LABELS, DEFAULT_TIMEOUT_MIN, DEFAULT_WINDOW_MIN, MAX_TIMEOUT_MIN, MAX_WINDOW_MIN, MENTION_LIMIT,
+  CAPS_MIN_LETTERS, CAPS_RATIO, SPAM_THRESHOLD, SPAM_WINDOW_MS, SPAM_TIMEOUT_MS,
   normalizeRule, normalizeRules, ladderStep, describeRule, hasInvite, mentionCount, isMassMention, isCapsHeavy, StrikeCounter,
 };

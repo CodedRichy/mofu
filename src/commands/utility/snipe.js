@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { colors } = require('../../utils/constants');
-const { base, response } = require('../../utils/embed');
+const { base, response, footer } = require('../../utils/embed');
 const snipeStore = require('../../database/snipe');
 const store = require('../../database/store');
 
@@ -30,7 +30,7 @@ module.exports = {
     .addSubcommand((sub) =>
       sub.setName('setup')
         .setDescription('Turn sniping on or off for this server (off by default)')
-        .addBooleanOption((o) => o.setName('enabled').setDescription('Store deleted/edited messages for 2 hours?').setRequired(true))
+        .addBooleanOption((o) => o.setName('enabled').setDescription(`Store deleted/edited messages for ${snipeStore.MAX_AGE_MS / 3600000} hours?`).setRequired(true))
     )
     .addSubcommand((sub) =>
       sub.setName('clear')
@@ -60,7 +60,7 @@ module.exports = {
       const enabled = interaction.options.getBoolean('enabled');
       store.setConfig(interaction.guild.id, 'snipe_enabled', !!enabled);
       if (!enabled) for (const c of ['clearDeleted', 'clearEdited', 'clearReactions', 'clearPurged']) snipeStore[c](interaction.channel.id);
-      return interaction.reply({ embeds: [response({ client: interaction.client, description: enabled ? 'Snipe is **on**. Deleted and edited messages are kept for 2 hours, visible to Manage Messages only.' : 'Snipe is **off**. Nothing is stored.', color: enabled ? colors.success : colors.muted })], ephemeral: true });
+      return interaction.reply({ embeds: [response({ client: interaction.client, description: enabled ? `Snipe is **on**. Deleted and edited messages are kept for ${snipeStore.MAX_AGE_MS / 3600000} hours, visible to Manage Messages only.` : 'Snipe is **off**. Nothing is stored.', color: enabled ? colors.success : colors.muted })], ephemeral: true });
     }
     if (sub !== 'clear' && !snipeStore.isEnabled(interaction.guild.id)) {
       return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Snipe is off in this server. Turn it on with `/snipe setup`.', color: colors.muted })], ephemeral: true });
@@ -82,7 +82,7 @@ module.exports = {
       const embed = base(interaction.client, colors.primary)
         .setAuthor({ name: data.author.tag, iconURL: data.author.avatar })
         .setDescription((data.content || '*No text content*').slice(0, 4096))
-        .setFooter({ text: `Deleted • ${timeAgo(data.timestamp)}` });
+        .setFooter(footer(interaction.client, `Deleted • ${timeAgo(data.timestamp)}`));
 
       if (data.attachments.length) {
         embed.addFields({ name: 'Attachments', value: data.attachments.map((u, i) => `[File ${i + 1}](${u})`).join(' ').slice(0, 1024) });
@@ -110,7 +110,7 @@ module.exports = {
           { name: 'Before', value: (data.oldContent || '*empty*').slice(0, 1024) },
           { name: 'After', value: (data.newContent || '*empty*').slice(0, 1024) },
         )
-        .setFooter({ text: `Edited • ${timeAgo(data.timestamp)}` });
+        .setFooter(footer(interaction.client, `Edited • ${timeAgo(data.timestamp)}`));
 
       await interaction.reply({ embeds: [embed] });
 
@@ -158,7 +158,7 @@ module.exports = {
       const embed = base(interaction.client, colors.primary)
         .setAuthor({ name: 'Purged Messages' })
         .setDescription(descSafe)
-        .setFooter({ text: `${purged.count} messages purged by ${purged.executor.tag} · ${new Date(purged.timestamp).toLocaleString()}` });
+        .setFooter(footer(interaction.client, `${purged.count} messages purged by ${purged.executor.tag} · ${new Date(purged.timestamp).toLocaleString()}`));
 
       await interaction.reply({ embeds: [embed] });
 

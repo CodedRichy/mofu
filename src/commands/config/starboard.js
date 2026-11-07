@@ -43,7 +43,9 @@ module.exports = {
       store.setConfig(guild.id, 'starboard_channel', ch.id);
       if (!store.getConfig(guild.id, 'starboard_threshold')) store.setConfig(guild.id, 'starboard_threshold', 3);
       if (!store.getConfig(guild.id, 'starboard_emoji')) store.setConfig(guild.id, 'starboard_emoji', '⭐');
-      await interaction.reply({ embeds: [response({ client: interaction.client, description: `Created ${ch} and set as starboard channel (threshold: 3 ⭐)`, color: colors.success })] });
+      const threshold = store.getConfig(guild.id, 'starboard_threshold');
+      const emoji = store.getConfig(guild.id, 'starboard_emoji');
+      await interaction.reply({ embeds: [response({ client: interaction.client, description: `Created ${ch} and set as starboard channel (threshold: ${threshold} ${emoji})`, color: colors.success })] });
 
     } else if (sub === 'channel') {
       const channel = interaction.options.getChannel('channel');

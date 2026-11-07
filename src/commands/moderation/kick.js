@@ -39,12 +39,14 @@ module.exports = {
 
     // A kicked member shares no server with the bot afterwards, so the DM can only be delivered first.
     const caseId = modlog.openCase(interaction.guild, { action: 'kick', target: member.user, moderator: interaction.user, reason });
-    await member.user.send({ embeds: [dmNotice({ guild: interaction.guild, action: 'kicked', reason, color: colors.warning, caseId })] }).catch(() => {});
+    const dmSent = await member.user.send({ embeds: [dmNotice({ guild: interaction.guild, action: 'kicked', reason, color: colors.warning, caseId })] }).then(() => true, () => false);
 
     try {
       await member.kick(reason);
     } catch {
       modlog.voidCase(interaction.guild, caseId, 'kick refused');
+      // The notice went out before the kick; correct it so the DM does not stand as a lie.
+      if (dmSent) await member.user.send({ embeds: [response({ client: interaction.client, description: `The kick from **${interaction.guild.name.slice(0, 100)}** did not go through. You were not kicked.`, color: colors.muted })] }).catch(() => {});
       return interaction.reply({ embeds: [response({ client: interaction.client, description: "Couldn't kick that member. Check my permissions and role position.", color: colors.error })], ephemeral: true });
     }
 

@@ -15,9 +15,14 @@ module.exports = {
     const messages = await interaction.channel.messages.fetch({ limit: 100 });
     const own = messages.filter((m) => m.author.id === interaction.user.id).first(count);
 
-    await Promise.all(own.map((msg) => msg.delete().catch(() => {})));
-    const deleted = own.length;
+    const results = await Promise.all(own.map((msg) => msg.delete().then(() => true, () => false)));
+    const deleted = results.filter(Boolean).length;
+    const failed = results.length - deleted;
+    const extra = [
+      failed ? `${failed} could not be deleted` : '',
+      own.length < count ? `only ${own.length} of yours were in the last 100 messages here` : '',
+    ].filter(Boolean).join('; ');
 
-    await interaction.editReply({ embeds: [response({ client: interaction.client, description: `Deleted **${deleted}** of your messages.`, color: colors.success })] });
+    await interaction.editReply({ embeds: [response({ client: interaction.client, description: `Deleted **${deleted}** of your messages.${extra ? ` (${extra})` : ''}`, color: deleted ? colors.success : colors.muted })] });
   },
 };

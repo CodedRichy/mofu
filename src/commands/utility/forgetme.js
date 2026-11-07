@@ -6,6 +6,8 @@ const log = require('../../utils/logger');
 const privacy = require('../../database/privacy');
 
 const CONFIRM_MS = 5 * 60 * 1000;
+const { KEEP: BACKUP_COPIES } = require('../../utils/backup');
+const BACKUP_NOTE = `Deleted data can stay in the daily database backups until they rotate out (the newest ${BACKUP_COPIES} are kept, so about ${BACKUP_COPIES} more days). Giveaway entries, booster role and voice channel ownership are not part of this delete.`;
 
 function describeScope(scope, guild) {
   return scope === 'everywhere' ? 'in **every server** Sonder shares with you' : `in **${guild.name.slice(0, 100)}**`;
@@ -58,8 +60,9 @@ module.exports = {
     );
     const who = self ? 'your' : `${target.username.slice(0, 32)}'s`;
     const prompt = [
-      `This deletes ${who} XP, economy balance and inventory, reminders, birthday, invite count, AFK/timezone/Last.fm settings, saved quotes and /snipe snapshots ${describeScope(scope, guild)}.`,
+      `This deletes ${who} XP, economy balance, inventory and cooldowns, reminders, birthday, invite count and join record, AFK/timezone/Last.fm settings, quotes of ${self ? 'you' : 'them'} and /snipe snapshots ${describeScope(scope, guild)}.`,
       privacy.KEPT_NOTE,
+      BACKUP_NOTE,
       `It cannot be undone. This prompt expires <t:${Math.floor((Date.now() + CONFIRM_MS) / 1000)}:R>.`,
     ].join('\n\n');
 
@@ -93,7 +96,7 @@ module.exports = {
         for (const g of result.guilds) store.clearConfigCache(g);
         log.info(`forgetme: ${self ? 'self' : 'admin'} delete of ${result.total} rows (scope ${scope})`);
         await i.update({
-          embeds: [response({ client, description: `Done. Deleted ${result.total} item${result.total === 1 ? '' : 's'} ${describeScope(scope, guild)}.\n\n${summarize(result)}\n\nModeration records were kept.`, color: colors.success })],
+          embeds: [response({ client, description: `Done. Deleted ${result.total} item${result.total === 1 ? '' : 's'} ${describeScope(scope, guild)}.\n\n${summarize(result)}\n\nModeration records were kept. ${BACKUP_NOTE}`, color: colors.success })],
           components: [],
         }).catch(() => {});
         if (!self) {

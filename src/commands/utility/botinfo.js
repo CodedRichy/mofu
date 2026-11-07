@@ -17,7 +17,7 @@ module.exports = {
       .setThumbnail(client.user.displayAvatarURL({ size: 256 }))
       .addFields(
         { name: 'Servers', value: `${client.guilds.cache.size}`, inline: true },
-        { name: 'Users', value: `${client.guilds.cache.reduce((a, g) => a + g.memberCount, 0).toLocaleString()}`, inline: true },
+        { name: 'Members (summed)', value: `${client.guilds.cache.reduce((a, g) => a + g.memberCount, 0).toLocaleString()}`, inline: true },
         { name: 'Commands', value: `${client.commands.size}`, inline: true },
         { name: 'Uptime', value: uptime, inline: true },
         { name: 'Memory', value: `${memUsage} MB`, inline: true },

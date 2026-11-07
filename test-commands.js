@@ -5,17 +5,8 @@ const { ApplicationCommandOptionType } = require('discord.js');
 const commandsPath = path.join(__dirname, 'src', 'commands');
 const categories = fs.readdirSync(commandsPath).filter(f => fs.statSync(path.join(commandsPath, f)).isDirectory());
 
-const PREFIX_ONLY = new Set([
-  'banlist','hardmute','imute','rmute','modstats','mutelist','selfpurge',
-  'banner','besttime','boostimpact','botinfo','bots','calculate','catchup',
-  'channelstats','define','firstmessage','ghostcheck','github','giveaway',
-  'inrole','joinposition','milestone','newusers','quote','roleaudit',
-  'roleinfo','spotlight','staleperms','threadwatch','timezone','toprole','voice',
-  'bite','blacktea','bonk','hug','kiss','mock','pat','rps','ship',
-  'slap','truthordare','uwuify','wyr',
-  'beg','blackjack','coinflip','inventory','leaderboard','slots',
-  'setlevel','fm',
-]);
+// Single source of truth: the set the bot actually registers with (a stale copy here drifted before).
+const { PREFIX_ONLY } = require('./src/handlers/commandHandler');
 
 let pass = 0;
 let fail = 0;

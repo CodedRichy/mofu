@@ -11,7 +11,7 @@ test('bare verbs match', () => {
   assert.deepStrictEqual(hit('sonder stop'), { verb: 'stop', args: '' });
   assert.deepStrictEqual(hit('yo sonder skip'), { verb: 'skip', args: '' });
   assert.deepStrictEqual(hit('Sonder, pause please'), { verb: 'pause', args: '' });
-  assert.deepStrictEqual(hit('sonder resume'), { verb: 'pause', args: '' });
+  assert.deepStrictEqual(hit('sonder resume'), { verb: 'resume', args: '' });
   assert.deepStrictEqual(hit('hey sonder shuffle!'), { verb: 'shuffle', args: '' });
   assert.deepStrictEqual(hit('sonder queue'), { verb: 'queue', args: '' });
   assert.deepStrictEqual(hit('sonder nowplaying'), { verb: 'nowplaying', args: '' });

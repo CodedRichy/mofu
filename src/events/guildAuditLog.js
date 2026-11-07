@@ -1,6 +1,6 @@
 const { AuditLogEvent, Events } = require('discord.js');
 const store = require('../database/store');
-const { base } = require('../utils/embed');
+const { base, footer } = require('../utils/embed');
 const { colors } = require('../utils/constants');
 
 module.exports = {
@@ -59,7 +59,7 @@ module.exports = {
 
     const embed = base(guild.client, colors.muted)
       .setDescription(description)
-      .setFooter({ text: `Audit Log • ${executor}` })
+      .setFooter(footer(guild.client, `Audit Log • ${executor}`))
       .setTimestamp();
 
     channel.send({ embeds: [embed] }).catch(() => {});

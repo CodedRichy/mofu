@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { colors } = require('../../utils/constants');
-const { base, response } = require('../../utils/embed');
+const { base, response, footer } = require('../../utils/embed');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -22,7 +22,7 @@ module.exports = {
     const embed = base(interaction.client, colors.primary)
       .setAuthor({ name: `Ban List — ${interaction.guild.name}` })
       .setDescription(list)
-      .setFooter({ text: `${bans.size} bans shown` });
+      .setFooter(footer(interaction.client, `${bans.size} bans shown`));
 
     await interaction.editReply({ embeds: [embed] });
   },

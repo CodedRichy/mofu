@@ -18,6 +18,6 @@ setInterval(() => {
     if (fresh.length === 0) buckets.delete(key);
     else buckets.set(key, fresh);
   }
-}, 300000);
+}, 300000).unref(); // housekeeping only: never keep a process (tests, scripts) alive on its own
 
 module.exports = { rateLimit };

@@ -6,14 +6,14 @@ const fs = require('fs');
 const path = require('path');
 
 const client = { user: { displayAvatarURL: () => 'https://cdn.discordapp.com/embed/avatars/0.png', tag: 'sonder#5242' } };
-const guild = { name: 'DeadWax', id: '1', client };
+const guild = { name: 'Example Server', id: '1', client };
 const user = (name) => ({ username: name, tag: `${name}#0001`, id: '9', displayAvatarURL: () => 'https://cdn.discordapp.com/embed/avatars/0.png' });
 
 function fakeQueue({ paused = false, tracks = 3, repeatMode = 0, volume = 80 } = {}) {
   const mk = (i) => ({
-    title: i === 0 ? 'Let Me Love You' : `Queued track number ${i}`,
+    title: i === 0 ? 'Example Song' : `Queued track number ${i}`,
     url: 'https://youtube.com/watch?v=x',
-    author: i === 0 ? 'DJ Snake ft. Justin Bieber' : 'Some Artist',
+    author: i === 0 ? 'Example Artist' : 'Some Artist',
     thumbnail: '',
     durationMS: 205000 + i * 13000,
     duration: `${3 + (i % 2)}:${String(25 + i).padStart(2, '0')}`,

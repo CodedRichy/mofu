@@ -27,16 +27,13 @@ module.exports = (scene, { client, user }) => {
   scene('Slots: jackpot', 'MOCK mirrored from slots.js', () => slots(colors.success, '7️⃣', '7️⃣', '7️⃣', '**JACKPOT!** Triple sevens.\nYou won **⌬ 5,000** (10x)\n**Wallet** `⌬ 11,600`'));
   scene('Slots: loss', 'MOCK mirrored from slots.js', () => slots(colors.error, '\u{1F352}', '\u{1F34B}', '\u{1F347}', 'You lost **⌬ 500**\n**Wallet** `⌬ 6,600`'));
 
-  scene('AI action proposal', 'MOCK mirrored from src/ai/actions.js proposalCard (not exported)', () => ({
-    embeds: [base(client, colors.warning).setAuthor({ name: 'AI ACTION PROPOSAL', iconURL: user('x').displayAvatarURL() }).addFields(
-      { name: 'Command', value: '```\n/mute @spammer 10m\n```' },
-      { name: 'Reason', value: 'spamming links in #general' },
-      { name: 'Target', value: '<@1> - Member', inline: true },
-      { name: 'Who can confirm', value: 'Only <@2> (needs Moderate Members)', inline: true },
-      { name: 'Expires', value: '<t:1:R>', inline: true })],
+  const { proposalCard, resultCard } = require('../../src/ai/actions')._cards;
+  const target = { id: '1', user: user('spammer'), displayName: 'spammer', roles: { highest: { name: 'Member' } } };
+  scene('AI action proposal', 'REAL builder: proposalCard in src/ai/actions.js (exported as _cards)', () => ({
+    embeds: [proposalCard({ client, kind: 'mute', target, dur: '10m', reason: 'spamming links in #general', invokerId: '2', expiresAt: Date.now() + 60000 })],
     components: [{ type: 1, components: [{ type: 2, style: 4, label: 'Mute' }, { type: 2, style: 2, label: 'Cancel' }] }],
   }));
-  scene('AI result card', 'MOCK mirrored from src/ai/actions.js resultCard (not exported)', () => ({
-    embeds: [base(client, colors.success).setAuthor({ name: 'Muted' }).setDescription('**Action** mute\n**Target** <@1>\n**Duration** 10 minutes').setFooter({ text: 'via Sonder AI', iconURL: client.user.displayAvatarURL() })],
+  scene('AI result card', 'REAL builder: resultCard in src/ai/actions.js (exported as _cards)', () => ({
+    embeds: [resultCard({ client, title: 'Muted', kind: 'mute', targetId: '1', dur: '10 minutes', color: colors.success })],
   }));
 };

@@ -7,6 +7,8 @@ module.exports = {
   name: 'messageReactionAdd',
   async execute(reaction, user) {
     if (!reaction.message.guild) return;
+    // Reaction role panels: matched by message id + emoji, both present even on partial reactions.
+    if (await require('../handlers/rolepanel').handleReaction(reaction, user, true).catch(() => false)) return;
     if (reaction.partial) await reaction.fetch().catch(() => null);
     if (!reaction.message.author) await reaction.message.fetch().catch(() => null);
     if (!reaction.message.author) return;

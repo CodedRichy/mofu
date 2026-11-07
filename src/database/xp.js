@@ -119,4 +119,50 @@ function getRank(guildId, userId) {
   return (row?.rank ?? 0) + 1;
 }
 
-module.exports = { clampInt, MAX_LEVEL, MAX_XP, addXp, getStats, canEarnXp, getLeaderboard, setLevel, setXp, getRank, xpForLevel, getMembersAtLevel };
+// Total XP needed to reach `level` from zero.
+function totalXpForLevel(level) {
+  level = Math.min(Math.max(0, Math.floor(level) || 0), MAX_LEVEL);
+  let total = 0;
+  for (let i = 0; i < level; i++) total += xpForLevel(i);
+  return total;
+}
+
+// Split a total into { level, xp } where xp is progress inside the current level.
+function levelFromTotal(totalXp) {
+  let remaining = Math.min(Math.max(0, Math.floor(totalXp) || 0), MAX_XP);
+  let level = 0;
+  while (remaining >= xpForLevel(level)) { remaining -= xpForLevel(level); level++; }
+  return { level, xp: remaining };
+}
+
+/**
+ * Bulk import of total XP, one transaction. Never lowers a member's XP unless `overwrite` is true.
+ * Re-reads each row inside the transaction, so a second identical run changes nothing.
+ * @param {{userId: string, totalXp: number}[]} entries
+ * @returns {{ written: number, unchanged: number, lowered: number }}
+ */
+function importTotals(guildId, entries, { overwrite = false } = {}) {
+  const out = { written: 0, unchanged: 0, lowered: 0 };
+  db.transaction(() => {
+    for (const e of entries) {
+      const incoming = clampInt(e.totalXp, MAX_XP, 'xp');
+      const cur = getMember(guildId, e.userId);
+      const target = overwrite ? incoming : Math.max(cur.totalXp, incoming);
+      if (target === cur.totalXp) { out.unchanged++; continue; }
+      if (target < cur.totalXp) out.lowered++;
+      const { level, xp } = levelFromTotal(target);
+      saveMember(guildId, e.userId, { xp, level, totalXp: target, lastMessage: cur.lastMessage });
+      out.written++;
+    }
+  })();
+  return out;
+}
+
+// Read-only snapshot of current totals for a set of users (dry runs).
+function getTotals(guildId, userIds) {
+  const map = new Map();
+  for (const id of userIds) map.set(id, getMember(guildId, id).totalXp);
+  return map;
+}
+
+module.exports = { clampInt, MAX_LEVEL, MAX_XP, addXp, getStats, canEarnXp, getLeaderboard, setLevel, setXp, getRank, xpForLevel, getMembersAtLevel, totalXpForLevel, levelFromTotal, importTotals, getTotals };

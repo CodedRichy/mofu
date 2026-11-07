@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { colors } = require('../../utils/constants');
-const { base, response } = require('../../utils/embed');
+const { base, response, footer } = require('../../utils/embed');
+const { cmdRef } = require('../../utils/invocation');
 const quoteStore = require('../../database/quotes');
 
 module.exports = {
@@ -55,12 +56,12 @@ module.exports = {
     if (sub === 'random') {
       const q = quoteStore.random(guildId);
       if (!q) {
-        return interaction.reply({ embeds: [response({ client: interaction.client, description: 'No quotes saved yet. Use `/quote save` to add one.', color: colors.muted })], ephemeral: true });
+        return interaction.reply({ embeds: [response({ client: interaction.client, description: `No quotes saved yet. Use ${cmdRef(guildId, 'quote save')} to add one.`, color: colors.muted })], ephemeral: true });
       }
 
       const embed = base(interaction.client, colors.primary)
         .setDescription(`> ${q.content}`)
-        .setFooter({ text: `Quote #${q.id}${q.quotedUser ? ` — ${q.quotedUser.tag}` : ''} · saved by ${q.savedBy.tag}` });
+        .setFooter(footer(interaction.client, `Quote #${q.id}${q.quotedUser ? ` — ${q.quotedUser.tag}` : ''} · saved by ${q.savedBy.tag}`));
 
       return interaction.reply({ embeds: [embed] });
     }
@@ -74,7 +75,7 @@ module.exports = {
 
       const embed = base(interaction.client, colors.primary)
         .setDescription(`> ${q.content}`)
-        .setFooter({ text: `Quote #${q.id}${q.quotedUser ? ` — ${q.quotedUser.tag}` : ''} · saved by ${q.savedBy.tag}` });
+        .setFooter(footer(interaction.client, `Quote #${q.id}${q.quotedUser ? ` — ${q.quotedUser.tag}` : ''} · saved by ${q.savedBy.tag}`));
 
       return interaction.reply({ embeds: [embed] });
     }

@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { colors } = require('../../utils/constants');
-const { base, response } = require('../../utils/embed');
+const { base, response, footer } = require('../../utils/embed');
 const store = require('../../database/store');
 
 const ITEMS = [
@@ -34,7 +34,7 @@ module.exports = {
       const embed = base(interaction.client, colors.primary)
         .setAuthor({ name: '🛒 Shop' })
         .setDescription(desc)
-        .setFooter({ text: 'Use /shop buy <item> to purchase' });
+        .setFooter(footer(interaction.client, 'Use /shop buy <item> to purchase'));
 
       return interaction.reply({ embeds: [embed] });
     }

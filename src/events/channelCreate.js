@@ -1,4 +1,5 @@
 const antinuke = require('../database/antinuke');
+const { punishExecutor, stepLines } = require('../utils/auditEntry');
 const { response } = require('../utils/embed');
 const { colors } = require('../utils/constants');
 const log = require('../utils/logger');
@@ -20,13 +21,8 @@ module.exports = {
     const executorId = entry.executor.id;
 
     if (antinuke.check(guild.id, executorId, 'channel_create')) {
-      const member = guild.members.cache.get(executorId);
-      if (member) {
-        await member.roles.set([]).catch(() => {});
-        await guild.members.ban(executorId, { reason: '[sonder antinuke] Mass channel create detected' }).catch(() => {});
-      }
-
-      await channel.delete('[sonder antinuke] Reversed mass channel create').catch(() => {});
+      const { banned, rolesStripped } = await punishExecutor(guild, executorId, '[sonder antinuke] Mass channel create detected');
+      const reverted = await channel.delete('[sonder antinuke] Reversed mass channel create').then(() => true, () => false);
 
       const modlogChannel = require('../database/store').getConfig(guild.id, 'modlog_channel');
       if (modlogChannel) {
@@ -35,7 +31,7 @@ module.exports = {
           ch.send({
             embeds: [response({
               client: guild.client,
-              description: `**Antinuke triggered**\n**User** ${entry.executor.tag} \`${executorId}\`\n**Action** Mass channel create — user banned, channel deleted`,
+              description: `**Antinuke triggered**\n**User** ${entry.executor.tag} \`${executorId}\`\n**Trigger** Mass channel create\n${stepLines([['Ban', banned], ['Roles stripped', rolesStripped], ['Channel deleted', reverted]])}`,
               color: colors.error,
             })],
           }).catch(() => {});

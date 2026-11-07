@@ -1,10 +1,33 @@
 const { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
 const { colors } = require('../../utils/constants');
-const { base } = require('../../utils/embed');
+const { base, footer } = require('../../utils/embed');
+const { isSlash } = require('../../utils/invocation');
 const config = require('../../config');
 const store = require('../../database/store');
 const fs = require('fs');
 const path = require('path');
+
+// Prefix-only commands are not registered as slash, so never advertise `/name` for them.
+function usage(name, prefix) {
+  return isSlash(name) ? `\`/${name}\` or \`${prefix}${name}\`` : `\`${prefix}${name}\``;
+}
+
+// Join lines up to max chars; say how many were left out instead of letting Discord reject the embed.
+function fitLines(lines, max) {
+  const out = [];
+  let len = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (len + lines[i].length + 1 > max - 40) {
+      out.push(`...and ${lines.length - i} more not shown here`);
+      break;
+    }
+    out.push(lines[i]);
+    len += lines[i].length + 1;
+  }
+  return out.join('\n');
+}
+
+const helpRef = (prefix) => (isSlash('help') ? '`/help <command>`' : `\`${prefix}help <command>\``);
 
 const categoryMeta = {
   moderation: { emoji: '🛡️', desc: 'Keep your server safe' },
@@ -47,8 +70,8 @@ function buildOverviewEmbed(client, categories, prefix) {
       `${lines.join('\n\n')}\n\n` +
       `**${total}** commands total\n` +
       `Use the menu below to browse a category\n` +
-      `\`/help <command>\` for detailed info\n` +
-      `**Prefix** \`${prefix}\` **Slash** \`/\``
+      `${helpRef(prefix)} for detailed info\n` +
+      `**Prefix** \`${prefix}\` works for every command. **Slash** \`/\` works for the ones marked \`/\` in each category.`
     );
 }
 
@@ -59,13 +82,13 @@ function buildCategoryEmbed(client, cat, cmds, commands, prefix) {
   const commandLines = cmds.map((name) => {
     const cmd = commands.get(name);
     const desc = cmd?.data?.toJSON?.()?.description || 'No description';
-    return `\`${prefix}${name}\` — ${desc}`;
+    return `\`${prefix}${name}\`${isSlash(name) ? ' `/`' : ''} — ${desc}`;
   });
 
   return base(client, colors.primary)
     .setAuthor({ name: `${meta.emoji} ${title}`, iconURL: client.user.displayAvatarURL() })
-    .setDescription(commandLines.join('\n'))
-    .setFooter({ text: `${cmds.length} commands • Use /help <command> for details` });
+    .setDescription(fitLines(commandLines, 4000))
+    .setFooter(footer(client, `${cmds.length} commands • ${isSlash('help') ? '/' : prefix}help <command> for details`));
 }
 
 // Second menu: pick a command in the open category to see its description (cap 25).
@@ -126,7 +149,7 @@ module.exports = {
         embed.addFields({ name: 'Options', value: opts });
       }
 
-      embed.addFields({ name: 'Usage', value: `\`/${data.name}\` or \`${prefix}${data.name}\`` });
+      embed.addFields({ name: 'Usage', value: usage(data.name, prefix) });
 
       return interaction.reply({ embeds: [embed] });
     }
@@ -149,10 +172,10 @@ module.exports = {
         const d = c?.data?.toJSON?.();
         if (!d) return i.deferUpdate().catch(() => {});
         const detail = base(interaction.client, colors.primary)
-          .setAuthor({ name: `/${d.name}`, iconURL: interaction.client.user.displayAvatarURL() })
+          .setAuthor({ name: isSlash(d.name) ? `/${d.name}` : `${prefix}${d.name}`, iconURL: interaction.client.user.displayAvatarURL() })
           .setDescription(`${d.description}
 
-\`/${d.name}\` or \`${prefix}${d.name}\``);
+${usage(d.name, prefix)}`);
         return i.reply({ embeds: [detail], ephemeral: true }).catch(() => {});
       }
       if (i.customId !== 'help_category') return;

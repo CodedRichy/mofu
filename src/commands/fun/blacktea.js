@@ -31,7 +31,7 @@ module.exports = {
     await interaction.reply({
       embeds: [response({
         client: interaction.client,
-        description: `Type a word containing **${prompt.toUpperCase()}** — you have **10 seconds!**`,
+        description: `Type a word containing **${prompt.toUpperCase()}** — you have **${timeLimit / 1000} seconds!**`,
         color: colors.primary,
       })],
     });

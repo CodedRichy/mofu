@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { colors } = require('../../utils/constants');
-const { base, response } = require('../../utils/embed');
+const { base, response, footer } = require('../../utils/embed');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -20,7 +20,7 @@ module.exports = {
     const embed = base(interaction.client, role.color || colors.primary)
       .setAuthor({ name: `Members with ${role.name}` })
       .setDescription(list)
-      .setFooter({ text: `${members.size} total members` });
+      .setFooter(footer(interaction.client, `${members.size} total members`));
 
     await interaction.reply({ embeds: [embed] });
   },

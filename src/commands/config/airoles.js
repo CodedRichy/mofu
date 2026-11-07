@@ -47,7 +47,7 @@ module.exports = {
 
     if (sub === 'list') {
       if (roles.length === 0) return reply('No roles set. Only staff with **Manage Messages** (and administrators) can invoke Sonder.', colors.muted);
-      return reply(`**Can invoke Sonder**\n${roles.map((r) => `▸ <@&${r}>`).join('\n')}\n\nAdministrators always can.`, colors.primary);
+      return reply(`**Can invoke Sonder**\n${roles.map((r) => `▸ <@&${r}>`).join('\n')}\n\nAdministrators always can.`, colors.primary); // claim-ok: canInvokeAi returns true for Administrator first
     }
 
     store.setConfig(guild.id, 'ai_roles', []);

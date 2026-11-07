@@ -448,4 +448,4 @@ async function handleButton(interaction) {
   await modlog.send(guild, { action: p.kind, target: v.target.user, moderator: interaction.user, reason: clip(reason, 512), duration, extra }).catch(() => {});
 }
 
-module.exports = { parseMuteIntent, proposeMute, handleButton, usageHint, _limits: { windowOk, USER_RATE_MAX, RATE_MAX } };
+module.exports = { parseMuteIntent, proposeMute, handleButton, usageHint, _limits: { windowOk, USER_RATE_MAX, RATE_MAX }, _cards: { proposalCard, resultCard } };

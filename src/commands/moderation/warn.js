@@ -70,6 +70,11 @@ module.exports = {
       });
 
       const warnings = store.getWarnings(interaction.guild.id, user.id);
+      // Expired warnings stay on record but do not count toward thresholds: show both numbers.
+      const activeCount = policy.countActive(warnings, store.getConfig(interaction.guild.id, 'warn_expiry_days'));
+      const warnSummary = activeCount === warnings.length
+        ? `Active warnings: ${activeCount}`
+        : `Active warnings: ${activeCount} (${warnings.length} on record)`;
       const caseId = modlog.openCase(interaction.guild, { action: 'warn', target: user, moderator: interaction.user, reason });
 
       await user.send({ embeds: [dmNotice({ guild: interaction.guild, action: 'warned', reason, color: colors.warning, caseId })] }).catch(() => {});
@@ -81,12 +86,12 @@ module.exports = {
         target: user,
         moderator: interaction.user,
         reason,
-        extra: `Warning #${warnings.length}`,
+        extra: warnSummary,
         caseId,
       });
 
       await interaction.reply({ embeds: [embed] });
-      await modlog.send(interaction.guild, { action: 'warn', target: user, moderator: interaction.user, reason, extra: `Total: ${warnings.length}`, caseId });
+      await modlog.send(interaction.guild, { action: 'warn', target: user, moderator: interaction.user, reason, extra: warnSummary, caseId });
 
       const followUp = await enforceThresholds(interaction, user);
       if (followUp) {

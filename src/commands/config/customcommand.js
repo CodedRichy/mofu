@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { colors } = require('../../utils/constants');
 const { response } = require('../../utils/embed');
+const { cmdRef } = require('../../utils/invocation');
 const store = require('../../database/store');
 
 const MAX_COMMANDS = 50;
@@ -48,7 +49,7 @@ module.exports = {
 
       if (store.getCustomCommand(guild.id, name)) {
         return interaction.reply({
-          embeds: [response({ client: interaction.client, description: `Command \`${name}\` already exists. Use \`/customcommand edit\` to modify.`, color: colors.error })],
+          embeds: [response({ client: interaction.client, description: `Command \`${name}\` already exists. Use ${cmdRef(guild.id, 'customcommand edit')} to modify.`, color: colors.error })],
           ephemeral: true,
         });
       }
@@ -123,7 +124,7 @@ module.exports = {
       const commands = store.listCustomCommands(guild.id);
       if (!commands.length) {
         return interaction.reply({
-          embeds: [response({ client: interaction.client, description: 'No custom commands configured.\nUse `/customcommand add` to create one.', color: colors.muted })],
+          embeds: [response({ client: interaction.client, description: `No custom commands configured.\nUse ${cmdRef(guild.id, 'customcommand add')} to create one.`, color: colors.muted })],
         });
       }
 

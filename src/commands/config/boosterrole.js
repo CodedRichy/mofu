@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { colors } = require('../../utils/constants');
 const { response } = require('../../utils/embed');
+const { cmdRef } = require('../../utils/invocation');
 const store = require('../../database/store');
 
 // "#ff0000", "ff0000" or "f00" -> "ff0000"; anything else -> null. (parseInt alone accepts "ff0000zz" and overflows.)
@@ -54,7 +55,7 @@ module.exports = {
     if (sub === 'create') {
       const existingId = store.getConfig(guild.id, `boosterrole_${user.id}`);
       if (existingId && guild.roles.cache.has(existingId)) {
-        return interaction.reply({ embeds: [response({ client: interaction.client, description: 'You already have a custom role. Use `/boosterrole color` or `/boosterrole name` to edit.', color: colors.error })], ephemeral: true });
+        return interaction.reply({ embeds: [response({ client: interaction.client, description: `You already have a custom role. Use ${cmdRef(guild.id, 'boosterrole color')} or ${cmdRef(guild.id, 'boosterrole name')} to edit.`, color: colors.error })], ephemeral: true });
       }
 
       const name = cleanName(interaction.options.getString('name'));
@@ -78,7 +79,7 @@ module.exports = {
     } else if (sub === 'color') {
       const roleId = store.getConfig(guild.id, `boosterrole_${user.id}`);
       const role = roleId && guild.roles.cache.get(roleId);
-      if (!role) return interaction.reply({ embeds: [response({ client: interaction.client, description: 'No custom role found. Use `/boosterrole create`.', color: colors.error })], ephemeral: true });
+      if (!role) return interaction.reply({ embeds: [response({ client: interaction.client, description: `No custom role found. Use ${cmdRef(guild.id, 'boosterrole create')}.`, color: colors.error })], ephemeral: true });
 
       const colorStr = normalizeHex(interaction.options.getString('color'));
       const color = colorStr ? parseInt(colorStr, 16) : NaN;

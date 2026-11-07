@@ -1,6 +1,6 @@
 const snipe = require('../database/snipe');
 const store = require('../database/store');
-const { response } = require('../utils/embed');
+const { response, footer } = require('../utils/embed');
 const { colors } = require('../utils/constants');
 
 module.exports = {
@@ -17,7 +17,7 @@ module.exports = {
     if (!ch) return;
 
     const embed = response({ client: message.client, description: `**Message deleted in** ${message.channel}\n**Author** ${message.author.tag}\n\n${message.content?.slice(0, 1000) || '*No text*'}`, color: colors.error })
-      .setFooter({ text: `ID: ${message.id}` })
+      .setFooter(footer(message.client, `ID: ${message.id}`))
       .setTimestamp();
     ch.send({ embeds: [embed] }).catch(() => {});
   },

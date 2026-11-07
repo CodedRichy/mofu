@@ -6,28 +6,31 @@ const config = require('../config');
 const log = require('../utils/logger');
 
 const PREFIX_ONLY = new Set([
-  // moderation — slash keeps: ban, unban, kick, mute, unmute, warn, purge, lock, modlog
-  'banlist', 'drag', 'hardmute', 'hide', 'history', 'imute', 'jail',
-  'modstats', 'mutelist', 'nickname', 'note', 'rmute', 'role',
-  'selfpurge', 'slowmode', 'softban',
-  // music — slash keeps: play, skip, stop, queue, nowplaying
-  'loop', 'pause', 'shuffle', 'volume',
-  // utility — slash keeps: help, ping, avatar, userinfo, server
-  'afk', 'banner', 'besttime', 'boostimpact', 'botinfo', 'bots', 'calculate',
+  // Everything NOT listed here is also registered as a slash command (Discord caps an app at 100, enforced by
+  // test/slashcap.test.js; keep roughly 10 slots free). The most-used commands are slash so they keep working
+  // if MESSAGE_CONTENT is ever denied at privileged-intent review.
+  // moderation — slash: ban, unban, kick, mute, unmute, tempban, warn, case, purge, lock, modlog, role, slowmode, nickname, history
+  'banlist', 'drag', 'hardmute', 'hide', 'imute', 'jail',
+  'modstats', 'mutelist', 'note', 'rmute',
+  'selfpurge', 'softban',
+  // music — all slash
+  // utility — slash: help, ping, avatar, userinfo, server, privacy, forgetme, afk, giveaway, membercount, poll, remind,
+  // roleinfo, snipe, translate
+  'banner', 'besttime', 'boostimpact', 'botinfo', 'bots', 'calculate',
   'catchup', 'channelstats', 'define', 'emoji', 'firstmessage', 'ghostcheck',
-  'github', 'giveaway', 'inrole', 'invites', 'joinposition', 'membercount',
-  'milestone', 'newusers', 'poll', 'quote', 'remind', 'roleaudit', 'roleinfo',
-  'snipe', 'spotlight', 'staleperms', 'sticker', 'threadwatch', 'timezone',
-  'toprole', 'translate', 'uptime', 'voice',
-  // economy — slash keeps: bank, daily, work, shop
-  'beg', 'blackjack', 'coinflip', 'crime', 'fish', 'heist', 'hunt',
-  'inventory', 'leaderboard', 'rob', 'slots', 'transfer',
-  // leveling — slash keeps: rank, leveling
-  'setlevel', 'xpleaderboard',
+  'github', 'inrole', 'invites', 'joinposition',
+  'milestone', 'newusers', 'quote', 'roleaudit',
+  'spotlight', 'staleperms', 'sticker', 'threadwatch', 'timezone',
+  'toprole', 'uptime', 'voice',
+  // economy — slash: bank, daily, work, shop, leaderboard, transfer, inventory, coinflip, blackjack
+  'beg', 'crime', 'fish', 'heist', 'hunt',
+  'rob', 'slots',
+  // leveling — slash: rank, leveling, levelrole, levelup, xpignore, xpmultiplier, xpleaderboard
+  'setlevel',
   // ai — all slash
-  // fun — slash keeps: trivia
-  '8ball', 'bite', 'blacktea', 'bonk', 'cat', 'confess', 'dog', 'hug',
-  'kiss', 'meme', 'mock', 'pat', 'rps', 'ship', 'slap', 'truthordare',
+  // fun — slash: trivia, 8ball, rps
+  'bite', 'blacktea', 'bonk', 'cat', 'confess', 'dog', 'hug',
+  'kiss', 'meme', 'mock', 'pat', 'ship', 'slap', 'truthordare',
   'uwuify', 'wyr',
   // config — slash keeps: welcome, goodbye, autorole, prefix, logging, reactionrole, ticket, setup, quicksetup, settings, rolesetup
   'aimod', 'antilink', 'antinuke', 'antiraid', 'antispam', 'auditlog',
@@ -53,7 +56,7 @@ const ALIASES = {
 
   // music
   p: 'play', pl: 'play', s: 'skip', np: 'nowplaying', q: 'queue', vol: 'volume',
-  pa: 'pause', resume: 'pause', sh: 'shuffle', lp: 'loop',
+  pa: 'pause', sh: 'shuffle', lp: 'loop',
   st: 'stop', dc: 'stop', leave: 'stop', disconnect: 'stop',
 
   // economy
@@ -74,6 +77,10 @@ const ALIASES = {
   ga: 'giveaway', rem: 'remind', tz: 'timezone',
   calc: 'calculate', def: 'define', gh: 'github', tr: 'translate',
   e: 'emoji', emote: 'emoji',
+  tags: 'tag',
+
+  // config
+  rolepanel: 'reactionrole', rr: 'reactionrole',
 
   // fun
   t: 'trivia', tod: 'truthordare', tord: 'truthordare',
@@ -178,4 +185,4 @@ async function registerCommands(client) {
   }));
 }
 
-module.exports = { loadCommands, registerCommands };
+module.exports = { loadCommands, registerCommands, PREFIX_ONLY };

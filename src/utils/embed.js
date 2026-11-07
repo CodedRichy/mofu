@@ -8,6 +8,12 @@ function brand(client) {
   };
 }
 
+// A custom footer that keeps the brand: "text - sonder" with the bot icon. Use with .setFooter(footer(client, text)).
+function footer(client, text) {
+  const t = String(text ?? '').slice(0, 2000);
+  return { ...brand(client), text: t ? `${t} - sonder` : 'sonder' };
+}
+
 const clipText = (s, n) => { const t = String(s); return t.length > n ? `${t.slice(0, n - 3)}...` : t; };
 
 function base(client, color) {
@@ -84,4 +90,4 @@ function permissionDenied(client, command) {
   return errorCard({ client, title: 'Missing permission', fix });
 }
 
-module.exports = { base, modAction, dmNotice, response, brand, errorCard, refId, permissionDenied };
+module.exports = { base, modAction, dmNotice, response, brand, footer, errorCard, refId, permissionDenied };

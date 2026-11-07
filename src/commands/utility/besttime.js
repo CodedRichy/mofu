@@ -50,7 +50,7 @@ module.exports = {
       }).join('\n');
 
       const embed = base(interaction.client, colors.primary)
-        .setAuthor({ name: `Best Time — #${channel.name}` })
+        .setAuthor({ name: `Best Time — #${channel.name}` }) // claim-ok: feature name; body shows the computed busiest hours
         .setDescription(
           `Based on **${totalMessages}** recent messages\n\n` +
           `**Peak Hour** ${peakHour}:00 (${hourCounts[peakHour]} msgs)\n` +

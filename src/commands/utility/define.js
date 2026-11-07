@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { colors } = require('../../utils/constants');
-const { base, response } = require('../../utils/embed');
+const { base, response, footer } = require('../../utils/embed');
 const { rateLimit } = require('../../utils/ratelimit');
 
 module.exports = {
@@ -34,7 +34,7 @@ module.exports = {
         .setDescription(def);
 
       if (example) embed.addFields({ name: 'Example', value: example });
-      embed.setFooter({ text: `👍 ${entry.thumbs_up} · 👎 ${entry.thumbs_down}` });
+      embed.setFooter(footer(interaction.client, `👍 ${entry.thumbs_up} · 👎 ${entry.thumbs_down}`));
 
       await interaction.editReply({ embeds: [embed] });
     } catch {

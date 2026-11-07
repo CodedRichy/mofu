@@ -18,7 +18,7 @@ module.exports = {
     .addSubcommand((s) => s.setName('list').setDescription('Show the warning thresholds'))
     .addSubcommand((s) => s.setName('remove').setDescription('Remove the threshold at a warning count')
       .addIntegerOption((o) => o.setName('count').setDescription('Warning count to remove').setRequired(true).setMinValue(1).setMaxValue(100)))
-    .addSubcommand((s) => s.setName('expiry').setDescription('Warnings older than this stop counting (0 = never expire)')
+    .addSubcommand((s) => s.setName('expiry').setDescription('Warnings older than this stop counting (0 = never expire)') // claim-ok: 0 disables expiry in warnpolicy
       .addIntegerOption((o) => o.setName('days').setDescription('Days, 0-365').setRequired(true).setMinValue(0).setMaxValue(365))),
 
   async execute(interaction) {
@@ -64,7 +64,7 @@ module.exports = {
     const embed = base(interaction.client, colors.primary)
       .setAuthor({ name: 'Warning thresholds' })
       .setDescription(`${lines.join('\n')}\n\nCounts in between do nothing extra.`)
-      .addFields({ name: 'Expiry', value: expiry ? `${expiry} day(s)` : 'never', inline: true });
+      .addFields({ name: 'Expiry', value: expiry ? `${expiry} day(s)` : 'never', inline: true }); // claim-ok: no expiry set
     return interaction.reply({ embeds: [embed] });
   },
 };

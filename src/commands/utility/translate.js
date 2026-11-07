@@ -7,7 +7,7 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName('translate')
     .setDescription('Translate text to another language')
-    .addStringOption((o) => o.setName('text').setDescription('Text to translate').setRequired(true))
+    .addStringOption((o) => o.setName('text').setDescription('Text to translate').setRequired(true).setMaxLength(500))
     .addStringOption((o) =>
       o.setName('to').setDescription('Target language').setRequired(true)
         .addChoices(

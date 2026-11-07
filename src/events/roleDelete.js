@@ -1,5 +1,5 @@
 const antinuke = require('../database/antinuke');
-const { findAuditEntry, punishExecutor } = require('../utils/auditEntry');
+const { findAuditEntry, punishExecutor, stepLines } = require('../utils/auditEntry');
 const { response } = require('../utils/embed');
 const { colors } = require('../utils/constants');
 const log = require('../utils/logger');
@@ -18,16 +18,16 @@ module.exports = {
     const executorId = entry.executor.id;
 
     if (antinuke.check(guild.id, executorId, 'role_delete')) {
-      await punishExecutor(guild, executorId, '[sonder antinuke] Mass role delete detected');
+      const { banned, rolesStripped } = await punishExecutor(guild, executorId, '[sonder antinuke] Mass role delete detected');
 
-      // Restore deleted role
-      await guild.roles.create({
+      // Restore deleted role (name, color, permissions, position; members are not re-added)
+      const restored = await guild.roles.create({
         name: role.name,
         color: role.color,
         permissions: role.permissions,
         position: role.position,
         reason: '[sonder antinuke] Restored deleted role',
-      }).catch(() => {});
+      }).then(() => true, () => false);
 
       const modlogChannel = require('../database/store').getConfig(guild.id, 'modlog_channel');
       if (modlogChannel) {
@@ -36,7 +36,7 @@ module.exports = {
           ch.send({
             embeds: [response({
               client: guild.client,
-              description: `**Antinuke triggered**\n**User** ${entry.executor.tag} \`${executorId}\`\n**Action** Mass role delete — user banned, role restored`,
+              description: `**Antinuke triggered**\n**User** ${entry.executor.tag} \`${executorId}\`\n**Trigger** Mass role delete\n${stepLines([['Ban', banned], ['Roles stripped', rolesStripped], ['Role recreated (no members re-added)', restored]])}`,
               color: colors.error,
             })],
           }).catch(() => {});

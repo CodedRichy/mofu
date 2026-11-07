@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField, ComponentType } = require('discord.js');
 const { colors } = require('../../utils/constants');
-const { base, response } = require('../../utils/embed');
+const { base, response, footer } = require('../../utils/embed');
 const store = require('../../database/store');
 
 const CHANNEL_KEYS = [
@@ -121,7 +121,7 @@ module.exports = {
 
     if (issueCount === 0) {
       return interaction.editReply({
-        embeds: [response({ client, description: '✓ Everything looks good! No config issues found.', color: colors.success })],
+        embeds: [response({ client, description: '✓ No issues found by these checks.', color: colors.success })],
       });
     }
 
@@ -133,7 +133,7 @@ module.exports = {
     const embed = base(client, colors.warning)
       .setAuthor({ name: 'Config Audit', iconURL: client.user.displayAvatarURL() })
       .setDescription(sections.join('\n\n'))
-      .setFooter({ text: `${issueCount} issue${issueCount === 1 ? '' : 's'} found` });
+      .setFooter(footer(client, `${issueCount} issue${issueCount === 1 ? '' : 's'} found`));
 
     // Collect broken channel keys and broken autorole IDs for fix buttons
     const brokenChannelKeys = [];

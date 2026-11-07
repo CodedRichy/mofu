@@ -48,7 +48,7 @@ module.exports = {
 
       const embed = base(interaction.client, colors.primary)
         .setAuthor({ name: 'Support Tickets', iconURL: guild.iconURL() })
-        .setDescription('Need help? Click the button below to open a ticket.\nA member of our support team will assist you shortly.');
+        .setDescription('Need help? Click the button below to open a ticket.\nIt opens a private channel that support staff can see.');
 
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()

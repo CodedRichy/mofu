@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits, OverwriteType } = require('discord.js');
 const { colors } = require('../../utils/constants');
 const { fetchAllMembers } = require('../../utils/members');
-const { base, response } = require('../../utils/embed');
+const { base, response, footer } = require('../../utils/embed');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -63,7 +63,7 @@ module.exports = {
     const embed = base(interaction.client, colors.warning)
       .setAuthor({ name: `Stale Permissions — ${issues.length} found` })
       .setDescription(sections.join('\n\n'))
-      .setFooter({ text: 'Review and clean up via Server Settings → Channels' });
+      .setFooter(footer(interaction.client, 'Review and clean up via Server Settings → Channels'));
 
     await interaction.editReply({ embeds: [embed] });
   },

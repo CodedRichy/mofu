@@ -52,6 +52,7 @@ function insertAndCleanup(guildId, channelId, type, authorId, authorTag, content
 
 module.exports = {
   isEnabled,
+  MAX_AGE_MS,
   addDeleted(channelId, message) {
     const guildId = message.guild?.id || '';
     const attachments = [...message.attachments.values()].map((a) => a.url);
