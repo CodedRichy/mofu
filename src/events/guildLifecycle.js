@@ -1,4 +1,4 @@
-const { Events, ChannelType, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { Events, ChannelType, PermissionFlagsBits } = require('discord.js');
 const store = require('../database/store');
 const { base } = require('../utils/embed');
 const retention = require('../database/retention');
@@ -17,10 +17,8 @@ async function sendWelcome(guild) {
     const embed = base(client)
       .setTitle('Thanks for adding Sonder')
       .setDescription('Three steps to get going:\n\n' + steps.map((t, i) => `**${i + 1}.** ${t}`).join('\n'));
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('sonder.gg').setURL('https://sonder.gg'),
-    );
-    const payload = { embeds: [embed], components: [row] };
+    // Add a link button here once a real support-server invite or domain exists.
+    const payload = { embeds: [embed] };
 
     const me = guild.members.me;
     const canSend = (ch) => ch && ch.type === ChannelType.GuildText && me

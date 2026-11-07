@@ -14,7 +14,7 @@ module.exports = {
     log.info(`Serving ${client.guilds.cache.size} servers`);
     client.user.setPresence({
       status: 'online',
-      activities: [{ type: ActivityType.Custom, name: 'custom', state: 'sonder.gg · /help' }],
+      activities: [{ type: ActivityType.Custom, name: 'custom', state: '/help · say "sonder"' }],
     });
     // A failed registration (429, bad id, network) must not stop the rest of startup.
     try {

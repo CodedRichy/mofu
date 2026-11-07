@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Sonder is an AI-native Discord bot (discord.js v14, Node.js). Combines multipurpose bot features (moderation, economy, leveling, music) with AI-powered community intelligence. Pre-launch, targeting sonder.gg.
+Sonder is an AI-native Discord bot (discord.js v14, Node.js). Combines multipurpose bot features (moderation, economy, leveling, music) with AI-powered community intelligence. Pre-launch. No domain owned yet (sonder.gg is NOT ours); do not link to it.
 
 ## Commands
 

@@ -45,7 +45,7 @@ async function fetchGif(type) {
   const endpoint = TYPE_MAP[type] || type;
   try {
     const res = await fetch(`${API_BASE}/${endpoint}`, {
-      headers: { 'User-Agent': 'Sonder Discord Bot/0.1 (https://sonder.gg)' },
+      headers: { 'User-Agent': 'Sonder Discord Bot/0.1' },
       signal: AbortSignal.timeout(3000),
     });
     if (!res.ok) throw new Error(res.status);
