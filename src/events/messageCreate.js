@@ -12,6 +12,7 @@ const { moderate, chatWithHistory } = require('../utils/ai');
 const { parseMuteIntent, proposeMute, usageHint } = require('../ai/actions');
 const { parseMusicIntent } = require('../utils/musicIntent');
 const { parseTimezoneIntent } = require('../utils/tzIntent');
+const { routeMessage } = require('../ai/router');
 const automod = require('../utils/automod');
 
 // The bot's name as a whole word: 'mofu' or the old name 'sonder' (TRIGGER_WORDS in src/utils/constants.js).
@@ -90,8 +91,106 @@ setInterval(() => {
   }
 }, 60000).unref();
 
+// The prefix command path: parse, permission check, cooldown, PrefixContext validation, execute. Typed commands
+// and commands routed from chat (src/ai/router.js rewrites message.content first) both come through here.
+async function runPrefixCommand(message, prefix) {
+  const args = message.content.slice(prefix.length).trim().split(/\s+/);
+  const commandName = args.shift().toLowerCase();
+
+  const command = message.client.commands.get(commandName) || message.client.aliases.get(commandName);
+  if (!command) {
+    const custom = store.getCustomCommand(message.guild.id, commandName);
+    if (custom) {
+      const text = custom.response
+        .replace(/{user}/gi, message.author.toString())
+        .replace(/{user\.tag}/gi, message.author.tag)
+        .replace(/{server}/gi, message.guild.name)
+        .replace(/{membercount}/gi, message.guild.memberCount.toString());
+      if (custom.embed) {
+        const embed = response({ client: message.client, description: text, color: colors.primary });
+        await message.reply({ embeds: [embed] }).catch(() => {});
+      } else {
+        await message.reply(text).catch(() => {});
+      }
+    }
+    return;
+  }
+
+  try {
+    const requiredPerms = command.data.default_member_permissions;
+    if (requiredPerms && !message.member.permissions.has(BigInt(requiredPerms))) {
+      await message.reply({ embeds: [permissionDenied(message.client, command)] });
+      return;
+    }
+
+    const cooldownAmount = (command.cooldown || 3) * 1000;
+    if (!cooldowns.has(command.data.name)) cooldowns.set(command.data.name, new Collection());
+    const timestamps = cooldowns.get(command.data.name);
+    const now = Date.now();
+
+    if (timestamps.has(message.author.id)) {
+      const expiry = timestamps.get(message.author.id) + cooldownAmount;
+      if (now < expiry) {
+        const remaining = ((expiry - now) / 1000).toFixed(1);
+        await message.reply({ embeds: [response({ client: message.client, description: `Wait **${remaining}s** before using this again.`, color: colors.error })] });
+        return;
+      }
+    }
+    timestamps.set(message.author.id, now);
+    setTimeout(() => timestamps.delete(message.author.id), cooldownAmount);
+
+    // Warm the caches for mentioned users and raw 17-20 digit ids so getUser/getMember resolve.
+    // Deduped and fetched in parallel; failures are tolerated (the id then fails validation in PrefixContext).
+    const wanted = new Set();
+    for (const m of message.content.matchAll(/<@!?(\d{17,20})>/g)) wanted.add(m[1]);
+    for (const a of args) if (/^\d{17,20}$/.test(a)) wanted.add(a);
+    const uncached = [...wanted].filter((id) => !message.guild.members.cache.has(id));
+    if (uncached.length) {
+      await Promise.all(uncached.map(async (id) => {
+        try { await message.guild.members.fetch(id); } catch {
+          if (!message.client.users.cache.has(id)) await message.client.users.fetch(id).catch(() => {});
+        }
+      }));
+    }
+
+    const ctx = new PrefixContext(message, args, command);
+    if (ctx._missingArgs.length) {
+      const usage = ctx._missingArgs.map((a) => `\`<${a}>\``).join(', ');
+      await message.reply({ embeds: [response({ client: message.client, description: `Missing required argument: ${usage}`, color: colors.error })] });
+      return;
+    }
+    if (ctx._invalid.length) {
+      await message.reply({ embeds: [response({ client: message.client, description: ctx._invalid.join('\n'), color: colors.error })], allowedMentions: { parse: [], repliedUser: false } });
+      return;
+    }
+    await command.execute(ctx);
+
+    // A command with subcommands that was given none (or a wrong one) falls through without replying, which
+    // looks like the bot ignoring you (";warn @user spam", ";bank"). Say what it expects instead of staying silent.
+    if (!ctx.replied && !ctx.deferred) {
+      let subs = [];
+      try { subs = (command.data.toJSON().options || []).filter((o) => o.type === 1 || o.type === 2); } catch { /* not a builder */ }
+      if (subs.length) {
+        const names = subs.map((s) => s.name).join(' | ');
+        await message.reply({
+          embeds: [response({ client: message.client, description: `Usage: \`${prefix}${commandName} <${names}>\``, color: colors.muted })],
+          allowedMentions: { parse: [], repliedUser: false },
+        }).catch(() => {});
+      }
+    }
+    track(commandName, { userId: message.author.id, guildId: message.guildId, type: 'prefix', feedback: ctx.failure ? 'errored' : 'ok', error: ctx.failure || null });
+  } catch (err) {
+    track(commandName, { userId: message.author.id, guildId: message.guildId, type: 'prefix', feedback: 'errored', error: err.message });
+    const ref = refId();
+    log.error(`Prefix command ${commandName} failed [ref ${ref}]:`, err.message);
+    await message.reply({ embeds: [errorCard({ client: message.client, title: 'That did not work', fix: 'Try again in a moment. If it keeps happening, tell the server admins and quote the ref below.', ref })] }).catch(() => {});
+  }
+}
+
 module.exports = {
   name: 'messageCreate',
+  runPrefixCommand,
+  canInvokeAi,
   async execute(message) {
     // Bump reminder — detect Disboard bump confirmation
     if (message.author.id === '302050872383242240' && message.embeds[0]?.description?.includes('Bump done')) {
@@ -303,6 +402,12 @@ module.exports = {
           return;
         }
 
+        // any other command said in plain words ("mofu what's my balance", "mofu ban @x spam"): the model picks
+        // from real commands, code checks it, risky ones need a confirm card. false = not a command, so chat.
+        const routed = await routeMessage(message, { prefix, runPrefix: (m) => runPrefixCommand(m, prefix), canInvokeAi })
+          .catch((err) => { log.warn(`AI route failed: ${err.message}`); return false; });
+        if (routed) return;
+
         message.channel.sendTyping().catch(() => {});
         const { text, history, context } = await buildChatContext(message, botId);
         const reply = await chatWithHistory(text, history, context, { guildId: message.guild.id });
@@ -315,96 +420,6 @@ module.exports = {
       return;
     }
 
-    const args = message.content.slice(prefix.length).trim().split(/\s+/);
-    const commandName = args.shift().toLowerCase();
-
-    const command = message.client.commands.get(commandName) || message.client.aliases.get(commandName);
-    if (!command) {
-      const custom = store.getCustomCommand(message.guild.id, commandName);
-      if (custom) {
-        const text = custom.response
-          .replace(/{user}/gi, message.author.toString())
-          .replace(/{user\.tag}/gi, message.author.tag)
-          .replace(/{server}/gi, message.guild.name)
-          .replace(/{membercount}/gi, message.guild.memberCount.toString());
-        if (custom.embed) {
-          const embed = response({ client: message.client, description: text, color: colors.primary });
-          await message.reply({ embeds: [embed] }).catch(() => {});
-        } else {
-          await message.reply(text).catch(() => {});
-        }
-      }
-      return;
-    }
-
-    try {
-      const requiredPerms = command.data.default_member_permissions;
-      if (requiredPerms && !message.member.permissions.has(BigInt(requiredPerms))) {
-        await message.reply({ embeds: [permissionDenied(message.client, command)] });
-        return;
-      }
-
-      const cooldownAmount = (command.cooldown || 3) * 1000;
-      if (!cooldowns.has(command.data.name)) cooldowns.set(command.data.name, new Collection());
-      const timestamps = cooldowns.get(command.data.name);
-      const now = Date.now();
-
-      if (timestamps.has(message.author.id)) {
-        const expiry = timestamps.get(message.author.id) + cooldownAmount;
-        if (now < expiry) {
-          const remaining = ((expiry - now) / 1000).toFixed(1);
-          await message.reply({ embeds: [response({ client: message.client, description: `Wait **${remaining}s** before using this again.`, color: colors.error })] });
-          return;
-        }
-      }
-      timestamps.set(message.author.id, now);
-      setTimeout(() => timestamps.delete(message.author.id), cooldownAmount);
-
-      // Warm the caches for mentioned users and raw 17-20 digit ids so getUser/getMember resolve.
-      // Deduped and fetched in parallel; failures are tolerated (the id then fails validation in PrefixContext).
-      const wanted = new Set();
-      for (const m of message.content.matchAll(/<@!?(\d{17,20})>/g)) wanted.add(m[1]);
-      for (const a of args) if (/^\d{17,20}$/.test(a)) wanted.add(a);
-      const uncached = [...wanted].filter((id) => !message.guild.members.cache.has(id));
-      if (uncached.length) {
-        await Promise.all(uncached.map(async (id) => {
-          try { await message.guild.members.fetch(id); } catch {
-            if (!message.client.users.cache.has(id)) await message.client.users.fetch(id).catch(() => {});
-          }
-        }));
-      }
-
-      const ctx = new PrefixContext(message, args, command);
-      if (ctx._missingArgs.length) {
-        const usage = ctx._missingArgs.map((a) => `\`<${a}>\``).join(', ');
-        await message.reply({ embeds: [response({ client: message.client, description: `Missing required argument: ${usage}`, color: colors.error })] });
-        return;
-      }
-      if (ctx._invalid.length) {
-        await message.reply({ embeds: [response({ client: message.client, description: ctx._invalid.join('\n'), color: colors.error })], allowedMentions: { parse: [], repliedUser: false } });
-        return;
-      }
-      await command.execute(ctx);
-
-      // A command with subcommands that was given none (or a wrong one) falls through without replying, which
-      // looks like the bot ignoring you (";warn @user spam", ";bank"). Say what it expects instead of staying silent.
-      if (!ctx.replied && !ctx.deferred) {
-        let subs = [];
-        try { subs = (command.data.toJSON().options || []).filter((o) => o.type === 1 || o.type === 2); } catch { /* not a builder */ }
-        if (subs.length) {
-          const names = subs.map((s) => s.name).join(' | ');
-          await message.reply({
-            embeds: [response({ client: message.client, description: `Usage: \`${prefix}${commandName} <${names}>\``, color: colors.muted })],
-            allowedMentions: { parse: [], repliedUser: false },
-          }).catch(() => {});
-        }
-      }
-      track(commandName, { userId: message.author.id, guildId: message.guildId, type: 'prefix', feedback: ctx.failure ? 'errored' : 'ok', error: ctx.failure || null });
-    } catch (err) {
-      track(commandName, { userId: message.author.id, guildId: message.guildId, type: 'prefix', feedback: 'errored', error: err.message });
-      const ref = refId();
-      log.error(`Prefix command ${commandName} failed [ref ${ref}]:`, err.message);
-      await message.reply({ embeds: [errorCard({ client: message.client, title: 'That did not work', fix: 'Try again in a moment. If it keeps happening, tell the server admins and quote the ref below.', ref })] }).catch(() => {});
-    }
+    await runPrefixCommand(message, prefix);
   },
 };

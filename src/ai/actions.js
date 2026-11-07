@@ -417,6 +417,10 @@ async function handleButton(interaction) {
   // editReply after deferUpdate edits the card; a failed edit must never change the outcome of the action itself.
   const show = (payload) => interaction.editReply({ components: [], allowedMentions: NO_PINGS, ...payload }).catch(() => {});
 
+  // Cards posted by the command router (src/ai/router.js) share this map, the invoker-only check, the
+  // double-click guard and cancel handling above; their confirm step (re-check + run) is their own.
+  if (typeof p.onConfirm === 'function') return p.onConfirm({ interaction, p, show });
+
   const v = await validateMute(guild, p.invokerId, p.targetId, p.ms, p.kind);
   if (v.error) {
     audit.resolve(p.auditId, 'rejected', v.error);
@@ -460,4 +464,9 @@ async function handleButton(interaction) {
   await modlog.send(guild, { action: p.kind, target: v.target.user, moderator: interaction.user, reason: clip(reason, 512), duration, extra }).catch(() => {});
 }
 
-module.exports = { parseMuteIntent, proposeMute, handleButton, usageHint, _limits: { windowOk, USER_RATE_MAX, RATE_MAX }, _cards: { proposalCard, resultCard } };
+module.exports = {
+  parseMuteIntent, proposeMute, handleButton, usageHint,
+  // shared with src/ai/router.js (one pending map, one set of limits, one name resolver)
+  shared: { pending, hasPending, userRateOk, rateOk, resolveName, looksLikeName, NAME_STOP, NO_PINGS, resultCard, audit },
+  _limits: { windowOk, USER_RATE_MAX, RATE_MAX }, _cards: { proposalCard, resultCard },
+};
