@@ -3,8 +3,8 @@ const { colors } = require('../../utils/constants');
 const { response } = require('../../utils/embed');
 const store = require('../../database/store');
 
-// Per-server notes Sonder can use when people talk to it ("the mod team meets on fridays", "kai is the owner's
-// brother"). Written only by admins; capped so the prompt stays small. Stored under config key `ai_notes`.
+// Per-server notes Sonder can use when people talk to it ("the mod team meets on fridays", "the owner's
+// birthday is in May"). Written only by admins; capped so the prompt stays small. Stored under config key `ai_notes`.
 const MAX_NOTES = 20;
 const MAX_LEN = 200;
 

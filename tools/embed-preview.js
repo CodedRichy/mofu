@@ -17,7 +17,7 @@ function fakeQueue({ paused = false, tracks = 3, repeatMode = 0, volume = 80 } =
     thumbnail: '',
     durationMS: 205000 + i * 13000,
     duration: `${3 + (i % 2)}:${String(25 + i).padStart(2, '0')}`,
-    requestedBy: user('riri'),
+    requestedBy: user('member'),
   });
   const list = Array.from({ length: tracks }, (_, i) => mk(i + 1));
   return {

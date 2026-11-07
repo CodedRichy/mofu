@@ -13,14 +13,14 @@ module.exports = (scene, { client, user }) => {
   scene('Permission denied (generic)', 'REAL builder: permissionDenied, no permission bits', () => ({ embeds: [permissionDenied(client, { data: { name: 'x' } })] }));
 
   scene('Rank', 'MOCK mirrored from src/commands/leveling/rank.js (builder not exported; uses real base/bar/fmt)', () => {
-    const u = user('riri'); const pct = 0.62;
+    const u = user('member'); const pct = 0.62;
     return { embeds: [base(client, colors.primary)
       .setAuthor({ name: u.tag, iconURL: u.displayAvatarURL() }).setThumbnail(u.displayAvatarURL({ size: 256 }))
       .setDescription(`**Rank** #3 of ${fmt(1204)}\n**Level** 14\n**XP** ${fmt(1860)} / ${fmt(3000)}\n\n${bar(pct, 12)} **${Math.floor(pct * 100)}%**\n${fmt(1140)} XP to level 15`)] };
   });
 
   const frame = (a, b, c) => '```\n+-----------+\n| ' + a + ' ' + b + ' ' + c + ' |\n+-----------+\n```';
-  const slots = (color, a, b, c, text) => ({ embeds: [base(client, color).setAuthor({ name: 'Slots', iconURL: user('riri').displayAvatarURL() }).setDescription(`${frame(a, b, c)}\n${text}`)] });
+  const slots = (color, a, b, c, text) => ({ embeds: [base(client, color).setAuthor({ name: 'Slots', iconURL: user('member').displayAvatarURL() }).setDescription(`${frame(a, b, c)}\n${text}`)] });
   const SPIN = '\u{1F300}';
   scene('Slots: spinning', 'MOCK mirrored from src/commands/economy/slots.js (stage() is inline)', () => slots(colors.primary, SPIN, SPIN, SPIN, 'Bet **⌬ 500** - spinning...'));
   scene('Slots: win', 'MOCK mirrored from slots.js', () => slots(colors.success, '\u{1F48E}', '\u{1F48E}', '\u{1F48E}', 'You won **⌬ 2,500** (5x)\n**Wallet** `⌬ 9,100`'));
