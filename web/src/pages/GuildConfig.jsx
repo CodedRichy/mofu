@@ -567,14 +567,8 @@ export function GuildConfig() {
                   <Bot size={16} style={{ color: 'var(--accent)', marginTop: 2, flexShrink: 0 }} />
                   <div>
                     <p style={{ fontSize: 'var(--text-xs)', color: 'var(--fg-2)', lineHeight: 1.7 }}>
-                      AI features require a <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent)' }}>GROQ_API_KEY</span> in
-                      your bot's environment. Get a free key at{' '}
-                      <a href="https://console.groq.com" target="_blank" rel="noreferrer" style={{
-                        color: 'var(--accent)', textDecoration: 'none',
-                        borderBottom: '1px solid var(--border-accent)',
-                      }}>
-                        console.groq.com <ExternalLink size={10} style={{ display: 'inline', verticalAlign: 'middle' }} />
-                      </a>
+                      Nothing to set up. Say <strong>mofu</strong> in any channel to chat or to ask for a command in plain words.
+                      Anything that changes your server (mute, warn, kick) shows a confirm button first.
                     </p>
                   </div>
                 </div>

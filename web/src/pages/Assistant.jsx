@@ -223,7 +223,7 @@ export function Assistant() {
       setMessages(m => [...m, { id: Date.now() + 1, role: 'assistant', content }])
     } catch {
       setTyping(false)
-      setMessages(m => [...m, { id: Date.now() + 1, role: 'assistant', content: 'The AI service is currently unavailable. Make sure the bot is running with a GROQ_API_KEY configured.' }])
+      setMessages(m => [...m, { id: Date.now() + 1, role: 'assistant', content: 'The AI is not answering right now. Try again in a minute.' }])
     }
   }
 
