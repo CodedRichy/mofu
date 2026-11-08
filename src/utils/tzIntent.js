@@ -32,4 +32,27 @@ function parseTimezoneIntent(content, botId) {
   return zone ? { verb: 'timezone', args: `set ${zone}` } : null;
 }
 
-module.exports = { parseTimezoneIntent };
+// Query-only places (not settable with /timezone, but fine to tell the time for).
+const EXTRA = new Map(Object.entries({
+  moscow: 'Europe/Moscow', istanbul: 'Europe/Istanbul', cairo: 'Africa/Cairo', lagos: 'Africa/Lagos',
+  nairobi: 'Africa/Nairobi', karachi: 'Asia/Karachi', dhaka: 'Asia/Dhaka', bangkok: 'Asia/Bangkok',
+  jakarta: 'Asia/Jakarta', manila: 'Asia/Manila', 'hong kong': 'Asia/Hong_Kong', beijing: 'Asia/Shanghai',
+  shanghai: 'Asia/Shanghai', seoul: 'Asia/Seoul', auckland: 'Pacific/Auckland', mexico: 'America/Mexico_City',
+  vancouver: 'America/Vancouver', riyadh: 'Asia/Riyadh', doha: 'Asia/Qatar', kathmandu: 'Asia/Kathmandu',
+  colombo: 'Asia/Colombo', lisbon: 'Europe/Lisbon', dublin: 'Europe/Dublin',
+}));
+
+// "mofu what time is it in dubai" -> a fixed answer computed from the clock, never from the model (chat models
+// guess clocks wrong). null unless it is clearly a time-in-<known place> question that names the bot.
+function answerTimeQuestion(content, now = new Date()) {
+  if (typeof content !== 'string' || content.length > 120) return null;
+  const m = content.match(/\bwhat(?:'s|s| is)?\s+(?:the\s+)?(?:current\s+)?time\s+(?:is\s+it\s+)?(?:right\s+now\s+)?(?:in|at)\s+([a-z .]+?)\s*[?.!]*\s*$/i);
+  if (!m) return null;
+  const place = m[1].toLowerCase().replace(/^the\s+/, '').replace(/\s+/g, ' ').trim();
+  const zone = LOOKUP.get(place) || EXTRA.get(place);
+  if (!zone) return null;
+  const fmt = new Intl.DateTimeFormat('en-US', { timeZone: zone, weekday: 'long', hour: 'numeric', minute: '2-digit', hour12: true });
+  return `It is ${fmt.format(now)} in ${place.replace(/\b\w/g, (c) => c.toUpperCase())} (${zone.replace('_', ' ')}).`;
+}
+
+module.exports = { parseTimezoneIntent, answerTimeQuestion };

@@ -11,7 +11,7 @@ const modlog = require('../utils/modlog');
 const { moderate, chatWithHistory } = require('../utils/ai');
 const { parseMuteIntent, proposeMute, usageHint } = require('../ai/actions');
 const { parseMusicIntent } = require('../utils/musicIntent');
-const { parseTimezoneIntent } = require('../utils/tzIntent');
+const { parseTimezoneIntent, answerTimeQuestion } = require('../utils/tzIntent');
 const { routeMessage } = require('../ai/router');
 const automod = require('../utils/automod');
 const { detectMentionTrigger } = require('../utils/mentionTrigger');
@@ -399,6 +399,11 @@ module.exports = {
         const intent = parseMuteIntent(message.content, botId);
         if (intent) {
           await proposeMute(message, intent);
+          return;
+        }
+        const timeAnswer = answerTimeQuestion(message.content.replace(mentionRe, ' '));
+        if (timeAnswer) {
+          await message.reply({ content: timeAnswer, allowedMentions: { parse: [], repliedUser: false } }).catch(() => {});
           return;
         }
         const hint = usageHint(message.content, botId);
