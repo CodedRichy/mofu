@@ -16,6 +16,10 @@ function track(name, { userId, guildId, type, feedback, error }) {
     error: error || null,
     timestamp: new Date().toISOString(),
   };
+  // Per-server usage count for the dashboard Insights tab: a number per command per day, no user id.
+  if (guildId && (feedback === 'ok' || feedback === 'errored')) {
+    try { require('../database/insights').countCommand(guildId, name); } catch { /* never break a command over a counter */ }
+  }
   // Async append: this runs on every command/feedback click, so keep disk I/O
   // off the event loop. Telemetry failures must never surface to users.
   fs.appendFile(LOG_PATH, JSON.stringify(entry) + '\n', () => {});

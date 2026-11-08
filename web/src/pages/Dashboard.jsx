@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
-import { LogIn, Users, Server, Terminal, Activity, ArrowUpRight, Sparkles } from 'lucide-react'
+import { LogIn, Sparkles } from 'lucide-react'
 import { Layout } from '../components/Layout'
 import { api } from '../lib/api'
 import { useToken, setToken, clearToken, loginUrl as buildLoginUrl } from '../lib/auth'
-import { BRAND } from '../lib/brand'
+import { InsightsOverview } from '../components/InsightsOverview'
 
 const handledCodes = new Set()
 
@@ -22,114 +22,10 @@ function getGreeting(name) {
   return `late one, ${name}. let's take a look.`
 }
 
-function StatCard({ icon: Icon, label, value, accent }) {
-  // accent is a CSS colour token (var(--x)); tint it with color-mix, since appending hex alpha to var() is invalid CSS
-  const tint = `color-mix(in oklab, ${accent} 12%, transparent)`
-  const [hovered, setHovered] = useState(false)
-  return (
-    <div
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        padding: 'var(--space-5)', borderRadius: 'var(--radius-xl)',
-        border: `1px solid ${hovered ? 'var(--border-strong)' : 'var(--border-default)'}`,
-        background: 'var(--surface-1)',
-        position: 'relative', overflow: 'hidden',
-        transition: 'border-color 160ms var(--ease-default), transform 200ms var(--ease-default)',
-        transform: hovered ? 'translateY(-1px)' : 'none',
-        boxShadow: 'var(--shadow-xs)',
-      }}
-    >
-      <div style={{
-        position: 'absolute', top: -30, right: -30, width: 100, height: 100,
-        background: `radial-gradient(circle, ${tint} 0%, transparent 70%)`,
-        borderRadius: '50%', transition: 'opacity 200ms', opacity: hovered ? 1 : 0.4,
-      }} />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
-        <Icon size={13} style={{ color: accent, opacity: 0.9 }} />
-        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--fg-3)', fontWeight: 'var(--weight-medium)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-caps)' }}>{label}</span>
-      </div>
-      <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 'var(--weight-bold)', color: 'var(--fg-1)', fontFamily: 'var(--font-mono)', letterSpacing: 'var(--tracking-tight)', lineHeight: 1 }}>{value}</div>
-    </div>
-  )
-}
-
-function GuildCard({ guild, onClick, index }) {
-  const [hovered, setHovered] = useState(false)
-
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      aria-label={`Manage ${guild.name}`}
-      onClick={onClick}
-      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onFocus={() => setHovered(true)}
-      onBlur={() => setHovered(false)}
-      style={{
-        padding: 'var(--space-4)',
-        minHeight: 76, display: 'flex', alignItems: 'center',
-        borderRadius: 'var(--radius-xl)', cursor: 'pointer',
-        border: `1px solid ${hovered ? 'var(--border-accent)' : 'var(--border-default)'}`,
-        background: hovered ? 'var(--surface-selected)' : 'var(--surface-1)',
-        transition: 'all 180ms var(--ease-default)',
-        transform: hovered ? 'translateY(-2px)' : 'none',
-        boxShadow: hovered ? 'var(--shadow-accent)' : 'var(--shadow-xs)',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', width: '100%' }}>
-        {guild.icon ? (
-          <img
-            src={`https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64`}
-            alt=""
-            style={{
-              width: 44, height: 44,
-              borderRadius: 'var(--radius-lg)', flexShrink: 0,
-              border: '1px solid var(--border-subtle)',
-            }}
-          />
-        ) : (
-          <div style={{
-            width: 44, height: 44,
-            borderRadius: 'var(--radius-lg)',
-            background: 'var(--accent-subtle)',
-            border: '1px solid var(--border-accent)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-          }}>
-            <Server size={18} style={{ color: 'var(--accent)' }} />
-          </div>
-        )}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{
-            fontSize: 'var(--text-base)',
-            fontWeight: 'var(--weight-semibold)', color: 'var(--fg-1)',
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>{guild.name}</div>
-          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--fg-3)', marginTop: 2 }}>
-            Manage
-          </div>
-        </div>
-        <ArrowUpRight
-          size={15}
-          style={{
-            color: hovered ? 'var(--accent)' : 'var(--fg-4)',
-            transition: 'color 120ms, transform 200ms var(--ease-spring)',
-            transform: hovered ? 'translate(1px, -1px)' : 'none',
-          }}
-        />
-      </div>
-    </div>
-  )
-}
-
 export function Dashboard() {
   const token = useToken()
   const [authError, setAuthError] = useState(null)
   const [user, setUser] = useState(null)
-  const [guilds, setGuilds] = useState([])
-  const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -175,18 +71,12 @@ export function Dashboard() {
     setLoading(true)
     ;(async () => {
       try {
-        const [u, g, s] = await Promise.all([
-          api('/user', token, { noRedirect: true }),
-          api('/guilds', token, { noRedirect: true }),
-          api('/stats', token, { noRedirect: true }),
-        ])
+        const u = await api('/user', token, { noRedirect: true })
         if (cancelled) return
         if (u.status === 401) { clearToken(); return }   // only a 401 means the token is bad
         if (!u.ok) { setAuthError(u.error); return }
         setAuthError(null)
         setUser(u.data)
-        setGuilds(g.ok ? g.data || [] : [])
-        setStats(s.ok ? s.data : null)
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -301,41 +191,8 @@ export function Dashboard() {
           </p>
         </div>
 
-        {/* Stats */}
-        {stats && (
-          <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 'var(--space-3)',
-            marginBottom: 'var(--space-10)',
-            animation: 'fade-up 0.5s var(--ease-default) 0.06s both',
-          }}>
-            <StatCard icon={Server} label="Servers" value={stats.guilds} accent="var(--accent)" />
-            <StatCard icon={Users} label="Users" value={stats.users?.toLocaleString()} accent="var(--success)" />
-            <StatCard icon={Terminal} label="Commands" value={stats.commands} accent="var(--warning)" />
-            <StatCard icon={Activity} label="Uptime" value={`${Math.floor(stats.uptime / 3600)}h`} accent="var(--info)" />
-          </div>
-        )}
-
-        {/* Guilds */}
-        <div style={{ animation: 'fade-up 0.5s var(--ease-default) 0.12s both' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 'var(--space-4)' }}>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-md)', fontWeight: 'var(--weight-semibold)', color: 'var(--fg-2)', letterSpacing: 'var(--tracking-snug)' }}>Your Servers</h2>
-            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--fg-4)', fontFamily: 'var(--font-mono)' }}>{guilds.length}</span>
-          </div>
-
-          {guilds.length === 0 ? (
-            <div style={{ padding: 'var(--space-12)', textAlign: 'center', borderRadius: 'var(--radius-xl)', border: '1px dashed var(--border-default)', background: 'var(--surface-1)' }}>
-              <Server size={28} style={{ color: 'var(--fg-4)', margin: '0 auto var(--space-4)' }} />
-              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--fg-3)' }}>no servers found. make sure {BRAND}'s in your server.</p>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 'var(--space-3)', maxWidth: guilds.length < 3 ? guilds.length * 440 : undefined }}>
-              {guilds.map((g, i) => (
-                <div key={g.id} style={{ animation: `fade-up 0.4s var(--ease-default) ${0.04 * i}s both` }}>
-                  <GuildCard guild={g} index={i} onClick={() => navigate(`/dashboard/${g.id}`)} />
-                </div>
-              ))}
-            </div>
-          )}
+        <div style={{ animation: 'fade-up 0.5s var(--ease-default) 0.08s both' }}>
+          <InsightsOverview token={token} onOpen={(id) => navigate(`/dashboard/${id}`)} />
         </div>
       </div>
     </Layout>

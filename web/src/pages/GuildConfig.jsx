@@ -1,12 +1,13 @@
 import { useState, useEffect, useId } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Save, Shield, Bot, Bell, Check, Settings, Hash, MessageSquare, Server, Sparkles, ExternalLink, Zap, Terminal, Trash2, Plus, AlertTriangle, Coins, TrendingUp, History } from 'lucide-react'
+import { ArrowLeft, Save, Shield, Bot, Bell, Check, Settings, Hash, MessageSquare, Server, Sparkles, ExternalLink, Zap, Terminal, Trash2, Plus, AlertTriangle, Coins, TrendingUp, History, BarChart3 } from 'lucide-react'
 import { NOISE_SVG } from '../components/Layout'
 import { api } from '../lib/api'
 import { useToken } from '../lib/auth'
 import { useListText } from '../lib/listText'
 import { BRAND } from '../lib/brand'
 import { AuditLog } from '../components/AuditLog'
+import { Insights } from '../components/Insights'
 
 function NavItem({ icon: Icon, label, active, onClick }) {
   const [h, setH] = useState(false)
@@ -206,7 +207,7 @@ export function GuildConfig() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState(null)
-  const [tab, setTab] = useState('general')
+  const [tab, setTab] = useState('insights')
 
   // Automod state
   const [automod, setAutomod] = useState(null)
@@ -327,6 +328,7 @@ export function GuildConfig() {
   }
 
   const navItems = [
+    { id: 'insights', label: 'Insights', icon: BarChart3 },
     { id: 'general', label: 'General', icon: Settings },
     { id: 'welcome', label: 'Welcome', icon: MessageSquare },
     { id: 'moderation', label: 'Moderation', icon: Shield },
@@ -456,6 +458,12 @@ export function GuildConfig() {
       {/* Main content */}
       <main className="dash-main" style={{ flex: 1, overflow: 'auto', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: 640 }}>
+          {tab === 'insights' && (
+            <Panel title="Insights" description="how this server is doing. counts only, nothing about individual people.">
+              <Insights guildId={guildId} token={token} />
+            </Panel>
+          )}
+
           {tab === 'general' && (
             <Panel title="General" description={`the basics. prefix, identity, how ${BRAND} shows up.`}>
               <SectionCard title="Prefix">

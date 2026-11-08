@@ -728,6 +728,103 @@ function createApp(client, deps = {}) {
     }
   });
 
+  // Per-server insights: aggregates only (daily counters, case counts, command counts). Manage Server, like the rest.
+  // Injected in tests; with an injected store and no injected insights it is off so tests never touch the live db.
+  const insights = deps.insights || (deps.store ? null : require('../database/insights'));
+  app.get('/api/guilds/:id/insights', authMiddleware, async (req, res) => {
+    const guild = await verifyGuildAccess(req, res);
+    if (!guild) return;
+    if (!insights) return res.status(503).json({ error: 'Insights unavailable' });
+    const days = String(req.query.days) === '30' ? 30 : 7;
+    try {
+      const out = insights.query(req.params.id, { days });
+      out.members = { total: guild.memberCount ?? null, activeChatters: insights.activeChatters(req.params.id, days) };
+      if (out.members.activeChatters === null) out.notes.push('active chatters needs leveling: it counts members who earned xp, and this server has none yet.');
+      res.json(out);
+    } catch (err) {
+      log.error('dashboard route failed', err);
+      res.status(500).json({ error: 'Failed to fetch insights' });
+    }
+  });
+
+  // Overview across every server the caller can manage AND the bot is in (same filter as /api/guilds). One
+  // request, aggregates only. A null total/day means "not counted", never a zero standing in for missing data.
+  app.get('/api/insights/overview', authMiddleware, async (req, res) => {
+    if (!insights) return res.status(503).json({ error: 'Insights unavailable' });
+    const days = String(req.query.days) === '30' ? 30 : 7;
+    try {
+      const guilds = (await fetchGuilds(req.token)).filter(V.canManageGuild).filter((g) => client.guilds.cache.has(g.id));
+      const servers = [];
+      for (const g of guilds) {
+        const live = client.guilds.cache.get(g.id);
+        const q = insights.query(g.id, { days });
+        servers.push({
+          guildId: g.id, name: g.name, icon: g.icon || null,
+          members: live?.memberCount ?? null,
+          counted: q.counters.available,
+          messages: q.totals.messages, joins: q.totals.joins, leaves: q.totals.leaves, modActions: q.totals.modActions,
+          previousMessages: q.previous.messages, previousModActions: q.previous.modActions,
+          activeChatters: insights.activeChatters(g.id, days),
+          series: q.series.messages.map((p) => p.count),
+          _q: q,
+        });
+      }
+      // null unless at least one server has the number; the previous period is null unless EVERY server that has a
+      // current number also has a previous one (otherwise the delta would compare unlike sets).
+      const sum = (key) => {
+        const vals = servers.map((s) => s[key]).filter((v) => v !== null && v !== undefined);
+        return vals.length ? vals.reduce((a, b) => a + b, 0) : null;
+      };
+      const prevSum = (key, prevKey) => {
+        const have = servers.filter((s) => s[key] !== null && s[key] !== undefined);
+        if (!have.length || have.some((s) => s[prevKey] === null || s[prevKey] === undefined)) return null;
+        return have.reduce((a, s) => a + s[prevKey], 0);
+      };
+      const sumSeries = (name) => {
+        const first = servers[0]?._q.series[name];
+        if (!first) return [];
+        return first.map((p, i) => {
+          const vals = servers.map((s) => s._q.series[name][i].count).filter((v) => v !== null);
+          return { date: p.date, count: vals.length ? vals.reduce((a, b) => a + b, 0) : null };
+        });
+      };
+      const range = servers[0]?._q.range || null;
+      const sinces = servers.map((s) => s._q.counters.since).filter(Boolean).sort();
+      const out = {
+        range, servers: servers.length,
+        counters: { available: servers.some((s) => s.counted), since: sinces[0] || null, serversCounted: servers.filter((s) => s.counted).length },
+        totals: {
+          members: sum('members'), messages: sum('messages'), joins: sum('joins'), leaves: sum('leaves'),
+          modActions: servers.length ? sum('modActions') : null, activeChatters: sum('activeChatters'),
+        },
+        previous: {
+          messages: prevSum('messages', 'previousMessages'),
+          joins: null, leaves: null,
+          modActions: prevSum('modActions', 'previousModActions'),
+        },
+        series: { messages: sumSeries('messages'), joins: sumSeries('joins'), leaves: sumSeries('leaves'), modActions: sumSeries('modActions') },
+        perServer: servers.map(({ _q, ...s }) => s),
+        notes: [],
+      };
+      const jp = servers.filter((s) => s.joins !== null);
+      if (jp.length && jp.every((s) => s._q.previous.joins !== null)) {
+        out.previous.joins = jp.reduce((a, s) => a + s._q.previous.joins, 0);
+        out.previous.leaves = jp.reduce((a, s) => a + s._q.previous.leaves, 0);
+      }
+      if (!servers.length) out.notes.push('no servers found where you can manage the server and mofu is present.');
+      else if (!out.counters.available) out.notes.push('message, join and leave counts have not started yet. they fill in as your servers are used.');
+      else {
+        if (out.counters.serversCounted < servers.length) out.notes.push(`${servers.length - out.counters.serversCounted} server(s) have no message counts yet and are left out of those totals.`);
+        if (out.counters.since > out.range.from) out.notes.push(`counts start from ${out.counters.since}. earlier days show as not counted.`);
+      }
+      if (out.totals.activeChatters === null && servers.length) out.notes.push('active chatters needs leveling on at least one server.');
+      res.json(out);
+    } catch (err) {
+      log.error('dashboard route failed', err);
+      res.status(500).json({ error: 'Failed to fetch overview' });
+    }
+  });
+
   // Bot stats
   app.get('/api/stats', authMiddleware, (req, res) => {
     res.json({

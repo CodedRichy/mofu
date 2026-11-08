@@ -37,6 +37,7 @@ export function Privacy() {
               <Item label="Economy & XP">balances, inventory, cooldowns and experience points per user per server. Economy uses virtual coins only</Item>
               <Item label="Last.fm">if you link an account with /fm set, your Last.fm username, and for server rankings the artist, your user ID and play count for crowns you hold. /fm privacy hide takes you out of the rankings and removes your crowns in that server</Item>
               <Item label="Health post">off by default. If a server turns on the weekly health post, we keep counters only: joins, leaves and messages per channel per day, plus new members' IDs and join times (14 days) and the message and author IDs of unanswered questions in help channels (7 days). No message text</Item>
+              <Item label="Server insights">for the dashboard Insights tab, always on: one number per server per day for messages (bots left out), joins and leaves, and one number per command per day. No user IDs, channel IDs or message text. Kept for 90 days</Item>
               <Item label="Alerts">for YouTube and RSS alerts a server sets up: the feed URL, label, target channel, who added it, and hashes of entries already posted</Item>
             </ul>
           </section>
