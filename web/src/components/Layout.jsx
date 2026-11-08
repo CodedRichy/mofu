@@ -31,14 +31,36 @@ function NavLink({ to, label, active, entranceDelay = 0 }) {
         textDecoration: 'none',
         padding: '8px 16px',
         borderRadius: 'var(--radius-md)',
-        background: !active && h ? 'rgba(255, 255, 255, 0.04)' : 'transparent',
-        transition: 'color 180ms var(--ease-spring), background 180ms var(--ease-spring)',
+        background: active ? 'rgba(255, 255, 255, 0.09)' : h ? 'rgba(255, 255, 255, 0.04)' : 'transparent',
+        boxShadow: active ? 'inset 0 0 0 1px rgba(255, 255, 255, 0.07)' : 'none',
+        transition: 'color 180ms var(--ease-spring), background 180ms var(--ease-spring), box-shadow 180ms var(--ease-spring)',
         letterSpacing: 'var(--tracking-base)',
         animation: `fade-up 450ms var(--ease-default) ${entranceDelay}ms both`,
       }}
     >
       {label}
     </Link>
+  )
+}
+
+// Discord users without a custom avatar have avatar: null; show their initial instead of a broken image.
+function UserAvatar({ user }) {
+  const [failed, setFailed] = useState(false)
+  const box = { width: 28, height: 28, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', flexShrink: 0 }
+  if (!user.avatar || failed) {
+    return (
+      <span aria-hidden="true" style={{ ...box, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'var(--accent-subtle)', color: 'var(--accent)', fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-semibold)' }}>
+        {(user.username || '?').slice(0, 1).toUpperCase()}
+      </span>
+    )
+  }
+  return (
+    <img
+      src={`https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`}
+      alt={`${user.username}'s avatar`}
+      onError={() => setFailed(true)}
+      style={{ ...box, objectFit: 'cover' }}
+    />
   )
 }
 
@@ -93,29 +115,12 @@ export function Layout({ children, bare = false, wide = true }) {
   const linksRef = useRef(null)
   const linkRefs = useRef([])
   const spotlightRef = useRef(null)
-  const [pill, setPill] = useState({ left: 0, width: 0, opacity: 0 })
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8)
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
-
-  useEffect(() => {
-    const compute = () => {
-      const activeIdx = NAV_LINKS.findIndex(l => location.pathname.startsWith(l.path))
-      if (activeIdx >= 0 && linkRefs.current[activeIdx] && linksRef.current) {
-        const lr = linkRefs.current[activeIdx].getBoundingClientRect()
-        const cr = linksRef.current.getBoundingClientRect()
-        setPill({ left: lr.left - cr.left, width: lr.width, opacity: 1 })
-      } else {
-        setPill(p => ({ ...p, opacity: 0 }))
-      }
-    }
-    requestAnimationFrame(compute)
-    window.addEventListener('resize', compute)
-    return () => window.removeEventListener('resize', compute)
-  }, [location.pathname])
 
   const handleMouseMove = useCallback((e) => {
     if (spotlightRef.current && navRef.current) {
@@ -217,22 +222,6 @@ export function Layout({ children, bare = false, wide = true }) {
           {/* Center: links + sliding pill */}
           {/* wide pages: the links float in a pill */}
           <div ref={linksRef} className={wide ? 'nav-pill' : undefined} style={{ position: 'relative', display: 'flex', gap: 4, alignItems: 'center', ...(wide ? { padding: 4, borderRadius: 'var(--radius-full)', background: 'var(--surface-1)', border: '1px solid var(--border-default)' } : {}) }}>
-            {/* Sliding pill indicator */}
-            <div style={{
-              position: 'absolute',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              left: pill.left,
-              width: pill.width,
-              height: 36,
-              borderRadius: 'var(--radius-md)',
-              background: 'rgba(255, 255, 255, 0.06)',
-              boxShadow: '0 0 20px rgba(255, 255, 255, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.05)',
-              transition: 'left 400ms var(--ease-spring), width 400ms var(--ease-spring), opacity 300ms var(--ease-default)',
-              opacity: pill.opacity,
-              pointerEvents: 'none',
-            }} />
-
             {NAV_LINKS.map((l, i) => (
               <div key={l.path} ref={el => { linkRefs.current[i] = el }} style={{ display: 'flex' }}>
                 <NavLink
@@ -252,15 +241,7 @@ export function Layout({ children, bare = false, wide = true }) {
           }}>
             {user ? (
               <>
-                <img
-                  src={`https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=32`}
-                  alt={`${user.username}'s avatar`}
-                  style={{
-                    width: 28, height: 28,
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--border-subtle)',
-                  }}
-                />
+                <UserAvatar user={user} />
                 <span style={{ fontSize: 'var(--text-sm)', color: 'var(--fg-2)', fontWeight: 'var(--weight-medium)' }}>{user.username}</span>
                 <button
                   onClick={logout}

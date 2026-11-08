@@ -56,7 +56,6 @@ function StatCard({ icon: Icon, label, value, accent }) {
 
 function GuildCard({ guild, onClick, index }) {
   const [hovered, setHovered] = useState(false)
-  const isFeature = index === 0
 
   return (
     <div
@@ -69,49 +68,47 @@ function GuildCard({ guild, onClick, index }) {
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setHovered(true)}
       onBlur={() => setHovered(false)}
-      className={isFeature ? 'dash-span-2' : undefined}
       style={{
-        padding: isFeature ? 'var(--space-6)' : 'var(--space-4)',
+        padding: 'var(--space-4)',
+        minHeight: 76, display: 'flex', alignItems: 'center',
         borderRadius: 'var(--radius-xl)', cursor: 'pointer',
         border: `1px solid ${hovered ? 'var(--border-accent)' : 'var(--border-default)'}`,
         background: hovered ? 'var(--surface-selected)' : 'var(--surface-1)',
         transition: 'all 180ms var(--ease-default)',
         transform: hovered ? 'translateY(-2px)' : 'none',
         boxShadow: hovered ? 'var(--shadow-accent)' : 'var(--shadow-xs)',
-        gridColumn: isFeature ? 'span 2' : undefined,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', width: '100%' }}>
         {guild.icon ? (
           <img
             src={`https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64`}
             alt=""
             style={{
-              width: isFeature ? 48 : 38, height: isFeature ? 48 : 38,
+              width: 44, height: 44,
               borderRadius: 'var(--radius-lg)', flexShrink: 0,
               border: '1px solid var(--border-subtle)',
             }}
           />
         ) : (
           <div style={{
-            width: isFeature ? 48 : 38, height: isFeature ? 48 : 38,
+            width: 44, height: 44,
             borderRadius: 'var(--radius-lg)',
             background: 'var(--accent-subtle)',
             border: '1px solid var(--border-accent)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
           }}>
-            <Server size={isFeature ? 20 : 16} style={{ color: 'var(--accent)' }} />
+            <Server size={18} style={{ color: 'var(--accent)' }} />
           </div>
         )}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
-            fontSize: isFeature ? 'var(--text-md)' : 'var(--text-base)',
+            fontSize: 'var(--text-base)',
             fontWeight: 'var(--weight-semibold)', color: 'var(--fg-1)',
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            fontFamily: isFeature ? 'var(--font-display)' : undefined,
           }}>{guild.name}</div>
           <div style={{ fontSize: 'var(--text-xs)', color: 'var(--fg-3)', marginTop: 2 }}>
-            {isFeature ? 'Most recently active' : 'Manage'}
+            Manage
           </div>
         </div>
         <ArrowUpRight
@@ -296,7 +293,7 @@ export function Dashboard() {
 
   return (
     <Layout>
-      <div style={{ maxWidth: 960, margin: '0 auto', padding: 'var(--space-10) var(--space-6)' }}>
+      <div style={{ maxWidth: 'calc(var(--page-max) + 2 * var(--page-gutter))', margin: '0 auto', padding: 'var(--space-10) var(--page-gutter)' }}>
         {/* Header */}
         <div style={{ marginBottom: 'var(--space-10)', animation: 'fade-up 0.4s var(--ease-default) both' }}>
           <p style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--text-md)', color: 'var(--fg-3)', marginBottom: 'var(--space-2)' }}>
@@ -331,7 +328,7 @@ export function Dashboard() {
               <p style={{ fontSize: 'var(--text-sm)', color: 'var(--fg-3)' }}>no servers found. make sure {BRAND}'s in your server.</p>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))', gap: 'var(--space-3)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 'var(--space-3)', maxWidth: guilds.length < 3 ? guilds.length * 440 : undefined }}>
               {guilds.map((g, i) => (
                 <div key={g.id} style={{ animation: `fade-up 0.4s var(--ease-default) ${0.04 * i}s both` }}>
                   <GuildCard guild={g} index={i} onClick={() => navigate(`/dashboard/${g.id}`)} />
