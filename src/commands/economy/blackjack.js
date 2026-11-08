@@ -70,6 +70,12 @@ function buildEmbed(client, user, guildId, playerHand, dealerHand, amount, statu
 }
 
 const activeGames = new Map();
+// A live hand is also recorded in config (bj_open_<user>) so a restart can refund it: src/utils/bjRecover.js.
+function closeGame(guildId, userId, key) {
+  const had = activeGames.delete(key);
+  try { store.setConfig(guildId, `bj_open_${userId}`, null); } catch { /* best effort */ }
+  return had;
+}
 const BLACKJACK_COOLDOWN = 30000;
 
 module.exports = {
@@ -116,6 +122,7 @@ module.exports = {
     }
 
     const gameId = `bj_${user.id}_${Date.now()}`;
+    store.setConfig(guild.id, `bj_open_${user.id}`, amount);
     activeGames.set(key, { deck, playerHand, dealerHand, amount, guildId: guild.id, acted: false });
 
     const buttons = new ActionRowBuilder().addComponents(
@@ -129,7 +136,7 @@ module.exports = {
       msg = await interaction.reply({ embeds: [embed], components: [buttons], fetchReply: true });
     } catch (err) {
       // The player never saw the hand: give the bet back and free the slot
-      if (activeGames.delete(key)) store.addWallet(guild.id, user.id, amount);
+      if (closeGame(guild.id, user.id, key)) store.addWallet(guild.id, user.id, amount);
       throw err;
     }
 
@@ -154,7 +161,7 @@ module.exports = {
           const pVal = handValue(game.playerHand);
 
           if (pVal > 21) {
-            activeGames.delete(key);
+            closeGame(guild.id, user.id, key);
             collector.stop();
             const embed = buildEmbed(interaction.client, user, guild.id, game.playerHand, game.dealerHand, game.amount, 'bust', false);
             return btn.update({ embeds: [embed], components: [] });
@@ -188,7 +195,7 @@ module.exports = {
           status = 'lose';
         }
 
-        activeGames.delete(key);
+        closeGame(guild.id, user.id, key);
         collector.stop();
         const embed = buildEmbed(interaction.client, user, guild.id, game.playerHand, game.dealerHand, game.amount, status, false);
         return btn.update({ embeds: [embed], components: [] });
@@ -200,7 +207,7 @@ module.exports = {
       if (game) {
         // Walking away forfeits the bet (acted or not), so idling can't be used as a free "cancel".
         // Known gap: pending bets are not persisted, so a restart mid-hand loses the bet.
-        activeGames.delete(key);
+        closeGame(guild.id, user.id, key);
         const text = `Blackjack timed out - your **⌬ ${amount.toLocaleString()}** bet was forfeited.`;
         interaction.editReply({
           embeds: [response({ client: interaction.client, description: text, color: colors.warning })],

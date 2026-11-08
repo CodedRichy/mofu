@@ -22,6 +22,7 @@ module.exports = {
     } catch (err) {
       log.error('Slash command registration failed:', err?.message || err);
     }
+    try { require('../utils/bjRecover').recoverOpenBets(); } catch (err) { log.warn('blackjack recovery failed:', err.message); }
     restoreGiveaways(client);
     try { require('../utils/bumpReminder').restore(client); } catch (err) { log.warn('bump restore failed:', err.message); }
     require('../database/reminders').startSweep(client);
