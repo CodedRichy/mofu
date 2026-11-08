@@ -4,6 +4,8 @@ import { ArrowRight } from 'lucide-react'
 import { Layout } from '../components/Layout'
 import { ChatDemo } from '../components/landing/ChatDemo'
 import { MusicCard, usePlayer } from '../components/landing/MusicPlayer'
+import { HeroScene } from '../components/landing/HeroScene'
+import { ShieldDemo } from '../components/landing/ShieldDemo'
 import { Switcher } from '../components/landing/Switcher'
 import { TicketsMock, LoggingMock, LoggingSettings, LeaderboardMock, VoiceMock, LastfmMock, AntinukeMock, AntinukeAlert } from '../components/landing/Modules'
 import { Embed, BotIcon, clock } from '../components/landing/Discord'
@@ -11,6 +13,7 @@ import '../styles/landing.css'
 
 import { INVITE_URL } from '../lib/invite'
 import { BRAND } from '../lib/brand'
+import commandList from '../components/commands/commands.json'
 
 function Mascot() {
   return <span className="ln-mascot" aria-hidden="true"><img src="/logo.jpg" alt="" /></span>
@@ -60,15 +63,21 @@ function DevNote() {
 function Reveal({ children, delay = 0, as: Tag = 'div', className = '', ...rest }) {
   const ref = useRef(null)
   const [seen, setSeen] = useState(false)
+  const [armed, setArmed] = useState(false)
   useEffect(() => {
     const el = ref.current
-    if (!el || typeof IntersectionObserver === 'undefined' || new URLSearchParams(window.location.search).has('static')) { setSeen(true); return }
-    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setSeen(true); io.disconnect() } }, { threshold: 0.12 })
+    // Content is visible by default (.ln-reveal only hides once .is-armed is set here). Armed only for blocks that start
+    // below the fold, and every one is shown after 4s regardless, so a stuck observer never leaves a blank section.
+    if (!el || typeof IntersectionObserver === 'undefined' || new URLSearchParams(window.location.search).has('static')) return
+    if (el.getBoundingClientRect().top < window.innerHeight) return
+    setArmed(true)
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setSeen(true); io.disconnect() } }, { threshold: 0.08 })
     io.observe(el)
-    return () => io.disconnect()
+    const t = setTimeout(() => setSeen(true), 4000)
+    return () => { io.disconnect(); clearTimeout(t) }
   }, [])
   return (
-    <Tag ref={ref} className={`ln-reveal ${seen ? 'is-in' : ''} ${className}`} style={{ transitionDelay: `${delay}ms` }} {...rest}>
+    <Tag ref={ref} className={`ln-reveal ${armed ? 'is-armed' : ''} ${seen ? 'is-in' : ''} ${className}`} style={{ transitionDelay: `${delay}ms` }} {...rest}>
       {children}
     </Tag>
   )
@@ -108,10 +117,12 @@ function Mod({ n, id, eyebrow, title, text, list, side, children }) {
   )
 }
 
-// Proof strip: checkable facts about the bot, not usage numbers (pre-launch). 85 / 170 come from commands.json,
+// Proof strip: checkable facts about the bot, not usage numbers (pre-launch). The command counts are read from commands.json,
 // which scripts/gen-commands.mjs builds from src/commands; the invite has no Administrator bit (lib/invite.js).
+const TOTAL_COMMANDS = commandList.length
+const SLASH_COMMANDS = commandList.filter((c) => c.slash).length
 const PROOF = [
-  ['170', 'commands, 85 of them slash'],
+  [String(TOTAL_COMMANDS), `commands, ${SLASH_COMMANDS} of them slash`],
   ['No', 'Administrator permission asked for'],
   ['30 days', 'after removal, your server data is deleted'],
   ['Every', 'chat action waits for a moderator\'s button'],
@@ -162,18 +173,21 @@ export function Landing() {
       <main className="ln">
         <header className="ln-top">
           <div className="ln-aura" aria-hidden="true" />
-          <figure className="ln-cat"><img src="/logo.jpg" alt={`${BRAND}, a white cat`} width="136" height="136" /></figure>
-          <h1 className="ln-h1" id="ln-h1">Tell it what to do. <span>It asks before it acts.</span></h1>
-          <p className="ln-lede">
-            {BRAND} runs moderation, music, levels and logging for your Discord server. Ask in plain words; nothing that can hurt runs until a moderator presses the button.
-          </p>
-          <div className="ln-cta">
-            <AddToDiscord />
-            <Link className="ln-textlink" to="/commands">Browse commands <ArrowRight size={17} aria-hidden="true" /></Link>
+          <div className="ln-top-copy">
+            <figure className="ln-cat"><img src="/logo.jpg" alt={`${BRAND}, a white cat`} width="136" height="136" /></figure>
+            <h1 className="ln-h1" id="ln-h1">tell {BRAND} what to do. <span>it asks before it acts.</span></h1>
+            <p className="ln-lede">
+              {BRAND} runs moderation, music, levels and logging for your Discord server. Ask in plain words; nothing that can hurt runs until a moderator presses the button.
+            </p>
+            <div className="ln-cta">
+              <AddToDiscord />
+              <Link className="ln-textlink" to="/commands">Browse commands <ArrowRight size={17} aria-hidden="true" /></Link>
+            </div>
+            <DevNote />
           </div>
-          <DevNote />
-          <Proof />
+          <div className="ln-top-scene"><HeroScene /></div>
         </header>
+        <Proof />
 
         <div className="ln-stage-wrap">
           <section className="ln-stage" aria-labelledby="ln-try">
@@ -211,6 +225,19 @@ export function Landing() {
             <Switcher onTry={() => setPrefill({ text: `${BRAND} mute @member 10m for spamming links`, n: Date.now() })} />
           </Reveal>
         </section>
+
+        <section className="ln-section ln-shield" aria-labelledby="ln-shield">
+          <Reveal className="ln-shield-in">
+            <div className="ln-shield-copy">
+              <div className="ln-eyebrow">Scam shield</div>
+              <h2 className="ln-h2" id="ln-shield">Off until you switch it on.</h2>
+              <p className="ln-sub">The same message posted in 3 different channels within 30 seconds is the sign of a hijacked account. With the shield on, that account is timed out, not banned. It makes no AI calls and keeps only hashes, never message text.</p>
+            </div>
+            <ShieldDemo />
+          </Reveal>
+        </section>
+
+        <div className="ln-break" aria-hidden="true"><span /><img src="/logo.jpg" alt="" width="56" height="56" /><span /></div>
 
         <div className="ln-mods">
           <Mod n="01" id="ln-safe" eyebrow="Moderation + chat actions" title="It asks before it acts."
@@ -265,7 +292,7 @@ export function Landing() {
         </div>
 
         <div className="ln-section ln-section--tight">
-          <Link className="ln-link" to="/commands">See all 170 commands <ArrowRight size={16} aria-hidden="true" /></Link>
+          <Link className="ln-link" to="/commands">See all {TOTAL_COMMANDS} commands <ArrowRight size={16} aria-hidden="true" /></Link>
           <p className="ln-sub ln-sub--small">All of the above is free. <Link to="/pricing">See pricing</Link>.</p>
         </div>
 
