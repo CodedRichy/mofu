@@ -142,6 +142,8 @@ function fakeFlow({ action = 'mute', issuer = 'm1' } = {}) {
     customId: `appeal:${verb}:${id}`, guild, user: { id: userId, tag: `${userId}#0` }, client: { user: { id: 'bot' } },
     memberPermissions: { has: () => perms },
     reply: async (d) => { calls.replies.push(d.embeds[0].data.description); },
+    deferUpdate: async () => {},
+    editReply: async () => { calls.updates++; },
     update: async () => { calls.updates++; },
   }, { appeals: ap, infractions: inf, modlog });
   return { inf, ap, id, calls, press };

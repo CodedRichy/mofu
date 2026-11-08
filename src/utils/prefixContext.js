@@ -131,8 +131,11 @@ class PrefixContext {
           break;
         }
         case ApplicationCommandOptionType.Boolean: {
-          const val = args.shift()?.toLowerCase();
-          this._parsed[opt.name] = val === 'true' || val === 'yes' || val === '1';
+          // Only a real boolean word is consumed; anything else stays in the args (e.g. the first word of a reason).
+          const val = String(args[0]).toLowerCase();
+          if (['true', 'yes', '1', 'on'].includes(val)) { args.shift(); this._parsed[opt.name] = true; }
+          else if (['false', 'no', '0', 'off'].includes(val)) { args.shift(); this._parsed[opt.name] = false; }
+          else continue; // not a boolean: leave unset (null) and keep the word for the next option
           break;
         }
         case ApplicationCommandOptionType.String: {

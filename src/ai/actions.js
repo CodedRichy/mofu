@@ -219,7 +219,8 @@ const userRateOk = (guildId, userId) => windowOk(userProposals, `${guildId}:${us
 
 // One card at a time per person: stops a stack of open confirmations, which would also eat the guild allowance.
 function hasPending(guildId, userId) {
-  for (const p of pending.values()) if (p.guildId === guildId && p.invokerId === userId) return true;
+  // Automated alerts (voice guard) are keyed to the owner as approver but must not use up their own AI-card slot.
+  for (const p of pending.values()) if (!p.automated && p.guildId === guildId && p.invokerId === userId) return true;
   return false;
 }
 

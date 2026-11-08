@@ -165,12 +165,19 @@ function createApp(client, deps = {}) {
   async function fetchGuilds(token) {
     const cached = guildCache.get(token);
     if (cached && Date.now() < cached.expiresAt) return cached.guilds;
-    const res = await fetch('https://discord.com/api/v10/users/@me/guilds', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) return [];
-    const guilds = await res.json();
-    if (!Array.isArray(guilds)) return [];
+    // Discord returns at most 200 per page; follow `after` until a short page (capped at 10 pages = 2000 guilds).
+    const guilds = [];
+    for (let page = 0; page < 10; page++) {
+      const after = guilds.length ? `&after=${guilds[guilds.length - 1].id}` : '';
+      const res = await fetch(`https://discord.com/api/v10/users/@me/guilds?limit=200${after}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) { if (page === 0) return []; break; }
+      const batch = await res.json();
+      if (!Array.isArray(batch)) { if (page === 0) return []; break; }
+      guilds.push(...batch);
+      if (batch.length < 200) break;
+    }
     guildCache.set(token, { guilds, expiresAt: Date.now() + 15000 });
     return guilds;
   }

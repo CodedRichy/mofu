@@ -225,7 +225,7 @@ async function propose(finding, deps = {}) {
     return show({ embeds: [resultCard({ client: interaction.client, title: done.length ? 'DONE' : 'NOT DONE', kind: kindTag, note, color: done.length ? colors.success : colors.error })] });
   };
 
-  const common = { guildId: guild.id, invokerId: approver, targetId: finding.userIds[0], dur: null, anyoneWithPerm: 'MoveMembers' };
+  const common = { guildId: guild.id, invokerId: approver, targetId: finding.userIds[0], dur: null, anyoneWithPerm: 'MoveMembers', automated: true };
   let expire = null;
   let sibling = null;
   // (Re)register both buttons and their timers. Also used to hand the alert back after a press that did nothing.

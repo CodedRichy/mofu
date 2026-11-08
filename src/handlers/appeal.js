@@ -119,7 +119,11 @@ async function handleButton(interaction, deps = {}) {
   const modlog = deps.modlog || require('../utils/modlog');
   const parsed = parseId(interaction.customId);
   const { guild, user, client } = interaction;
-  const fail = (description) => interaction.reply({ embeds: [response({ client, description, color: colors.error })], ephemeral: true });
+  // After deferUpdate() the interaction is acknowledged, so errors go out as an ephemeral follow-up instead.
+  const fail = (description) => {
+    const payload = { embeds: [response({ client, description, color: colors.error })], ephemeral: true };
+    return interaction.deferred || interaction.replied ? interaction.followUp(payload) : interaction.reply(payload);
+  };
   if (!parsed || !guild) return fail('That appeal button is not valid.');
 
   const appeal = appeals.getAppeal(guild.id, parsed.id);
@@ -145,6 +149,9 @@ async function handleButton(interaction, deps = {}) {
   const claimed = appeals.resolve(guild.id, appeal.appeal_id, status, user.id);
   if (!claimed) return fail('Someone else already decided this appeal.');
 
+  // Acknowledge inside Discord's 3 second window; lifting the punishment and logging can be slow.
+  await interaction.deferUpdate().catch(() => {});
+
   let outcomeNote = approve ? null : 'Appeal denied';
   if (approve) {
     try {
@@ -164,7 +171,7 @@ async function handleButton(interaction, deps = {}) {
     reason: `Appeal #${appeal.appeal_id} against case #${caseRow.case_id}${outcomeNote && approve ? ` (${outcomeNote})` : ''}: ${clip(appeal.reason, 300)}`,
   });
 
-  await interaction.update({
+  await interaction.editReply({
     embeds: [appealCard(client, claimed, caseRow, { status, by: user.id, note: outcomeNote })],
     components: [buttons(appeal.appeal_id, true)],
     allowedMentions: { parse: [] },

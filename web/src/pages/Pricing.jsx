@@ -26,6 +26,7 @@ const FREE = [
   ['Voice reports', 'a snapshot of who is in the channel'], // moderation/reportvc
   ['Antinuke and VoiceMaster', 'limits on mass deletes, join-to-create voice'], // config/antinuke, voicemaster
   ['Scam shield', 'scam links and staff lookalikes, off by default'], // config/scamshield
+  ['Image checks', 'scam text and login QR codes in images, off by default, needs a modlog channel, small daily allowance per server'], // config/imagemod
   ['Chat AI', 'confirm buttons on every action, with a generous daily allowance'], // src/ai/actions.js, aiBudget
   ['85+ slash commands', 'each one also works with the prefix'], // commands.json: 86 slash
 ]
@@ -33,7 +34,6 @@ const FREE = [
 const LATER = [
   'A higher daily AI allowance',
   'Longer history and backup retention',
-  'Image checks for the scam shield',
   'Priority support',
 ]
 

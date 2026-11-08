@@ -43,6 +43,12 @@ function isEnabled(guildId) {
   return !!guildId && store.getConfig(guildId, 'snipe_enabled') === true;
 }
 
+// Expired rows are removed on every read too, so the 2 hour limit holds on disk even when nothing new is written.
+function readRow(channelId, type, cutoff, index) {
+  stmts.deleteStale.run(cutoff);
+  return stmts.get.get(channelId, type, cutoff, index);
+}
+
 function insertAndCleanup(guildId, channelId, type, authorId, authorTag, content, attachment) {
   if (!isEnabled(guildId)) return;
   stmts.deleteStale.run(Date.now() - MAX_AGE_MS);
@@ -99,7 +105,7 @@ module.exports = {
   },
 
   getDeleted(channelId, index = 0) {
-    const row = stmts.get.get(channelId, 'delete', Date.now() - MAX_AGE_MS, index);
+    const row = readRow(channelId, 'delete', Date.now() - MAX_AGE_MS, index);
     if (!row) return null;
     const data = JSON.parse(row.content);
     return {
@@ -111,7 +117,7 @@ module.exports = {
   },
 
   getEdited(channelId, index = 0) {
-    const row = stmts.get.get(channelId, 'edit', Date.now() - MAX_AGE_MS, index);
+    const row = readRow(channelId, 'edit', Date.now() - MAX_AGE_MS, index);
     if (!row) return null;
     const data = JSON.parse(row.content);
     return {
@@ -123,7 +129,7 @@ module.exports = {
   },
 
   getReaction(channelId, index = 0) {
-    const row = stmts.get.get(channelId, 'reaction', Date.now() - MAX_AGE_MS, index);
+    const row = readRow(channelId, 'reaction', Date.now() - MAX_AGE_MS, index);
     if (!row) return null;
     const data = JSON.parse(row.content);
     return {
@@ -136,7 +142,7 @@ module.exports = {
   },
 
   getPurged(channelId, index = 0) {
-    const row = stmts.get.get(channelId, 'purge', Date.now() - MAX_AGE_MS, index);
+    const row = readRow(channelId, 'purge', Date.now() - MAX_AGE_MS, index);
     if (!row) return null;
     const data = JSON.parse(row.content);
     return {
