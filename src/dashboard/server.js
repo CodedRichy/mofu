@@ -284,6 +284,27 @@ function createApp(client, deps = {}) {
     return guild;
   }
 
+  // Why a NEW level-reward role may not be saved by this dashboard user, or null. Rewards already stored are left
+  // alone so unrelated edits are never blocked.
+  async function levelRoleProblem(guild, userId, rewards) {
+    const lv = require('../utils/xp');
+    const known = new Set((store.getConfig(guild.id, 'level_roles') || []).map((e) => e.role || e.roleId));
+    const fresh = rewards.filter((e) => !known.has(e.role));
+    if (!fresh.length) return null;
+    let member = null;
+    try { member = guild.members?.cache?.get(userId) || await guild.members.fetch(userId); } catch { /* handled below */ }
+    if (!member) return 'Could not check your roles in this server, so no new reward roles were saved.';
+    for (const e of fresh) {
+      const role = guild.roles?.cache?.get(e.role);
+      const problem = lv.rewardRoleProblem(guild, role);
+      if (problem) return problem;
+      if (guild.ownerId !== member.id && role.position >= member.roles.highest.position) {
+        return 'That role is at or above your highest role, so you cannot make it a level reward.';
+      }
+    }
+    return null;
+  }
+
   // Dashboard audit trail. Injectable; with an injected store (tests) and no injected audit it is off, so
   // test runs never write to the live database. Never throws: a failed audit write must not fail the change.
   const audit = deps.audit || (deps.store ? null : require('../database/dashaudit'));
@@ -561,7 +582,7 @@ function createApp(client, deps = {}) {
     res.json({
       enabled: store.getConfig(req.params.id, 'leveling') !== false,
       levelup_channel: store.getConfig(req.params.id, 'levelup_channel'),
-      xp_multiplier: store.getConfig(req.params.id, 'xp_multiplier') || 1,
+      xp_multiplier: store.getConfig(req.params.id, 'xp_multiplier') ?? 1,
       level_roles: store.getConfig(req.params.id, 'level_roles') || [],
       no_xp_channels: store.getConfig(req.params.id, 'no_xp_channels') || [],
       no_xp_roles: store.getConfig(req.params.id, 'no_xp_roles') || [],
@@ -575,6 +596,12 @@ function createApp(client, deps = {}) {
 
     const r = V.validateConfigPatch(req.body, 'leveling');
     if (!r.ok) return badRequest(res, r.error);
+    // Same rules as /levelrole: a new reward role must be one the bot can hand out AND one below the person
+    // setting it. Without this, Manage Server alone could make an admin role a level reward and then level up.
+    if (Array.isArray(r.values.level_roles)) {
+      const problem = await levelRoleProblem(guild, req.user.id, r.values.level_roles);
+      if (problem) return res.status(403).json({ error: problem });
+    }
     for (const [key, value] of Object.entries(r.values)) store.setConfig(req.params.id, key, value);
     track(req, 'leveling.update', describeKeys(r.values));
     res.json({ success: true });

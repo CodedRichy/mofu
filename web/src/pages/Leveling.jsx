@@ -218,7 +218,7 @@ export function Leveling() {
     if (!level || level < 1 || !newRoleId.trim()) return
     const existing = config.level_roles || []
     if (existing.some(r => r.level === level)) return
-    updateConfig('level_roles', [...existing, { level, roleId: newRoleId.trim() }].sort((a, b) => a.level - b.level))
+    updateConfig('level_roles', [...existing, { level, role: newRoleId.trim() }].sort((a, b) => a.level - b.level))
     setNewRoleLevel('')
     setNewRoleId('')
   }
@@ -579,7 +579,7 @@ export function Leveling() {
                             background: 'var(--surface-2)', padding: '2px 8px',
                             borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)',
                             border: '1px solid var(--border-subtle)',
-                          }}>{reward.roleId}</code>
+                          }}>{reward.role ?? reward.roleId}</code>
                         </div>
                         <Button
                           variant="destructive"
