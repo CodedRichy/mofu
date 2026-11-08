@@ -34,7 +34,7 @@ module.exports = {
       if (reasonErr) return interaction.reply({ embeds: [response({ client: interaction.client, description: reasonErr, color: colors.error })], ephemeral: true });
 
       const botMember = interaction.guild.members.me;
-      if (member.roles.highest.position >= interaction.member.roles.highest.position) {
+      if (interaction.guild.ownerId !== interaction.user.id && member.roles.highest.position >= interaction.member.roles.highest.position) {
         return interaction.reply({ embeds: [response({ client: interaction.client, description: 'You cannot target someone with an equal or higher role.', color: colors.error })], ephemeral: true });
       }
       if (member.roles.highest.position >= botMember.roles.highest.position) {
@@ -74,7 +74,18 @@ module.exports = {
         return interaction.reply({ embeds: [response({ client: interaction.client, description: 'User is not image muted.', color: colors.error })], ephemeral: true });
       }
 
-      await member.roles.remove(imuteRole);
+      const botMember = interaction.guild.members.me;
+      if (interaction.guild.ownerId !== interaction.user.id && member.roles.highest.position >= interaction.member.roles.highest.position) {
+        return interaction.reply({ embeds: [response({ client: interaction.client, description: 'You cannot target someone with an equal or higher role.', color: colors.error })], ephemeral: true });
+      }
+      if (member.roles.highest.position >= botMember.roles.highest.position) {
+        return interaction.reply({ embeds: [response({ client: interaction.client, description: 'I cannot target someone with an equal or higher role than mine.', color: colors.error })], ephemeral: true });
+      }
+      try {
+        await member.roles.remove(imuteRole);
+      } catch {
+        return interaction.reply({ embeds: [response({ client: interaction.client, description: "Couldn't remove the image mute. Check my permissions and role position.", color: colors.error })], ephemeral: true });
+      }
       const caseId = modlog.openCase(interaction.guild, { action: 'Image Unmute', target: member.user, moderator: interaction.user, reason: 'Removed' });
       const embed = modAction({ client: interaction.client, action: 'Image Unmute', color: colors.success, target: member.user, moderator: interaction.user, reason: 'Removed', caseId });
       await interaction.reply({ embeds: [embed] });

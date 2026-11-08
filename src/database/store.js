@@ -197,36 +197,45 @@ module.exports = {
   },
 
   deposit(guildId, userId, amount) {
-    const e = getEconomy(guildId, userId);
-    if (amount > e.wallet) return null;
-    const cap = this.getBankCapacity(guildId, userId);
-    const space = Math.max(0, cap - e.bank);
-    const actual = Math.min(amount, space);
-    if (actual <= 0) return { wallet: e.wallet, bank: e.bank, full: true };
-    const wallet = e.wallet - actual;
-    const bank = e.bank + actual;
-    saveEconomy(guildId, userId, wallet, bank);
-    return { wallet, bank, deposited: actual };
+    // one transaction: all reads and writes commit together or not at all
+    return db.transaction(() => {
+      const e = getEconomy(guildId, userId);
+      if (amount > e.wallet) return null;
+      const cap = this.getBankCapacity(guildId, userId);
+      const space = Math.max(0, cap - e.bank);
+      const actual = Math.min(amount, space);
+      if (actual <= 0) return { wallet: e.wallet, bank: e.bank, full: true };
+      const wallet = e.wallet - actual;
+      const bank = e.bank + actual;
+      saveEconomy(guildId, userId, wallet, bank);
+      return { wallet, bank, deposited: actual };
+    })();
   },
 
   withdraw(guildId, userId, amount) {
-    const e = getEconomy(guildId, userId);
-    if (amount > e.bank) return null;
-    const wallet = e.wallet + amount;
-    const bank = e.bank - amount;
-    saveEconomy(guildId, userId, wallet, bank);
-    return { wallet, bank };
+    // one transaction: all reads and writes commit together or not at all
+    return db.transaction(() => {
+      const e = getEconomy(guildId, userId);
+      if (amount > e.bank) return null;
+      const wallet = e.wallet + amount;
+      const bank = e.bank - amount;
+      saveEconomy(guildId, userId, wallet, bank);
+      return { wallet, bank };
+    })();
   },
 
   transfer(guildId, fromId, toId, amount) {
-    const from = getEconomy(guildId, fromId);
-    if (amount > from.wallet) return null;
-    const to = getEconomy(guildId, toId);
-    const fromWallet = from.wallet - amount;
-    const toWallet = to.wallet + amount;
-    saveEconomy(guildId, fromId, fromWallet, from.bank);
-    saveEconomy(guildId, toId, toWallet, to.bank);
-    return { from: fromWallet, to: toWallet };
+    // one transaction: all reads and writes commit together or not at all
+    return db.transaction(() => {
+      const from = getEconomy(guildId, fromId);
+      if (amount > from.wallet) return null;
+      const to = getEconomy(guildId, toId);
+      const fromWallet = from.wallet - amount;
+      const toWallet = to.wallet + amount;
+      saveEconomy(guildId, fromId, fromWallet, from.bank);
+      saveEconomy(guildId, toId, toWallet, to.bank);
+      return { from: fromWallet, to: toWallet };
+    })();
   },
 
   getLeaderboard(guildId, limit = 10) {

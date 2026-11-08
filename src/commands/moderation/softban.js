@@ -16,7 +16,7 @@ module.exports = {
   async execute(interaction) {
     const user = interaction.options.getUser('user');
     const reason = interaction.options.getString('reason') || 'No reason provided';
-    const member = interaction.guild.members.cache.get(user.id);
+    const member = interaction.guild.members.cache.get(user.id) || await interaction.guild.members.fetch(user.id).catch(() => null);
 
     const reasonErr = reasonError(reason);
     if (reasonErr) {
@@ -31,7 +31,7 @@ module.exports = {
       if (!member.bannable) {
         return interaction.reply({ embeds: [response({ client: interaction.client, description: "I can't softban this member.", color: colors.error })], ephemeral: true });
       }
-      if (member.roles.highest.position >= interaction.member.roles.highest.position) {
+      if (interaction.guild.ownerId !== interaction.user.id && member.roles.highest.position >= interaction.member.roles.highest.position) {
         return interaction.reply({ embeds: [response({ client: interaction.client, description: "You can't softban someone with a higher or equal role.", color: colors.error })], ephemeral: true });
       }
     }

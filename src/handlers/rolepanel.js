@@ -11,6 +11,8 @@ const db = () => require('../database/rolepanels');
 
 // One pick at a time per member, so two fast clicks in unique mode cannot both add.
 const busy = new Set();
+// Reactions queue per member (promise chain) rather than being dropped while one is in flight.
+const reactionChains = new Map();
 
 const reply = (interaction, description, color = colors.error) =>
   interaction.editReply({ embeds: [response({ client: interaction.client, description, color })] });
@@ -19,20 +21,23 @@ const reply = (interaction, description, color = colors.error) =>
 async function applyPlan(guild, member, plan, entries) {
   const byRole = new Map(entries.map((e) => [e.role_id, e]));
   const result = { added: [], removed: [], already: plan.already, missing: plan.missing, failed: [] };
-  for (const id of plan.remove) {
-    const role = guild.roles.cache.get(id);
-    const problem = rp.grantProblem(guild, role, byRole.get(id), { adding: false });
-    if (problem) { result.failed.push(problem); continue; }
-    try { await member.roles.remove(id, 'Role panel'); result.removed.push(id); } catch (err) {
-      result.failed.push(`Couldn't remove **${escapeMarkdown(role.name)}**: ${err.code === 50013 ? 'I am missing permission.' : 'Discord refused.'}`);
-    }
-  }
   for (const id of plan.add) {
     const role = guild.roles.cache.get(id);
     const problem = rp.grantProblem(guild, role, byRole.get(id), { adding: true });
     if (problem) { result.failed.push(problem); continue; }
     try { await member.roles.add(id, 'Role panel'); result.added.push(id); } catch (err) {
       result.failed.push(`Couldn't add **${escapeMarkdown(role.name)}**: ${err.code === 50013 ? 'I am missing permission.' : 'Discord refused.'}`);
+    }
+  }
+  // Adds go first: if one fails, skipping the removals keeps the member from ending up with nothing.
+  if (result.failed.length && plan.remove.length) {
+    result.failed.push('Skipped removing your other roles because a role could not be added.');
+  } else for (const id of plan.remove) {
+    const role = guild.roles.cache.get(id);
+    const problem = rp.grantProblem(guild, role, byRole.get(id), { adding: false });
+    if (problem) { result.failed.push(problem); continue; }
+    try { await member.roles.remove(id, 'Role panel'); result.removed.push(id); } catch (err) {
+      result.failed.push(`Couldn't remove **${escapeMarkdown(role.name)}**: ${err.code === 50013 ? 'I am missing permission.' : 'Discord refused.'}`);
     }
   }
   return result;
@@ -131,12 +136,13 @@ async function handleReaction(reaction, user, added) {
   const entry = panel.entries.find((e) => e.emoji_key === key);
   if (!entry) return true;
 
-  const member = await guild.members.fetch(user.id).catch(() => null);
-  if (!member) return true;
   const lock = `${guild.id}:${user.id}`;
-  if (busy.has(lock)) return true;
-  busy.add(lock);
-  try {
+  // Serialize per member instead of dropping a reaction that arrives while another is being applied.
+  const prev = reactionChains.get(lock) || Promise.resolve();
+  const run = prev.catch(() => {}).then(async () => {
+    // fetched after waiting, so the roles are fresh
+    const member = await guild.members.fetch(user.id).catch(() => null);
+    if (!member) return;
     const held = new Set(member.roles.cache.keys());
     const plan = rp.planReaction(panel.mode, held, panel.entries.map((e) => e.role_id), entry.role_id, added);
     const result = await applyPlan(guild, member, plan, panel.entries);
@@ -151,8 +157,14 @@ async function handleReaction(reaction, user, added) {
     }
     // Drop / verify reactions are one-shot: clear the member's reaction so they can use it again.
     if (added && (panel.mode === 'drop' || panel.mode === 'verify')) reaction.users.remove(user.id).catch(() => {});
+  });
+  reactionChains.set(lock, run);
+  try {
+    await run;
+  } catch (err) {
+    log.warn('Role panel reaction failed:', err.message);
   } finally {
-    busy.delete(lock);
+    if (reactionChains.get(lock) === run) reactionChains.delete(lock);
   }
   return true;
 }

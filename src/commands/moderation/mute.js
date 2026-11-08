@@ -47,7 +47,7 @@ module.exports = {
       return interaction.reply({ embeds: [response({ client: interaction.client, description: "I can't mute this member.", color: colors.error })], ephemeral: true });
     }
 
-    if (member.roles.highest.position >= interaction.member.roles.highest.position) {
+    if (interaction.guild.ownerId !== interaction.user.id && member.roles.highest.position >= interaction.member.roles.highest.position) {
       return interaction.reply({ embeds: [response({ client: interaction.client, description: "You can't mute someone with a higher or equal role.", color: colors.error })], ephemeral: true });
     }
 

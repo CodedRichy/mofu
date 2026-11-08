@@ -23,6 +23,7 @@ module.exports = {
       log.error('Slash command registration failed:', err?.message || err);
     }
     restoreGiveaways(client);
+    try { require('../utils/bumpReminder').restore(client); } catch (err) { log.warn('bump restore failed:', err.message); }
     require('../database/reminders').startSweep(client);
     require('../utils/tempban').startSweep(client); // DB-backed: expired tempbans are lifted even after a restart
     require('../utils/alerts').startSweep(client); // free social alerts; idempotent, no-op without subscriptions

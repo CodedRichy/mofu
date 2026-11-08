@@ -10,6 +10,7 @@ const TICK_MS = 6000;
 const MAX_TICK_MS = 60000;
 const EDIT_BUDGET_PER_SEC = 15; // all live cards combined
 const BAR = 18;
+const GONE_CODES = new Set([10008, 10003, 50001, 50013]); // unknown message / channel, missing access / permissions
 const DISC = ['◐', '◓', '◑', '◒']; // half-filled circles: reads as a turning disc
 const LOOP_LABEL = { [QueueRepeatMode.OFF]: 'off', [QueueRepeatMode.TRACK]: 'track', [QueueRepeatMode.QUEUE]: 'queue', [QueueRepeatMode.AUTOPLAY]: 'autoplay' };
 
@@ -72,6 +73,7 @@ function finalEmbed(client, text) {
 }
 
 function clear(guildId, finalText, client) {
+  startSeq.delete(guildId); // the queue is over; the counter must not outlive it
   const st = live.get(guildId);
   if (!st) return;
   clearInterval(st.timer);
@@ -87,6 +89,12 @@ async function start(queue) {
   const client = queue.guild.client;
 
   const old = live.get(guildId);
+  // Loop-track replays fire playerStart for the same track: keep the card and update it in place.
+  if (old && old.trackId === queue.currentTrack.id && queue.repeatMode === QueueRepeatMode.TRACK) {
+    old.frame = 0;
+    old.message.edit(buildCard(client, queue, 0)).catch(() => {});
+    return;
+  }
   if (old) { clearInterval(old.timer); old.message.delete().catch(() => {}); live.delete(guildId); }
 
   // Rapid skips fire several playerStart events before the first send resolves. Only the newest start may own the
@@ -98,7 +106,7 @@ async function start(queue) {
   try { message = await channel.send(buildCard(client, queue, 0)); } catch (err) { log.warn(`now-playing card failed: ${err.message}`); return; }
   if (startSeq.get(guildId) !== mySeq) { message.delete().catch(() => {}); return; }
 
-  const st = { message, frame: 0, busy: false, timer: null };
+  const st = { message, frame: 0, busy: false, timer: null, trackId: queue.currentTrack.id, fails: 0 };
   const tick = async () => {
     if (live.get(guildId) !== st) return; // replaced or cleared: never touch another card's state
     const q = useQueue(guildId);
@@ -106,9 +114,15 @@ async function start(queue) {
     if (!q.node.isPaused() && !st.busy) {
       st.busy = true;
       st.frame += 1;
-      try { await st.message.edit(buildCard(client, q, st.frame)); }
-      catch (err) { clear(guildId); log.warn(`now-playing edit stopped: ${err.message}`); return; }
-      finally { st.busy = false; }
+      try {
+        await st.message.edit(buildCard(client, q, st.frame));
+        st.fails = 0;
+      } catch (err) {
+        // Message/channel gone or access lost: stop. Anything else (429, 5xx, network) is retried a few times.
+        st.fails += 1;
+        if (GONE_CODES.has(err?.code) || st.fails >= 3) { clear(guildId); log.warn(`now-playing edit stopped: ${err.message}`); return; }
+        log.warn(`now-playing edit failed (${st.fails}/3), will retry: ${err.message}`);
+      } finally { st.busy = false; }
     }
     schedule();
   };

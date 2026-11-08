@@ -54,6 +54,9 @@ module.exports = {
       return fail('I need the **Ban Members** permission.');
     }
 
+    const existing = await guild.bans?.fetch(user.id).catch(() => null);
+    if (existing) return fail('That user is already banned.');
+
     const dur = format(ms);
     const expiresAt = Date.now() + ms;
     const caseId = modlog.openCase(guild, { action: 'tempban', target: user, moderator: interaction.user, reason, duration: dur });

@@ -31,11 +31,8 @@ module.exports = {
       return interaction.reply({ embeds: [response({ client: interaction.client, description: `You need at least **⌬ ${MIN_WALLET.toLocaleString()}** in your wallet to start a heist.`, color: colors.error })], ephemeral: true });
     }
 
-    store.setCooldown(guild.id, user.id, 'heist', Date.now() + HEIST_COOLDOWN);
-
     const crew = new Set([user.id]);
     const heistId = `heist_${user.id}_${Date.now()}`;
-    lobbiesByUser.set(user.id, heistId);
     const startTime = Math.floor((Date.now() + JOIN_WINDOW) / 1000);
 
     function buildLobbyEmbed() {
@@ -54,6 +51,10 @@ module.exports = {
     );
 
     const msg = await interaction.reply({ embeds: [buildLobbyEmbed()], components: [button], fetchReply: true });
+
+    // Cooldown and lobby slot are taken only once the lobby is really on screen (a failed reply costs nothing)
+    store.setCooldown(guild.id, user.id, 'heist', Date.now() + HEIST_COOLDOWN);
+    lobbiesByUser.set(user.id, heistId);
 
     const collector = msg.createMessageComponentCollector({ time: JOIN_WINDOW });
 
@@ -92,6 +93,7 @@ module.exports = {
     collector.on('end', async () => {
       const crewArray = [...crew];
       for (const id of crewArray) lobbiesByUser.delete(id);
+      try {
       const crewSize = crewArray.length;
       const successChance = Math.min(0.3 + 0.1 * crewSize, 0.8);
       const success = Math.random() < successChance;
@@ -128,6 +130,9 @@ module.exports = {
           );
 
         await interaction.editReply({ embeds: [embed], components: [] });
+      }
+      } catch (err) {
+        require('../../utils/logger').warn?.('heist end failed', err);
       }
     });
   },

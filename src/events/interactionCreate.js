@@ -11,6 +11,7 @@ const giveawayDb = require('../database/giveaway');
 
 const cooldowns = new Collection();
 const ticketLocks = new Set();
+const ticketClosing = new Set(); // channel ids with a close in progress
 
 const categoryEmojis = {
   moderation: '🛡️',
@@ -166,7 +167,9 @@ async function handleButton(interaction) {
       const supportRole = store.getConfig(guild.id, 'ticket_support_role');
       const categoryId = store.getConfig(guild.id, 'ticket_category');
 
-      const channel = await guild.channels.create({
+      let channel;
+      try {
+      channel = await guild.channels.create({
         name: `ticket-${user.username}`,
         type: ChannelType.GuildText,
         parent: categoryId || null,
@@ -178,6 +181,10 @@ async function handleButton(interaction) {
           ...(supportRole ? [{ id: supportRole, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }] : []),
         ],
       });
+      } catch (err) {
+        log.warn('ticket channel create failed:', err.message);
+        return interaction.editReply({ embeds: [response({ client: interaction.client, description: "Couldn't create your ticket channel. Ask an admin to check my Manage Channels permission and the ticket category.", color: colors.error })] }).catch(() => {});
+      }
 
       const embed = base(interaction.client, colors.primary)
         .setAuthor({ name: 'Ticket Opened', iconURL: user.displayAvatarURL() })
@@ -207,11 +214,22 @@ Describe your issue here.`);
       return interaction.reply({ embeds: [response({ client: interaction.client, description: 'Only the ticket opener or support staff can close this ticket.', color: colors.error })], ephemeral: true });
     }
 
-    await interaction.reply({ embeds: [response({ client: interaction.client, description: `Ticket closed by ${user}. Deleting in ${TICKET_DELETE_MS / 1000} seconds...`, color: colors.muted })] });
+    if (ticketClosing.has(interaction.channel.id)) {
+      return interaction.reply({ embeds: [response({ client: interaction.client, description: 'This ticket is already being closed.', color: colors.muted })], ephemeral: true });
+    }
+    ticketClosing.add(interaction.channel.id);
 
-    const logsChannel = store.getConfig(guild.id, 'ticket_logs');
-    if (logsChannel) {
-      const ch = guild.channels.cache.get(logsChannel);
+    try {
+      await interaction.reply({ embeds: [response({ client: interaction.client, description: `Ticket closed by ${user}. Deleting in ${TICKET_DELETE_MS / 1000} seconds...`, color: colors.muted })] });
+    } catch (err) {
+      ticketClosing.delete(interaction.channel.id);
+      throw err;
+    }
+
+    // The transcript is best effort; whatever happens, the channel is still deleted below.
+    try {
+      const logsChannel = store.getConfig(guild.id, 'ticket_logs');
+      const ch = logsChannel && guild.channels.cache.get(logsChannel);
       if (ch) {
         const messages = await interaction.channel.messages.fetch({ limit: 100 });
         const transcript = messages
@@ -231,9 +249,15 @@ Describe your issue here.`);
 
         await ch.send({ embeds: [embed], files }).catch(() => {});
       }
+    } catch (err) {
+      log.warn('ticket transcript failed:', err.message);
     }
 
-    setTimeout(() => interaction.channel.delete().catch(() => {}), TICKET_DELETE_MS);
+    const closingId = interaction.channel.id;
+    setTimeout(() => {
+      ticketClosing.delete(closingId);
+      interaction.channel.delete().catch(() => {});
+    }, TICKET_DELETE_MS);
 
   } else if (customId.startsWith('rp:')) {
     return require('../handlers/rolepanel').handleButton(interaction);

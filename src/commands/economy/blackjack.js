@@ -91,7 +91,8 @@ module.exports = {
     const amount = interaction.options.getInteger('amount');
     const bal = store.getBalance(guild.id, user.id);
 
-    if (activeGames.has(user.id)) {
+    const key = `${guild.id}:${user.id}`;
+    if (activeGames.has(key)) {
       return interaction.reply({ embeds: [response({ client: interaction.client, description: 'You already have an active game.', color: colors.error })], ephemeral: true });
     }
 
@@ -115,7 +116,7 @@ module.exports = {
     }
 
     const gameId = `bj_${user.id}_${Date.now()}`;
-    activeGames.set(user.id, { deck, playerHand, dealerHand, amount, guildId: guild.id, acted: false });
+    activeGames.set(key, { deck, playerHand, dealerHand, amount, guildId: guild.id, acted: false });
 
     const buttons = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId(`${gameId}_hit`).setLabel('Hit').setStyle(ButtonStyle.Primary),
@@ -128,7 +129,7 @@ module.exports = {
       msg = await interaction.reply({ embeds: [embed], components: [buttons], fetchReply: true });
     } catch (err) {
       // The player never saw the hand: give the bet back and free the slot
-      if (activeGames.delete(user.id)) store.addWallet(guild.id, user.id, amount);
+      if (activeGames.delete(key)) store.addWallet(guild.id, user.id, amount);
       throw err;
     }
 
@@ -139,7 +140,7 @@ module.exports = {
         return btn.reply({ content: "This isn't your game.", ephemeral: true });
       }
 
-      const game = activeGames.get(user.id);
+      const game = activeGames.get(key);
       if (!game) return btn.update({ components: [] });
 
       game.acted = true;
@@ -153,7 +154,7 @@ module.exports = {
           const pVal = handValue(game.playerHand);
 
           if (pVal > 21) {
-            activeGames.delete(user.id);
+            activeGames.delete(key);
             collector.stop();
             const embed = buildEmbed(interaction.client, user, guild.id, game.playerHand, game.dealerHand, game.amount, 'bust', false);
             return btn.update({ embeds: [embed], components: [] });
@@ -187,7 +188,7 @@ module.exports = {
           status = 'lose';
         }
 
-        activeGames.delete(user.id);
+        activeGames.delete(key);
         collector.stop();
         const embed = buildEmbed(interaction.client, user, guild.id, game.playerHand, game.dealerHand, game.amount, status, false);
         return btn.update({ embeds: [embed], components: [] });
@@ -195,14 +196,12 @@ module.exports = {
     });
 
     collector.on('end', (_, reason) => {
-      const game = activeGames.get(user.id);
+      const game = activeGames.get(key);
       if (game) {
-        // Refund only if the player never acted; walking away mid-hand forfeits the bet
-        activeGames.delete(user.id);
-        if (!game.acted) store.addWallet(guild.id, user.id, amount);
-        const text = game.acted
-          ? `Blackjack timed out mid-hand — you forfeit your **⌬ ${amount.toLocaleString()}** bet.`
-          : `Blackjack timed out — your **⌬ ${amount.toLocaleString()}** bet has been refunded.`;
+        // Walking away forfeits the bet (acted or not), so idling can't be used as a free "cancel".
+        // Known gap: pending bets are not persisted, so a restart mid-hand loses the bet.
+        activeGames.delete(key);
+        const text = `Blackjack timed out - your **⌬ ${amount.toLocaleString()}** bet was forfeited.`;
         interaction.editReply({
           embeds: [response({ client: interaction.client, description: text, color: colors.warning })],
           components: [],

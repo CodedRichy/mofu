@@ -123,7 +123,9 @@ function createApp(client, deps = {}) {
 
     let entry = tokenCache.get(token);
     if (!entry || Date.now() > entry.expiresAt) {
-      const user = await fetchUser(token).catch(() => null);
+      // the token must have been issued to THIS application, not just any Discord OAuth app
+      const ok = await verifyTokenApp(token).catch(() => false);
+      const user = ok ? await fetchUser(token).catch(() => null) : null;
       if (!user?.id) { tokenCache.delete(token); return res.status(401).json({ error: 'Invalid token' }); }
       entry = { user, expiresAt: Date.now() + 60000 };
       tokenCache.set(token, entry);
@@ -132,6 +134,16 @@ function createApp(client, deps = {}) {
     req.user = entry.user;
     if (!hit(`user:api:${entry.user.id}`, 60000, 120)) return res.status(429).json({ error: 'Rate limited' });
     next();
+  }
+
+  async function verifyTokenApp(token) {
+    const res = await fetch('https://discord.com/api/v10/oauth2/@me', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    if (!data?.application?.id || data.application.id !== config.discord.clientId) return false;
+    return !!data.expires && new Date(data.expires).getTime() > Date.now();
   }
 
   // Get user info from Discord
@@ -641,7 +653,9 @@ function createApp(client, deps = {}) {
     const current = store.getBalance(req.params.id, req.params.userId);
 
     const newWallet = r.values.wallet ?? current.wallet;
-    const newBank = r.values.bank ?? current.bank;
+    // never negative, and the bank cannot exceed the user's capacity (an already-over balance is left as is)
+    const cap = store.getBankCapacity(req.params.id, req.params.userId);
+    const newBank = Math.max(0, r.values.bank === undefined ? current.bank : Math.min(r.values.bank, Math.max(cap, current.bank)));
 
     // Adjust wallet and bank to desired values
     const e = store.getBalance(req.params.id, req.params.userId);
@@ -696,7 +710,8 @@ function createApp(client, deps = {}) {
 function startDashboard(client) {
   const app = createApp(client);
   const port = config.dashboard.port;
-  app.listen(port, () => log.info(`API server running on port ${port}`));
+  const server = app.listen(port, () => log.info(`API server running on port ${port}`));
+  server.on('error', (err) => log.error(`API server failed (port ${port}); bot keeps running`, err));
   return app;
 }
 

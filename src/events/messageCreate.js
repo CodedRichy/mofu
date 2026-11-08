@@ -194,14 +194,8 @@ module.exports = {
   canInvokeAi,
   async execute(message) {
     // Bump reminder — detect Disboard bump confirmation
-    if (message.author.id === '302050872383242240' && message.embeds[0]?.description?.includes('Bump done')) {
-      const bumpChannel = store.getConfig(message.guild.id, 'bump_channel');
-      if (bumpChannel) {
-        setTimeout(() => {
-          const ch = message.guild.channels.cache.get(bumpChannel);
-          if (ch) ch.send({ embeds: [response({ client: message.client, description: 'Time to bump! Use `/bump` to bump the server.', color: colors.primary })] }).catch(() => {});
-        }, 7200000);
-      }
+    if (message.guild && message.author.id === '302050872383242240' && message.embeds[0]?.description?.includes('Bump done')) {
+      require('../utils/bumpReminder').onBump(message.client, message.guild.id); // persisted; restored on ready
     }
 
     if (message.author.bot || !message.guild) return;
@@ -331,17 +325,22 @@ module.exports = {
     const sticky = store.getConfig(message.guild.id, `sticky_${message.channel.id}`);
     if (sticky && !stickyLocks.has(message.channel.id)) {
       stickyLocks.add(message.channel.id);
-      try {
-        const lastStickyId = store.getConfig(message.guild.id, `sticky_msg_${message.channel.id}`);
-        if (lastStickyId) {
-          const old = await message.channel.messages.fetch(lastStickyId).catch(() => null);
-          if (old) await old.delete().catch(() => {});
+      // Fire and forget: the repost (fetch, delete, send) must not hold up the rest of this handler.
+      (async () => {
+        try {
+          const lastStickyId = store.getConfig(message.guild.id, `sticky_msg_${message.channel.id}`);
+          if (lastStickyId) {
+            const old = await message.channel.messages.fetch(lastStickyId).catch(() => null);
+            if (old) await old.delete().catch(() => {});
+          }
+          const sent = await message.channel.send({ embeds: [response({ client: message.client, description: `📌 ${sticky}`, color: colors.muted })] }).catch(() => null);
+          if (sent) store.setConfig(message.guild.id, `sticky_msg_${message.channel.id}`, sent.id);
+        } catch (err) {
+          log.warn('sticky repost failed:', err.message);
+        } finally {
+          stickyLocks.delete(message.channel.id);
         }
-        const sent = await message.channel.send({ embeds: [response({ client: message.client, description: `📌 ${sticky}`, color: colors.muted })] }).catch(() => null);
-        if (sent) store.setConfig(message.guild.id, `sticky_msg_${message.channel.id}`, sent.id);
-      } finally {
-        stickyLocks.delete(message.channel.id);
-      }
+      })();
     }
 
     // AFK — clear if user speaks

@@ -152,9 +152,11 @@ test('app: access checks, validation, AI gating (no live db)', async () => {
   global.fetch = async (url, opts) => {
     const tok = (opts?.headers?.Authorization || '').slice(7);
     if (!perms[tok]) return { ok: false, json: async () => ({}) };
+    if (String(url).endsWith('/oauth2/@me')) return { ok: true, json: async () => ({ application: { id: require('../src/config').discord.clientId }, expires: new Date(Date.now() + 3600000).toISOString() }) };
     if (String(url).endsWith('/users/@me')) return { ok: true, json: async () => ({ id: `u-${tok}` }) };
     return { ok: true, json: async () => perms[tok] };
   };
+  require('../src/config').discord.clientId = require('../src/config').discord.clientId || 'test-app-id';
   const { createApp } = require('../src/dashboard/server');
   const app = createApp(client, { store, ai: { chatWithHistory: async (m, h) => { aiCalls.push(h); return 'ok'; } }, xpDb: {} });
   const server = app.listen(0);
