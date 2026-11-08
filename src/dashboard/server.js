@@ -284,6 +284,20 @@ function createApp(client, deps = {}) {
     return guild;
   }
 
+  // Dashboard audit trail. Injectable; with an injected store (tests) and no injected audit it is off, so
+  // test runs never write to the live database. Never throws: a failed audit write must not fail the change.
+  const audit = deps.audit || (deps.store ? null : require('../database/dashaudit'));
+  function track(req, action, detail) {
+    if (!audit) return;
+    try {
+      audit.record({ guildId: req.params.id, userId: req.user.id, username: req.user.global_name || req.user.username, action, detail });
+    } catch (err) { log.warn('dashboard audit write failed: ' + err.message); }
+  }
+  // Key names only; booleans keep their value (on/off is not sensitive). Never the other values.
+  function describeKeys(values) {
+    return Object.entries(values).map(([k, v]) => (typeof v === 'boolean' ? `${k}=${v}` : k)).join(', ');
+  }
+
   function badRequest(res, msg) { return res.status(400).json({ error: msg }); }
   function badUserId(req, res) {
     if (V.isSnowflake(req.params.userId)) return false;
@@ -326,6 +340,7 @@ function createApp(client, deps = {}) {
       if (key === 'logging_channel') store.setConfig(req.params.id, 'log_channel', value);
       if (key === 'log_channel') store.setConfig(req.params.id, 'logging_channel', value);
     }
+    track(req, 'config.update', describeKeys(r.values));
 
     res.json({ success: true });
   });
@@ -396,6 +411,7 @@ function createApp(client, deps = {}) {
     try {
       const info = db.prepare('DELETE FROM warnings WHERE id = ? AND guild_id = ?').run(req.params.wid, req.params.id);
       if (info.changes === 0) return res.status(404).json({ error: 'Warning not found' });
+      track(req, 'warning.delete', 'warning #' + req.params.wid);
       res.json({ success: true });
     } catch (err) {
       log.error('dashboard route failed', err);
@@ -441,6 +457,7 @@ function createApp(client, deps = {}) {
     try {
       const info = db.prepare('DELETE FROM notes WHERE id = ? AND guild_id = ?').run(req.params.nid, req.params.id);
       if (info.changes === 0) return res.status(404).json({ error: 'Note not found' });
+      track(req, 'note.delete', 'note #' + req.params.nid);
       res.json({ success: true });
     } catch (err) {
       log.error('dashboard route failed', err);
@@ -532,6 +549,7 @@ function createApp(client, deps = {}) {
     const result = r.values.level !== undefined
       ? xpDb.setLevel(req.params.id, req.params.userId, r.values.level)
       : xpDb.setXp(req.params.id, req.params.userId, r.values.xp);
+    track(req, 'xp.set', 'user ' + req.params.userId + ': ' + (r.values.level !== undefined ? 'level' : 'xp'));
     res.json(result);
   });
 
@@ -558,6 +576,7 @@ function createApp(client, deps = {}) {
     const r = V.validateConfigPatch(req.body, 'leveling');
     if (!r.ok) return badRequest(res, r.error);
     for (const [key, value] of Object.entries(r.values)) store.setConfig(req.params.id, key, value);
+    track(req, 'leveling.update', describeKeys(r.values));
     res.json({ success: true });
   });
 
@@ -582,6 +601,7 @@ function createApp(client, deps = {}) {
     if (!r.ok) return badRequest(res, r.error);
     try {
       store.addCustomCommand(req.params.id, r.values.name, { response: r.values.response, embed: false });
+      track(req, 'custom_command.create', 'command ' + r.values.name);
       res.json({ success: true });
     } catch (err) {
       log.error('dashboard route failed', err);
@@ -596,6 +616,7 @@ function createApp(client, deps = {}) {
     try {
       const removed = store.removeCustomCommand(req.params.id, String(req.params.name).slice(0, 64));
       if (!removed) return res.status(404).json({ error: 'Command not found' });
+      track(req, 'custom_command.delete', 'command ' + String(req.params.name).slice(0, 64));
       res.json({ success: true });
     } catch (err) {
       log.error('dashboard route failed', err);
@@ -621,6 +642,7 @@ function createApp(client, deps = {}) {
     const r = V.validateConfigPatch(req.body, 'automod');
     if (!r.ok) return badRequest(res, r.error);
     for (const [key, value] of Object.entries(r.values)) store.setConfig(req.params.id, key, value);
+    track(req, 'automod.update', describeKeys(r.values));
     res.json({ success: true });
   });
 
@@ -671,6 +693,7 @@ function createApp(client, deps = {}) {
     store.addBank(req.params.id, req.params.userId, newBank - updated.bank);
 
     const final = store.getBalance(req.params.id, req.params.userId);
+    track(req, 'economy.set', 'user ' + req.params.userId + ': ' + Object.keys(r.values).join(', '));
     res.json(final);
   });
 
@@ -688,6 +711,21 @@ function createApp(client, deps = {}) {
     ];
 
     res.json(items);
+  });
+
+  // Dashboard activity log (changes made through the dashboard only). Same Manage Server check as the rest.
+  app.get('/api/guilds/:id/audit', authMiddleware, async (req, res) => {
+    const guild = await verifyGuildAccess(req, res);
+    if (!guild) return;
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 1), 50);
+    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+    try {
+      if (!audit) return res.json({ records: [], total: 0 });
+      res.json({ records: audit.list(req.params.id, { limit, offset }), total: audit.count(req.params.id) });
+    } catch (err) {
+      log.error('dashboard route failed', err);
+      res.status(500).json({ error: 'Failed to fetch activity' });
+    }
   });
 
   // Bot stats

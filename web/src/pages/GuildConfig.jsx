@@ -1,11 +1,12 @@
 import { useState, useEffect, useId } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Save, Shield, Bot, Bell, Check, Settings, Hash, MessageSquare, Server, Sparkles, ExternalLink, Zap, Terminal, Trash2, Plus, AlertTriangle, Coins, TrendingUp } from 'lucide-react'
+import { ArrowLeft, Save, Shield, Bot, Bell, Check, Settings, Hash, MessageSquare, Server, Sparkles, ExternalLink, Zap, Terminal, Trash2, Plus, AlertTriangle, Coins, TrendingUp, History } from 'lucide-react'
 import { NOISE_SVG } from '../components/Layout'
 import { api } from '../lib/api'
 import { useToken } from '../lib/auth'
 import { useListText } from '../lib/listText'
 import { BRAND } from '../lib/brand'
+import { AuditLog } from '../components/AuditLog'
 
 function NavItem({ icon: Icon, label, active, onClick }) {
   const [h, setH] = useState(false)
@@ -333,6 +334,7 @@ export function GuildConfig() {
     { id: 'logging', label: 'Logging', icon: Bell },
     { id: 'commands', label: 'Custom Commands', icon: Terminal },
     { id: 'ai', label: 'AI', icon: Bot },
+    { id: 'audit', label: 'Activity', icon: History },
   ]
 
   return (
@@ -722,6 +724,12 @@ export function GuildConfig() {
                   </div>
                 </>
               )}
+            </Panel>
+          )}
+
+          {tab === 'audit' && (
+            <Panel title="Activity" description="who changed what, and when.">
+              <AuditLog guildId={guildId} token={token} />
             </Panel>
           )}
 
