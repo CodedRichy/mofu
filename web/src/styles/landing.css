@@ -416,39 +416,39 @@
    the dashboard and other pages keep the global tokens.
 
    Colour decision: mofu is a white cat, so the page is a warm cocoa dark (hue 55, chroma ~0.012) instead of
-   neutral black, and the one lively accent is mochi-peach, oklch(0.84 0.115 58). Peach is the warm partner of
+   neutral black, and the one lively accent is neutral white, oklch(0.84 0.006 260). Peach is the warm partner of
    a white mascot, sits far from Discord's blurple (so the Discord replicas stay readable as Discord), and as a
    solid fill with near-black text it measures about 12:1. The old teal halftone is retired in favour of it.
    ===================================================================================================== */
 .ln {
-  --peach: oklch(0.84 0.115 58);
-  --peach-hover: oklch(0.89 0.1 58);
-  --peach-soft: oklch(0.84 0.115 58 / 0.14);
-  --peach-line: oklch(0.84 0.115 58 / 0.32);
-  --halftone: oklch(0.8 0.12 52);
-  --halftone-dim: oklch(0.46 0.07 50);
-  --halftone-glow: oklch(0.6 0.12 50 / 0.3);
+  --peach: oklch(0.96 0.004 260);
+  --peach-hover: oklch(1 0 0);
+  --peach-soft: oklch(0.84 0.006 260 / 0.14);
+  --peach-line: oklch(0.84 0.006 260 / 0.32);
+  --halftone: oklch(0.8 0.006 260);
+  --halftone-dim: oklch(0.46 0.006 260);
+  --halftone-glow: oklch(0.6 0.006 260 / 0.3);
   --ln-ring: var(--peach);
 
-  --bg: oklch(0.155 0.012 55);
-  --bg-subtle: oklch(0.185 0.013 55);
-  --surface-1: oklch(0.205 0.014 55);
-  --surface-2: oklch(0.245 0.015 55);
-  --surface-3: oklch(0.29 0.016 55);
-  --fg-1: oklch(0.975 0.01 75);
-  --fg-2: oklch(0.975 0.01 75 / 0.74);
-  --fg-3: oklch(0.975 0.01 75 / 0.58);
-  --border-default: oklch(0.975 0.01 75 / 0.1);
-  --border-strong: oklch(0.975 0.01 75 / 0.2);
+  --bg: oklch(0.155 0.006 260);
+  --bg-subtle: oklch(0.185 0.006 260);
+  --surface-1: oklch(0.205 0.006 260);
+  --surface-2: oklch(0.245 0.006 260);
+  --surface-3: oklch(0.29 0.006 260);
+  --fg-1: oklch(0.975 0.006 260);
+  --fg-2: oklch(0.975 0.006 260 / 0.74);
+  --fg-3: oklch(0.975 0.006 260 / 0.58);
+  --border-default: oklch(0.975 0.006 260 / 0.1);
+  --border-strong: oklch(0.975 0.006 260 / 0.2);
   --accent: var(--peach);
   --accent-hover: var(--peach-hover);
-  --accent-fg: oklch(0.18 0.02 55);
-  --dc-bg: oklch(0.17 0.012 55); --dc-embed: oklch(0.225 0.014 55); --dc-line: oklch(0.3 0.015 55);
+  --accent-fg: oklch(0.18 0.006 260);
+  --dc-bg: oklch(0.17 0.006 260); --dc-embed: oklch(0.225 0.006 260); --dc-line: oklch(0.3 0.006 260);
 
   position: relative; isolation: isolate;
   background:
-    radial-gradient(ellipse 70% 38% at 85% 0%, oklch(0.4 0.09 50 / 0.35), transparent 70%),
-    radial-gradient(ellipse 60% 30% at 0% 18%, oklch(0.35 0.07 20 / 0.22), transparent 70%),
+    radial-gradient(ellipse 70% 38% at 85% 0%, oklch(0.4 0.006 260 / 0.35), transparent 70%),
+    radial-gradient(ellipse 60% 30% at 0% 18%, oklch(0.35 0.006 260 / 0.22), transparent 70%),
     var(--bg);
   color: var(--fg-1);
 }
@@ -459,7 +459,7 @@
 }
 .ln-mascot { background: var(--peach-soft); }
 .ln-pills li { background: var(--peach); }
-.ln-stage { background: linear-gradient(160deg, oklch(0.26 0.03 52), var(--surface-1) 55%); }
+.ln-stage { background: linear-gradient(160deg, oklch(0.26 0.006 260), var(--surface-1) 55%); }
 
 /* ---- reveal: visible unless Landing arms it (below the fold, observer present); then 4s hard fallback ---- */
 .ln-reveal { opacity: 1; transform: none; transition: opacity 600ms var(--ln-ease), transform 600ms var(--ln-ease); }
@@ -475,12 +475,12 @@
 .ln-top-copy { display: grid; justify-items: start; min-width: 0; }
 .ln-top .ln-cta { justify-content: flex-start; }
 .ln-top .ln-devnote { margin-left: 0; }
-.ln-aura { left: 72%; top: 0; width: min(1100px, 140vw); background: radial-gradient(closest-side, oklch(0.62 0.13 50 / 0.34), transparent 100%); }
-.ln-cat { width: clamp(72px, 9vw, 104px); box-shadow: 0 0 0 5px var(--bg), 0 0 0 6px var(--peach-line), 0 18px 60px -10px oklch(0.6 0.13 50 / 0.55); }
+.ln-aura { left: 72%; top: 0; width: min(1100px, 140vw); background: radial-gradient(closest-side, oklch(0.62 0.006 260 / 0.34), transparent 100%); }
+.ln-cat { width: clamp(72px, 9vw, 104px); box-shadow: 0 0 0 5px var(--bg), 0 0 0 6px var(--peach-line), 0 18px 60px -10px oklch(0.6 0.006 260 / 0.55); }
 .ln-h1 { font-size: clamp(36px, 4.7vw, 78px); line-height: 0.96; letter-spacing: -0.035em; text-wrap: balance; }
 .ln-h1 span { color: var(--peach); }
 .ln-lede { max-width: 46ch; text-wrap: pretty; }
-.ln-btn--primary:hover { box-shadow: 0 10px 30px -10px oklch(0.7 0.13 55 / 0.7); }
+.ln-btn--primary:hover { box-shadow: 0 10px 30px -10px oklch(0.7 0.006 260 / 0.7); }
 .ln-proof { margin: clamp(12px, 2vw, 24px) auto clamp(36px, 5vw, 64px); }
 .ln-proof li::before { background: var(--peach); }
 
@@ -489,7 +489,7 @@
 .hs {
   position: relative; margin: 0; border-radius: var(--radius-xl, 18px); background: var(--dc-bg);
   border: 1px solid var(--peach-line);
-  box-shadow: 0 1px 0 oklch(1 0 0 / 0.06) inset, 0 40px 90px -30px oklch(0.05 0.02 50 / 0.9), 0 0 0 10px oklch(0.84 0.115 58 / 0.05), 0 0 120px -20px oklch(0.65 0.13 50 / 0.35);
+  box-shadow: 0 1px 0 oklch(1 0 260 / 0.06) inset, 0 40px 90px -30px oklch(0.05 0.006 260 / 0.9), 0 0 0 10px oklch(0.84 0.006 260 / 0.05), 0 0 120px -20px oklch(0.65 0.006 260 / 0.35);
   transform: rotate(0.6deg);
 }
 .hs-peek { position: absolute; top: -40px; right: 28px; width: 84px; height: 84px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 5px var(--dc-bg), 0 0 0 6px var(--peach-line); z-index: 2; transition: transform 400ms var(--ln-ease); }
@@ -519,7 +519,7 @@
 .hs-press .dc-btn { animation: hs-press 700ms var(--ln-ease) 6s both; }
 @keyframes hs-in { from { opacity: 0; transform: translateY(10px); } }
 @keyframes hs-wait { 0% { opacity: 0; max-height: 0; } 8%, 92% { opacity: 1; max-height: 28px; } 100% { opacity: 0; max-height: 0; margin: 0; } }
-@keyframes hs-press { 0% { filter: none; transform: none; } 40% { filter: brightness(1.3); transform: scale(0.94); box-shadow: 0 0 0 4px oklch(0.84 0.115 58 / 0.5); } 100% { filter: none; transform: none; } }
+@keyframes hs-press { 0% { filter: none; transform: none; } 40% { filter: brightness(1.3); transform: scale(0.94); box-shadow: 0 0 0 4px oklch(0.84 0.006 260 / 0.5); } 100% { filter: none; transform: none; } }
 @keyframes hs-blink { 50% { opacity: 0.25; } }
 /* the typing rows are not in the layout once finished; before they start they are hidden by 'backwards' */
 .hs-t1, .hs-t2 { max-height: 0; opacity: 0; }
@@ -527,7 +527,7 @@
 /* ---- scam shield mini-demo ---- */
 .ln-shield-in { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(24px, 5vw, 72px); align-items: center; }
 .ln-shield-copy .ln-h2 { font-size: clamp(30px, 3.6vw, 52px); }
-.sd { display: grid; gap: 14px; padding: clamp(16px, 2.4vw, 24px); border-radius: var(--radius-xl, 18px); background: var(--dc-bg); border: 1px solid var(--border-default); box-shadow: 0 30px 70px -34px oklch(0.05 0.02 50 / 0.9); }
+.sd { display: grid; gap: 14px; padding: clamp(16px, 2.4vw, 24px); border-radius: var(--radius-xl, 18px); background: var(--dc-bg); border: 1px solid var(--border-default); box-shadow: 0 30px 70px -34px oklch(0.05 0.006 260 / 0.9); }
 .sd-row { display: grid; gap: 8px; }
 .sd-lab { font-size: var(--text-xs); color: var(--fg-3); text-transform: uppercase; letter-spacing: 0.08em; }
 .sd-seg { display: flex; flex-wrap: wrap; gap: 8px; }

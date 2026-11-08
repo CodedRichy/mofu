@@ -31,14 +31,20 @@ function NavLink({ to, label, active, entranceDelay = 0 }) {
         textDecoration: 'none',
         padding: '8px 16px',
         borderRadius: 'var(--radius-md)',
-        background: active ? 'rgba(255, 255, 255, 0.09)' : h ? 'rgba(255, 255, 255, 0.04)' : 'transparent',
-        boxShadow: active ? 'inset 0 0 0 1px rgba(255, 255, 255, 0.07)' : 'none',
+        background: 'transparent',
+        userSelect: 'none',
+        WebkitTapHighlightColor: 'transparent',
         transition: 'color 180ms var(--ease-spring), background 180ms var(--ease-spring), box-shadow 180ms var(--ease-spring)',
         letterSpacing: 'var(--tracking-base)',
         animation: `fade-up 450ms var(--ease-default) ${entranceDelay}ms both`,
       }}
     >
       {label}
+      {/* current page: a small underline, not a box */}
+      <span aria-hidden="true" style={{
+        position: 'absolute', left: '50%', bottom: 2, height: 2, width: active ? 16 : 0, marginLeft: active ? -8 : 0,
+        borderRadius: 2, background: 'var(--accent)', transition: 'width 200ms var(--ease-spring), margin 200ms var(--ease-spring)',
+      }} />
     </Link>
   )
 }

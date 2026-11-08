@@ -175,3 +175,8 @@ select:focus-visible {
     scroll-behavior: auto !important;
   }
 }
+
+/* no rectangle ring after a mouse click on the nav; keyboard focus still gets the ring */
+.nav-link:focus:not(:focus-visible),
+.nav-logo:focus:not(:focus-visible),
+.nav-login:focus:not(:focus-visible) { outline: none; }
