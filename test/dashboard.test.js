@@ -32,9 +32,14 @@ test('config patch: types, lengths, snowflakes', () => {
 });
 
 test('config patch: a key allowed on one route is not allowed on another', () => {
-  assert.equal(V.validateConfigPatch({ antispam_threshold: 5 }, 'config').ok, false);
-  assert.equal(V.validateConfigPatch({ antispam_threshold: 5 }, 'automod').ok, true);
-  assert.equal(V.validateConfigPatch({ antispam_threshold: 5000 }, 'automod').ok, false);
+  assert.equal(V.validateConfigPatch({ antilink_whitelist: ['a.com'] }, 'config').ok, false);
+  assert.equal(V.validateConfigPatch({ antilink_whitelist: ['a.com'] }, 'automod').ok, true);
+  assert.equal(V.validateConfigPatch({ antispam_threshold: 5 }, 'automod').ok, false, 'dead keys are no longer accepted');
+  // a never-set key echoed back as null is ignored, not a 400; a null for a nullable key still passes through
+  const echo = V.validateConfigPatch({ welcome_card: null, antispam: true, welcome_channel: null }, 'config');
+  assert.equal(echo.ok, true);
+  assert.deepEqual(echo.values, { antispam: true, welcome_channel: null });
+  assert.equal(V.validateConfigPatch({ word_filter: true }, 'automod').ok, false);
 });
 
 test('leveling patch maps enabled -> leveling and validates arrays', () => {

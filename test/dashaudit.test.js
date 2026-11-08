@@ -131,7 +131,7 @@ test('api: mutations are recorded; GET /audit is gated and clamped', async () =>
     assert.equal(audit.count(GUILD), 0);
 
     assert.equal((await call('PATCH', `${p}/config`, 'tokA', { prefix: 'SECRT', antispam: true })).status, 200);
-    assert.equal((await call('PATCH', `${p}/automod-config`, 'tokA', { antispam_threshold: 5 })).status, 200);
+    assert.equal((await call('PATCH', `${p}/automod-config`, 'tokA', { antispam: true })).status, 200);
     assert.equal((await call('PATCH', `${p}/leveling-config`, 'tokA', { enabled: false })).status, 200);
     assert.equal((await call('POST', `${p}/custom-commands`, 'tokA', { name: 'hello', response: 'private reply text' })).status, 200);
     assert.equal((await call('DELETE', `${p}/custom-commands/hello`, 'tokA')).status, 200);

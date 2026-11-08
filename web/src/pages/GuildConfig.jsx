@@ -275,7 +275,13 @@ export function GuildConfig() {
     setSaveError(null)
     try {
       const { name, icon, memberCount, ...rest } = cfg
-      const res = await api(`/guilds/${guildId}/config`, token, { method: 'PATCH', body: JSON.stringify(rest) })
+      const body = {}
+      for (const [k, v] of Object.entries(rest)) {
+        if (k === 'word_filter' && !Array.isArray(v)) continue
+        if (v === undefined) continue
+        body[k] = v
+      }
+      const res = await api(`/guilds/${guildId}/config`, token, { method: 'PATCH', body: JSON.stringify(body) })
       if (res.ok) flashSaved()
       else setSaveError(res.error)
     } finally {
@@ -291,7 +297,7 @@ export function GuildConfig() {
     setAutomodSaving(true)
     setAutomodError(null)
     try {
-      const res = await api(`/guilds/${guildId}/automod-config`, token, { method: 'PATCH', body: JSON.stringify(automod) })
+      const res = await api(`/guilds/${guildId}/automod-config`, token, { method: 'PATCH', body: JSON.stringify({ antispam: !!automod.antispam, antilink: !!automod.antilink, antilink_whitelist: Array.isArray(automod.antilink_whitelist) ? automod.antilink_whitelist : [], word_filter: Array.isArray(automod.word_filter) ? automod.word_filter : [] }) })
       if (res.ok) flashSaved()
       else setAutomodError(res.error)
     } finally {
@@ -599,61 +605,10 @@ export function GuildConfig() {
                   <SectionCard title="Anti-Spam">
                     <Toggle
                       label="Enable Anti-Spam"
-                      description="Automatically punish users who send messages too quickly"
+                      description="Mutes someone for 60 seconds when they send 5 messages within 3 seconds. Moderators are exempt."
                       checked={!!automod.antispam}
                       onChange={v => updateAutomod('antispam', v)}
                     />
-                    {automod.antispam && (
-                      <div style={{ marginTop: 'var(--space-4)', padding: '0 var(--space-4)' }}>
-                        <div style={{ marginBottom: 'var(--space-4)' }}>
-                          <label style={{
-                            display: 'block', fontSize: 'var(--text-xs)', color: 'var(--fg-2)',
-                            marginBottom: 'var(--space-1-5)', fontWeight: 'var(--weight-medium)',
-                          }}>Message Threshold <span style={{ color: 'var(--fg-4)', fontFamily: 'var(--font-mono)' }}>({automod.antispam_threshold || 5} messages in 3s)</span></label>
-                          <input
-                            type="range" min={3} max={10} step={1}
-                            value={automod.antispam_threshold || 5}
-                            onChange={e => updateAutomod('antispam_threshold', parseInt(e.target.value))}
-                            style={{ width: '100%', accentColor: 'var(--accent)', cursor: 'pointer' }}
-                          />
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--fg-4)', marginTop: 2 }}>
-                            <span>3 (strict)</span>
-                            <span>10 (lenient)</span>
-                          </div>
-                        </div>
-                        <div style={{ marginBottom: 'var(--space-4)' }}>
-                          <label style={{
-                            display: 'block', fontSize: 'var(--text-xs)', color: 'var(--fg-2)',
-                            marginBottom: 'var(--space-1-5)', fontWeight: 'var(--weight-medium)',
-                          }}>Action</label>
-                          <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                            {['mute', 'kick', 'ban'].map(action => (
-                              <button
-                                key={action}
-                                onClick={() => updateAutomod('antispam_action', action)}
-                                style={{
-                                  flex: 1, height: 34, borderRadius: 'var(--radius-md)', cursor: 'pointer',
-                                  background: (automod.antispam_action || 'mute') === action ? 'var(--accent-subtle)' : 'var(--surface-1)',
-                                  border: (automod.antispam_action || 'mute') === action ? '1px solid var(--border-accent)' : '1px solid var(--border-default)',
-                                  color: (automod.antispam_action || 'mute') === action ? 'var(--accent)' : 'var(--fg-3)',
-                                  fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-medium)',
-                                  textTransform: 'capitalize', fontFamily: 'var(--font-body)',
-                                  transition: 'all 120ms var(--ease-default)',
-                                }}
-                              >{action}</button>
-                            ))}
-                          </div>
-                        </div>
-                        {(automod.antispam_action || 'mute') === 'mute' && (
-                          <Field
-                            label="Mute Duration"
-                            value={automod.antispam_duration || '10m'}
-                            onChange={v => updateAutomod('antispam_duration', v)}
-                            hint="Examples: 5m, 1h, 1d"
-                          />
-                        )}
-                      </div>
-                    )}
                   </SectionCard>
 
                   <SectionCard title="Anti-Link">
@@ -677,36 +632,28 @@ export function GuildConfig() {
                   </SectionCard>
 
                   <SectionCard title="Word Filter">
-                    <Toggle
-                      label="Enable Word Filter"
-                      description="Delete messages containing blocked words"
-                      checked={!!automod.word_filter}
-                      onChange={v => updateAutomod('word_filter', v)}
-                    />
-                    {automod.word_filter && (
-                      <div style={{ marginTop: 'var(--space-4)', padding: '0 var(--space-4)' }}>
-                        <ListField
-                          label="Blocked Words"
-                          list={automod.word_filter_list}
-                          onList={v => updateAutomod('word_filter_list', v)}
-                          hint="Comma-separated list of words to block"
-                        />
-                        {(automod.word_filter_list || []).length > 0 && (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1-5)', marginTop: 'var(--space-2)' }}>
-                            {automod.word_filter_list.map((w, i) => (
-                              <span key={`${w}-${i}`} style={{
-                                fontSize: 'var(--text-xs)', padding: '3px 8px',
-                                borderRadius: 'var(--radius-sm)',
-                                background: 'var(--error-subtle)',
-                                border: '1px solid var(--error-border)',
-                                color: 'var(--error)',
-                                fontFamily: 'var(--font-mono)',
-                              }}>{w}</span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    <div style={{ padding: '0 var(--space-4)' }}>
+                      <ListField
+                        label="Blocked Words"
+                        list={automod.word_filter}
+                        onList={v => updateAutomod('word_filter', v)}
+                        hint="Comma-separated. A message containing any of these is deleted. Leave empty to turn the filter off."
+                      />
+                      {(automod.word_filter || []).length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1-5)', marginTop: 'var(--space-2)' }}>
+                          {automod.word_filter.map((w, i) => (
+                            <span key={`${w}-${i}`} style={{
+                              fontSize: 'var(--text-xs)', padding: '3px 8px',
+                              borderRadius: 'var(--radius-sm)',
+                              background: 'var(--error-subtle)',
+                              border: '1px solid var(--error-border)',
+                              color: 'var(--error)',
+                              fontFamily: 'var(--font-mono)',
+                            }}>{w}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </SectionCard>
 
                   {automodError && <Notice>{automodError}</Notice>}

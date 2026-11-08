@@ -100,11 +100,7 @@ const CONFIG_SCHEMA = {
   antilink: bool,
   ai_automod: bool,
   word_filter: strArray({ maxItems: 200, maxLen: 100 }),
-  word_filter_list: strArray({ maxItems: 200, maxLen: 100 }),
   antilink_whitelist: strArray({ maxItems: 100, maxLen: 100, lower: true }),
-  antispam_threshold: intRange(2, 50),
-  antispam_action: enumOf('timeout', 'delete', 'warn', 'kick', 'mute'),
-  antispam_duration: intRange(0, 2419200),
   xp_multiplier: numRange(0, 10),
   level_roles: levelRoles,
   no_xp_channels: snowflakeArray(100),
@@ -120,8 +116,7 @@ const ROUTE_KEYS = {
     'leveling', 'antispam', 'antilink', 'ai_automod', 'word_filter',
   ],
   automod: [
-    'antispam', 'antispam_threshold', 'antispam_action', 'antispam_duration',
-    'antilink', 'antilink_whitelist', 'word_filter', 'word_filter_list',
+    'antispam', 'antilink', 'antilink_whitelist', 'word_filter',
   ],
   leveling: ['enabled', 'levelup_channel', 'xp_multiplier', 'level_roles', 'no_xp_channels', 'no_xp_roles'],
 };
@@ -138,6 +133,9 @@ function validateConfigPatch(body, route) {
   for (const [key, raw] of entries) {
     if (!allowed.includes(key)) return fail(`Unknown setting: ${key.slice(0, 40)}`);
     const storeKey = key === 'enabled' ? 'leveling' : key;
+    // A key the server has never set comes back as null/absent. The form echoes it back on save; that means "unchanged",
+    // not an error, unless the key genuinely accepts null (channel ids, text).
+    if ((raw === null || raw === undefined) && !CONFIG_SCHEMA[storeKey](null).ok) continue;
     const r = CONFIG_SCHEMA[storeKey](raw);
     if (!r.ok) return fail(`${key.slice(0, 40)} ${r.error}`);
     values[storeKey] = r.value;
