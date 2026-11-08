@@ -470,7 +470,7 @@
   display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr); gap: clamp(28px, 5vw, 80px);
   justify-items: stretch; align-content: center; align-items: center; text-align: left;
   min-height: 0; max-width: calc(var(--ln-max) + 2 * var(--ln-gutter));
-  margin: 0 auto; padding: clamp(40px, 7vw, 96px) var(--ln-gutter) clamp(28px, 4vw, 56px);
+  margin: 0 auto; padding: clamp(40px, 5.5vw, 80px) var(--ln-gutter);
 }
 .ln-top-copy { display: grid; justify-items: start; min-width: 0; }
 .ln-top .ln-cta { justify-content: flex-start; }
