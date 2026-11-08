@@ -39,7 +39,6 @@ export function HeroScene() {
   const at = clock()
   return (
     <figure className="hs" aria-label={`A short example conversation with ${BRAND}`}>
-      <img className="hs-peek" src="/logo.jpg" alt="" width="84" height="84" />
       <div className="hs-bar"><span className="hs-hash">#</span>general<span className="hs-dots" aria-hidden="true"><i /><i /><i /></span></div>
       <div className="hs-log" role="log">
         <Row n={1} name="dana" at={at}><p className="hs-text">{BRAND} what time is it in dubai</p></Row>

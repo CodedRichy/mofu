@@ -492,8 +492,6 @@
   box-shadow: 0 1px 0 oklch(1 0 260 / 0.06) inset, 0 40px 90px -30px oklch(0.05 0.006 260 / 0.9), 0 0 0 10px oklch(0.84 0.006 260 / 0.05), 0 0 120px -20px oklch(0.65 0.006 260 / 0.35);
   transform: rotate(0.6deg);
 }
-.hs-peek { position: absolute; top: -40px; right: 28px; width: 84px; height: 84px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 5px var(--dc-bg), 0 0 0 6px var(--peach-line); z-index: 2; transition: transform 400ms var(--ln-ease); }
-.hs:hover .hs-peek { transform: translateY(-4px) rotate(-6deg); }
 .hs-bar { display: flex; align-items: center; gap: 6px; padding: 14px 18px; border-bottom: 1px solid var(--dc-line); font-weight: var(--weight-semibold); font-size: var(--text-sm); color: var(--fg-1); }
 .hs-hash { color: var(--fg-3); font-size: 1.15em; }
 .hs-dots { margin-left: auto; display: flex; gap: 4px; }
@@ -546,12 +544,11 @@
   .hs-log { min-height: 0; }
   .ln-aura { left: 50%; }
 }
-@media (max-width: 480px) { .hs-peek { width: 64px; height: 64px; top: -32px; right: 16px; } .hs-log { padding: 14px 12px 6px; } }
+@media (max-width: 480px) { .hs-log { padding: 14px 12px 6px; } }
 
 @media (prefers-reduced-motion: reduce) {
   .hs-step, .hs-press .dc-btn, .hs-wait i { animation: none; }
   .hs-t1, .hs-t2 { display: none; }
-  .hs:hover .hs-peek { transform: none; }
 }
 
 .ln-break { display: flex; align-items: center; gap: 18px; max-width: var(--ln-max); margin: clamp(48px, 7vw, 96px) auto 0; padding: 0 var(--ln-gutter); }
