@@ -713,11 +713,8 @@ function createApp(client, deps = {}) {
     const cap = store.getBankCapacity(req.params.id, req.params.userId);
     const newBank = Math.max(0, r.values.bank === undefined ? current.bank : Math.min(r.values.bank, Math.max(cap, current.bank)));
 
-    // Adjust wallet and bank to desired values
-    const e = store.getBalance(req.params.id, req.params.userId);
-    store.addWallet(req.params.id, req.params.userId, newWallet - e.wallet);
-    const updated = store.getBalance(req.params.id, req.params.userId);
-    store.addBank(req.params.id, req.params.userId, newBank - updated.bank);
+    // One write for both numbers, so wallet and bank can never be left out of step.
+    store.setBalance(req.params.id, req.params.userId, newWallet, newBank);
 
     const final = store.getBalance(req.params.id, req.params.userId);
     track(req, 'economy.set', 'user ' + req.params.userId + ': ' + Object.keys(r.values).join(', '));
@@ -729,13 +726,8 @@ function createApp(client, deps = {}) {
     const guild = await verifyGuildAccess(req, res);
     if (!guild) return;
 
-    const items = [
-      { id: 'fishing_rod', name: 'Fishing Rod', price: 500, emoji: '🎣', description: 'Go fishing for extra income' },
-      { id: 'laptop', name: 'Laptop', price: 2000, emoji: '💻', description: 'Work from home for more money' },
-      { id: 'shield', name: 'Rob Shield', price: 3000, emoji: '🛡️', description: 'Protect against robbery for 1 hour' },
-      { id: 'lucky_coin', name: 'Lucky Coin', price: 1500, emoji: '🍀', description: 'Better gambling odds for 30 minutes' },
-      { id: 'bank_note', name: 'Bank Note', price: 5000, emoji: '💵', description: 'Increase bank capacity by ⌴ 10,000' },
-    ];
+    const { ITEMS } = require('../utils/shopItems');
+    const items = ITEMS;
 
     res.json(items);
   });

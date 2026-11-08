@@ -177,13 +177,13 @@ function LeaderboardRow({ row, rank, even, onView }) {
         {row.user_id}
       </span>
       <span style={{ fontSize: 'var(--text-sm)', color: 'var(--fg-2)' }}>
-        <span style={{ color: 'var(--fg-4)', marginRight: 2 }}>{'⌴'}</span> {fmt(row.wallet)}
+        <span style={{ color: 'var(--fg-4)', marginRight: 2 }}>{'⌬'}</span> {fmt(row.wallet)}
       </span>
       <span style={{ fontSize: 'var(--text-sm)', color: 'var(--fg-2)' }}>
-        <span style={{ color: 'var(--fg-4)', marginRight: 2 }}>{'⌴'}</span> {fmt(row.bank)}
+        <span style={{ color: 'var(--fg-4)', marginRight: 2 }}>{'⌬'}</span> {fmt(row.bank)}
       </span>
       <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-semibold)', color: 'var(--fg-1)' }}>
-        <span style={{ color: 'var(--accent)', marginRight: 2 }}>{'⌴'}</span> {fmt(row.total)}
+        <span style={{ color: 'var(--accent)', marginRight: 2 }}>{'⌬'}</span> {fmt(row.total)}
       </span>
       <button
         type="button"
@@ -373,7 +373,7 @@ function UserLookupTab({ guildId, token, seedUserId }) {
                 background: 'var(--accent-subtle)', border: '1px solid var(--border-accent)',
                 color: 'var(--accent)', fontWeight: 500,
               }}>
-                Total: {'⌴'} {fmt(userData.total)}
+                Total: {'⌬'} {fmt(userData.total)}
               </span>
             </div>
           </div>
@@ -398,7 +398,7 @@ function UserLookupTab({ guildId, token, seedUserId }) {
                   background: 'var(--bg)', border: '1px solid var(--border-default)',
                   borderRadius: 'var(--radius-md)',
                 }}>
-                  <span style={{ color: 'var(--fg-4)', marginRight: 4, fontSize: 'var(--text-sm)' }}>{'⌴'}</span>
+                  <span style={{ color: 'var(--fg-4)', marginRight: 4, fontSize: 'var(--text-sm)' }}>{'⌬'}</span>
                   <input
                     id="eco-wallet"
                     type="number"
@@ -433,7 +433,7 @@ function UserLookupTab({ guildId, token, seedUserId }) {
                   background: 'var(--bg)', border: '1px solid var(--border-default)',
                   borderRadius: 'var(--radius-md)',
                 }}>
-                  <span style={{ color: 'var(--fg-4)', marginRight: 4, fontSize: 'var(--text-sm)' }}>{'⌴'}</span>
+                  <span style={{ color: 'var(--fg-4)', marginRight: 4, fontSize: 'var(--text-sm)' }}>{'⌬'}</span>
                   <input
                     id="eco-bank"
                     type="number"
@@ -595,7 +595,7 @@ function ShopItem({ item }) {
         flexShrink: 0,
       }}>
         <span style={{ color: 'var(--accent)', fontSize: 'var(--text-sm)', fontWeight: 600 }}>
-          {'⌴'}
+          {'⌬'}
         </span>
         <span style={{
           fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-semibold)',

@@ -61,7 +61,7 @@ module.exports = {
         return interaction.reply({ embeds: [response({ client: interaction.client, description: `Birthday channel is already set to ${ch}`, color: colors.warning })], ephemeral: true });
       }
       bdStore.setChannel(guild.id, ch.id);
-      const msg = existing ? `Birthday channel updated to ${ch} (was <#${existing}>)` : `Birthday announcements will be sent to ${ch}`;
+      const msg = existing ? `Birthday channel updated to ${ch} (was <#${existing}>)` : `Birthdays will be announced in ${ch}, once a day shortly after midnight UTC.`;
       return interaction.reply({ embeds: [response({ client: interaction.client, description: msg, color: colors.success })] });
     }
 

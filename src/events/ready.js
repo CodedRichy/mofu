@@ -30,6 +30,7 @@ module.exports = {
     require('../utils/alerts').startSweep(client); // free social alerts; idempotent, no-op without subscriptions
     require('../utils/announceUpdate').announceUpdate(client);
     require('../utils/statusPost').online(client);
+    require('../utils/birthdayAnnounce').startSweep(client); // daily birthday posts for servers that set a channel
     require('../utils/healthpostRun').startSweep(client); // weekly health post (per-guild opt-in)
 
     // Enforce the data-retention promise: purge servers that removed the bot over 30 days ago.

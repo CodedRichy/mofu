@@ -583,7 +583,8 @@ export function GuildConfig() {
                   <Bot size={16} style={{ color: 'var(--accent)', marginTop: 2, flexShrink: 0 }} />
                   <div>
                     <p style={{ fontSize: 'var(--text-xs)', color: 'var(--fg-2)', lineHeight: 1.7 }}>
-                      Nothing to set up. Say <strong>mofu</strong> in any channel to chat or to ask for a command in plain words.
+                      Say <strong>mofu</strong> in any channel to chat or to ask for a command in plain words. By default only administrators and
+                      members with Manage Messages get a reply; use <strong>/airoles</strong> to choose which roles can talk to it.
                       Anything that changes your server (mute, warn, kick) shows a confirm button first.
                     </p>
                   </div>

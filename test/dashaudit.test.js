@@ -97,7 +97,7 @@ test('api: mutations are recorded; GET /audit is gated and clamped', async () =>
   const store = {
     db: {}, getConfig: () => null, setConfig() {},
     addCustomCommand() {}, removeCustomCommand: () => true,
-    getBalance: () => ({ wallet: 0, bank: 0, total: 0 }), getBankCapacity: () => 100, addWallet() {}, addBank() {},
+    getBalance: () => ({ wallet: 0, bank: 0, total: 0 }), getBankCapacity: () => 100, addWallet() {}, addBank() {}, setBalance() {},
   };
   const guild = { name: 'G', memberCount: 1, channels: { cache: { size: 1 } }, roles: { cache: { size: 1 } }, iconURL: () => null };
   const client = { isReady: () => true, guilds: { cache: new Map([[GUILD, guild]]) }, commands: new Map(), users: { cache: new Map() } };

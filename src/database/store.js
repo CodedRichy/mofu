@@ -176,6 +176,12 @@ module.exports = {
     return { wallet: e.wallet, bank: e.bank, total: e.wallet + e.bank };
   },
 
+  // Set wallet and bank together in one statement (admin edits).
+  setBalance(guildId, userId, wallet, bank) {
+    getEconomy(guildId, userId);
+    saveEconomy(guildId, userId, Math.max(0, wallet), Math.max(0, bank));
+  },
+
   addWallet(guildId, userId, amount) {
     const e = getEconomy(guildId, userId);
     const newWallet = Math.max(0, e.wallet + amount);

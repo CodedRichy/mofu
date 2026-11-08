@@ -150,7 +150,7 @@ test('app: access checks, validation, AI gating (no live db)', async () => {
   const aiCalls = [];
   const store = {
     db: {}, getConfig: () => null, setConfig: (g, k, v) => set.push([k, v]),
-    getBalance: () => ({ wallet: 0, bank: 0, total: 0 }), addWallet() {}, addBank() {},
+    getBalance: () => ({ wallet: 0, bank: 0, total: 0 }), addWallet() {}, addBank() {}, setBalance() {},
   };
   const guild = { name: 'G', memberCount: 1, channels: { cache: { size: 1 } }, roles: { cache: { size: 1 } }, iconURL: () => null };
   const client = { isReady: () => true, guilds: { cache: new Map([[GUILD, guild]]) }, commands: new Map(), users: { cache: new Map() } };

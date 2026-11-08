@@ -3,13 +3,7 @@ const { colors } = require('../../utils/constants');
 const { base, response, footer } = require('../../utils/embed');
 const store = require('../../database/store');
 
-const ITEMS = [
-  { id: 'fishing_rod', name: 'Fishing Rod', price: 500, emoji: '🎣', description: 'Go fishing for extra income' },
-  { id: 'laptop', name: 'Laptop', price: 2000, emoji: '💻', description: 'Permanently earn 50% more from working' },
-  { id: 'shield', name: 'Rob Shield', price: 3000, emoji: '🛡️', description: 'Blocks one robbery attempt (consumed)' },
-  { id: 'lucky_coin', name: 'Lucky Coin', price: 1500, emoji: '🍀', description: 'Win your next coinflip or slots (consumed)' },
-  { id: 'bank_note', name: 'Bank Note', price: 5000, emoji: '💵', description: 'Permanently increase bank capacity by ⌬10,000' },
-];
+const { ITEMS } = require('../../utils/shopItems');
 
 module.exports = {
   data: new SlashCommandBuilder()

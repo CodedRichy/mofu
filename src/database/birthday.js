@@ -56,6 +56,10 @@ module.exports = {
     return stmts.getToday.all(guildId, month, day).map((r) => r.user_id);
   },
 
+  getOn(guildId, month, day) {
+    return stmts.getToday.all(guildId, month, day).map((r) => r.user_id);
+  },
+
   listAll(guildId) {
     return stmts.listAll.all(guildId).map((r) => ({ userId: r.user_id, month: r.month, day: r.day }));
   },
