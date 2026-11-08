@@ -170,7 +170,7 @@ export function Layout({ children, bare = false, wide = true }) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', position: 'relative' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)', position: 'relative' }}>
       <div style={{ position: 'fixed', inset: 0, backgroundImage: NOISE_SVG, backgroundRepeat: 'repeat', pointerEvents: 'none', zIndex: 0, opacity: 0.5 }} />
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: 300, background: 'var(--gradient-bg-top)', pointerEvents: 'none', zIndex: 0 }} />
 
@@ -297,11 +297,11 @@ export function Layout({ children, bare = false, wide = true }) {
         </div>
       </nav>
 
-      <div style={{ position: 'relative', zIndex: 1 }}>
+      <div style={{ position: 'relative', zIndex: 1, flex: '1 0 auto' }}>
         {children}
       </div>
 
-      <footer style={{ position: 'relative', zIndex: 1, borderTop: '1px solid var(--border-default)', marginTop: 'var(--space-16, 64px)' }}>
+      <footer style={{ position: 'relative', zIndex: 1, borderTop: '1px solid var(--border-default)', marginTop: 'var(--space-16, 64px)', flexShrink: 0 }}>
         <div style={{ maxWidth: wide ? `calc(${edge.maxWidth} + 2 * ${edge.pad})` : 1160, margin: '0 auto', padding: '28px var(--page-gutter)', display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--text-sm)', color: 'var(--fg-3)' }}>
           <span>{BRAND}. Your server's data is deleted 30 days after the bot leaves.</span>
           <span style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px' }}>
