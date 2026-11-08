@@ -216,8 +216,8 @@ export function Layout({ children, bare = false, wide = true }) {
         </div>
 
         {/* Content */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', maxWidth: edge.maxWidth, position: 'relative' }}>
-          <LogoMark />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', width: '100%', maxWidth: edge.maxWidth, position: 'relative' }}>
+          <div style={{ justifySelf: 'start' }}><LogoMark /></div>
 
           {/* Center: links + sliding pill */}
           {/* wide pages: the links float in a pill */}
@@ -236,6 +236,7 @@ export function Layout({ children, bare = false, wide = true }) {
 
           {/* Right: auth */}
           <div style={{
+            justifySelf: 'end',
             display: 'flex', alignItems: 'center', gap: 'var(--space-2-5)',
             animation: 'fade-up 450ms var(--ease-default) 380ms both',
           }}>
